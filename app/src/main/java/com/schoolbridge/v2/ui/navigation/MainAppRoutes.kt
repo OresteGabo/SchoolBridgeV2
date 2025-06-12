@@ -27,7 +27,7 @@ import com.schoolbridge.v2.R
  * Can be used to display a badge on navigation items.
  */
 sealed class MainAppScreen(
-    val route: String,
+    val route: String, // This 'route' refers to the concrete instance's route
     val title: Int? = null,
     val selectedIcon: ImageVector? = null,
     val unselectedIcon: ImageVector? = null,
@@ -75,7 +75,11 @@ sealed class MainAppScreen(
      * Route for displaying details of a specific course, identified by its ID.
      * Example usage for navigation: `navController.navigate(MainAppScreen.CourseDetail.createRoute("course_123"))`
      */
-    data class CourseDetail(val courseId: String) : MainAppScreen("course_detail_screen/{courseId}") {
+    data class CourseDetail(val courseId: String) : MainAppScreen(CourseDetail.ROUTE_PATTERN) {
+        companion object {
+            // Define the route pattern as a constant in a companion object
+            const val ROUTE_PATTERN = "course_detail_screen/{courseId}"
+        }
         fun createRoute(courseId: String) = "course_detail_screen/$courseId"
     }
 
@@ -85,7 +89,11 @@ sealed class MainAppScreen(
      * Route for displaying details of a specific evaluation, identified by its ID.
      * Example usage: `navController.navigate(MainAppScreen.EvaluationDetail.createRoute("eval_abc"))`
      */
-    data class EvaluationDetail(val evaluationId: String) : MainAppScreen("evaluation_detail_screen/{evaluationId}") {
+    data class EvaluationDetail(val evaluationId: String) : MainAppScreen(EvaluationDetail.ROUTE_PATTERN) {
+        companion object {
+            // Define the route pattern as a constant in a companion object
+            const val ROUTE_PATTERN = "evaluation_detail_screen/{evaluationId}"
+        }
         fun createRoute(evaluationId: String) = "evaluation_detail_screen/$evaluationId"
     }
 
