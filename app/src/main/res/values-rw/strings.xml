@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+    <string name="app_name" translatable="false">SchoolBridge</string>
+    <string name="title_activity_parent" translatable="false">ParentActivity</string>
+    <string name="message_label">Ubutumwa</string>
+    <string name="home_label">Ahabanza</string>
+    <string name="finance_label">Imari</string>
+    <string name="settings_label">Igenamiterere</string>
+    <string name="read_messages_notice">Ubutumwa bwasomwe burabikwa mu minsi 300 hanyuma bukazakurwaho mu buryo bwikora.</string>
+    <string name="transaction_retention_notice">Amakuru y\’imyishyurire abikwa imyaka 1 nyuma y\’uko umunyeshuri asohotse mu ishuri.</string>
+    <string name="notice_payment_pending">Kwishyura bitararangira bishobora gufata amasaha 24 kugira ngo byemezwe.</string>
+    <string name="title_activity_new_transaction">NewTransactionActivity</string>
+    <string name="title_activity_home">HomeActivity</string>
+    <string name="title_activity_messages">MessagesActivity</string>
+    <string name="title_activity_transactions">TransactionsActivity</string>
+    <string name="new_message">Ubutumwa bushya</string>
+    <string name="new_transaction">Iyishyurwa rishya</string>
+    <string name="transaction_status_all">Byose</string>
+    <string name="transaction_status_pending">Bitararangira</string>
+    <string name="transaction_status_validated">Byemejwe</string>
+    <string name="transaction_status_rejected">Byanzwe</string>
+    <string name="school_year">Umwaka w\’amashuri:</string>
+    <string name="total_paid">Byishyuye byose: RWF %1$s</string>
+    <string name="hide_notices">Hisha amatangazo</string>
+    <string name="show_notices">Erekana amatangazo</string>
+    <string name="notice_text_animation">Gukina kw\’itangazo</string>
+    <string name="tab_transactions">Iyishyurwa</string>
+    <string name="tab_semesters">Igihembwe</string>
+    <string name="tab_payments">Ubwishyu</string>
+    <string name="no_transactions_found">Nta bwishyu bwabonetse.</string>
+    <string name="tab_unread">Ntabwasomwe</string>
+    <string name="tab_read">Bwasomwe</string>
+    <string name="mark_as_unread">Shyira nk\’utabwasomye</string>
+    <string name="mark_as_read">Shyira nk\’bwasomwe</string>
+    <string name="unfavorite">Kuraho ku by\'ingenzi</string>
+    <string name="favorite">Bika nk\’ingenzi</string>
+    <string name="delete">Siba</string>
+    <string name="no_read_messages">Nta butumwa bwasomwe</string>
+    <string name="no_unread_messages">Nta butumwa butarasomwa</string>
+    <string name="message_not_found">Ubutumwa ntibwabonywe</string>
+    <string name="label_phone_number">Numero ya Telefoni</string>
+    <string name="label_school_code">Kode y\’ishuri</string>
+    <string name="label_school_name">Izina ry\’ishuri:</string>
+    <string name="label_amount">Umubare w\’amafaranga</string>
+    <string name="label_merchant_code">Kode y\’ucuruza</string>
+    <string name="notice_must_be_online">Ugomba kuba kuri internet kugira ngo wohereze iyi fomu.</string>
+    <string name="toast_fill_all_fields">Nyamuneka wujuje byose</string>
+    <string name="submit_transaction">Ohereza Iyishyurwa</string>
+
+    <string name="fab_label_teacher">Mwarimu</string>
+    <string name="fab_label_message_for_kid">Ubutumwa ku mwana</string>
+    <string name="fab_label_school_admin">Umuyobozi w\’ishuri</string>
+
+    <string name="fab_main_label_new_message">Ubutumwa bushya</string>
+    <string name="fab_main_label_close">Funga</string>
+
+    <string name="fab_main_cd_new_message">Igikorwa cyo kohereza ubutumwa</string>
+    <string name="fab_main_cd_close">Funga urutonde rw\’ibikorwa</string>
+    <string name="title_activity_new_message" translatable="false">NewMessageActivity</string>
+    <string name="label_select_date">Hitamo itariki</string>
+
+    <string name="about_title">Ibyerekeye SchoolBridge</string>
+    <string name="back">Subira inyuma</string>
+    <string name="app_version">SchoolBridge v1.0.0</string>
+    <string name="about_description">Urubuga rukoresha ikoranabuhanga ruhuza amashuri y\’u Rwanda n\’ababyeyi hamwe n\’abanyeshuri.</string>
+
+    <string name="features_title">Ibikubiye mu porogaramu</string>
+    <string name="feature_messaging">Ubutumwa hagati y\’ababyeyi n\’amashuri</string>
+    <string name="feature_fees">Gukurikirana ubwishyu bw\’amafaranga y\’ishuri</string>
+    <string name="feature_linked_children">Gucunga konti z\’abana bahujwe</string>
+    <string name="feature_verification">Kwemeza umwirondoro mu buryo bwizewe</string>
+    <string name="feature_school_search">Gushakisha amashuri hakoreshejwe akarere n\’umurenge</string>
+
+    <string name="privacy_title">Amakuru n\’Ubwirinzi</string>
+    <string name="privacy_description">Amakuru yawe abikwa neza kandi akoreshwa gusa mu kunoza itumanaho n\’ishuri. Kwemeza umwirondoro bituma amakuru asangiye aba yizewe.</string>
+
+    <string name="developed_by_title">Byakozwe na</string>
+    <string name="developed_by_description">Iyi porogaramu yakozwe n\’ikipe y\’Abanyarwanda b\’abatekinisiye, abashushanya, n\’abarezi biyemeje guteza imbere uburezi bwacu.</string>
+
+    <string name="contact_title">Tuvugishe</string>
+    <string name="contact_email">📧 Email: support@schoolbridge.rw</string>
+    <string name="contact_phone">📞 Telefoni: +250 78 000 0000</string>
+    <string name="contact_website">🌐 Urubuga: www.schoolbridge.rw</string>
+
+    <string name="copyright">© %1$d SchoolBridge. Uburenganzira bwose burabitswe.</string>
+
+    <string name="welcome_back">Murakaza neza</string>
+    <string name="phone_number">Numero ya telefoni</string>
+    <string name="password">Ijambobanga</string>
+    <string name="login">Injira</string>
+    <string name="dont_have_account">Nta konti ufite? Iyandikishe</string>
+    <string name="continue_as_guest">Komeza nk’umushyitsi</string>
+    <string name="error_enter_phone_password">Shyiramo numero na n\'ijambobanga</string>
+    <string name="error_invalid_phone">Numero ya telefoni si iy’u Rwanda</string>
+    <string name="error_invalid_credentials">Amakuru winjije si yo %1$s</string>
+
+    <string name="welcome_guest">Murakaza neza, Mugenzi</string>
+    <string name="school_icon">Ikimenyetso cy\'ishuri</string>
+    <string name="welcome_to_schoolbridge">Murakaza neza kuri SchoolBridge!</string>
+    <string name="sign_up_prompt">Iyandikishe kugirango uhuze abana bawe kandi ubone ubutumwa, imari, n\'amakuru y\'ishuri.</string>
+    <string name="log_in">Injira</string>
+
+    <string name="welcome_user">Murakaza neza, %1$s %2$s</string>
+    <string name="settings">Igenamiterere</string>
+
+    <string name="your_children">Abana bawe</string>
+    <string name="recent_alerts">Amatangazo mashya</string>
+    <string name="alert_midterm_exams">Ibizamini byo hagati mu gihembwe bitangira ku wa mbere utaha.</string>
+    <string name="alert_uniform_inspection">Isuzuma ry\'imyambaro ku wa gatanu.</string>
+    <string name="upcoming_events">Ibizaba vuba</string>
+    <string name="event_meeting">Inama y\'ababyeyi n\'abarezi</string>
+    <string name="event_sports_day">Umunsi w\'imikino</string>
+
+    <string name="app_logo">Ikirango cya porogaramu</string>
+    <string name="create_account">Fungura konti yawe</string>
+    <string name="first_name">Izina rya mbere</string>
+    <string name="last_name">Izina rya nyuma</string>
+    <string name="next">Komeza</string>
+    <string name="go_to_login">Usanzwe ufite konti? Subira kuri kwinjira</string>
+
+    <string name="gender_male">Gabo</string>
+    <string name="gender_female">Gore</string>
+    <string name="gender_other">Ibindi</string>
+    <string name="select_gender">Hitamo igitsina</string>
+
+    <string name="help_title">Ubufasha &amp; Ibibazo</string>
+    <string name="faq_intro">Shakisha ibisubizo by’ibibazo bikunze kubazwa ku bijyanye no guhuza n’umwana, kwishyura, ubutumwa n’ibindi.</string>
+    <string name="faq_footer_note">Ukeneye ubufasha bwisumbuyeho? Vugana n’ishuri cyangwa usure urubuga rwacu.</string>
+
+    <string name="search_placeholder">Shakisha FAQ…</string>
+    <string name="clear_search">Siba ibyo washakishe</string>
+</resources>

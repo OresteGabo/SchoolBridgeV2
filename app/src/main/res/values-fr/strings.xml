@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">SchoolBridgeV2</string>
+    <string name="title_activity_parent" translatable="false">ParentActivity</string>
+    <string name="message_label">Message</string>
+    <string name="home_label">Accueil</string>
+    <string name="finance_label">finances</string>
+    <string name="settings_label">Paramètres</string>
+    <string name="read_messages_notice">Les messages lus sont conservés pendant 300 jours, puis supprimés automatiquement.</string>
+    <string name="transaction_retention_notice">Les transactions sont conservées pendant un an après le départ d\'un élève de l\'école.</string>
+    <string name="notice_payment_pending">Les paiements en attente peuvent prendre jusqu\'à 24 heures pour être validés.</string>
+
+    <string name="title_activity_new_transaction" translatable="false">NewTransactionActivity</string>
+    <string name="title_activity_home" translatable="false">HomeActivity</string>
+    <string name="title_activity_messages" translatable="false">MessagesActivity</string>
+    <string name="title_activity_transactions" translatable="false">TransactionsActivity</string>
+    <string name="new_message">Nouveau message</string>
+    <string name="new_transaction">Nouveau Transaction</string>
+    <string name="transaction_status_all">Tout</string>
+    <string name="transaction_status_pending">En attente</string>
+    <string name="transaction_status_validated">Validé</string>
+    <string name="transaction_status_rejected">Rejeté</string>
+    <string name="school_year">"Année scolaire"</string>
+    <string name="total_paid">Total payé : RWF %1$s</string>
+    <string name="hide_notices">Masquer les notifications</string>
+    <string name="show_notices">Afficher les notifications</string>
+    <string name="notice_text_animation">Animation du texte des notifications</string>
+    <string name="tab_transactions">Transactions</string>
+    <string name="tab_semesters">Semestres</string>
+    <string name="tab_payments">Paiements</string>
+    <string name="no_transactions_found">Aucune transaction disponible.</string>
+    <string name="tab_unread">Non lus</string>
+    <string name="tab_read">Lus</string>
+    <string name="mark_as_unread">Marquer comme non lu</string>
+    <string name="mark_as_read">Marquer comme lu</string>
+    <string name="unfavorite">Retirer des favoris</string>
+    <string name="favorite">Ajouter aux favoris</string>
+    <string name="delete">Supprimer</string>
+    <string name="no_read_messages">Aucun message lu</string>
+    <string name="no_unread_messages">Aucun message non lu</string>
+    <string name="message_not_found">Message non trouvé</string>
+    <string name="label_phone_number">Numéro de téléphone</string>
+    <string name="label_school_code">Code de l\'école</string>
+    <string name="label_school_name">Nom de l\'école :</string>
+    <string name="label_amount">Montant</string>
+    <string name="label_merchant_code">Code marchand</string>
+    <string name="notice_must_be_online">Vous devez être en ligne pour soumettre ce formulaire.</string>
+    <string name="toast_fill_all_fields">Veuillez remplir tous les champs</string>
+    <string name="submit_transaction">Soumettre la transaction</string>
+    <string name="fab_label_teacher">Enseignant</string>
+    <string name="fab_label_message_for_kid">Message pour l\'enfant</string>
+    <string name="fab_label_school_admin">Administration scolaire</string>
+    <string name="fab_main_label_new_message">Nouveau message</string>
+    <string name="fab_main_label_close">Fermer</string>
+    <string name="fab_main_cd_new_message">Nouvelle action de message</string>
+    <string name="fab_main_cd_close">Fermer le menu d\'action</string>
+    <string name="label_select_date">Sélectionner une date</string>
+
+
+
+    <string name="about_title">À propos de SchoolBridge</string>
+    <string name="back">Retour</string>
+    <string name="app_version">SchoolBridge v1.0.0</string>
+    <string name="about_description">Une plateforme numérique conçue pour connecter les écoles rwandaises aux parents et aux élèves.</string>
+
+    <string name="features_title">Fonctionnalités</string>
+    <string name="feature_messaging">Messagerie entre parents et écoles</string>
+    <string name="feature_fees">Suivi des frais scolaires</string>
+    <string name="feature_linked_children">Gestion des profils d\'enfants liés</string>
+    <string name="feature_verification">Vérification d\'identité sécurisée</string>
+    <string name="feature_school_search">Recherche d\'écoles par district et secteur</string>
+
+    <string name="privacy_title">Données &amp; Confidentialité</string>
+    <string name="privacy_description">Vos données sont stockées de manière sécurisée et utilisées uniquement pour améliorer la communication avec votre école. La vérification d\'identité garantit la fiabilité des informations partagées.</string>
+
+    <string name="developed_by_title">Développé par</string>
+    <string name="developed_by_description">Cette application a été développée par une équipe rwandaise composée de développeurs, designers et enseignants engagés pour améliorer notre système éducatif.</string>
+
+    <string name="contact_title">Contact</string>
+    <string name="contact_email">📧 Email : support@schoolbridge.rw</string>
+    <string name="contact_phone">📞 Téléphone : +250 78 000 0000</string>
+    <string name="contact_website">🌐 Site web : www.schoolbridge.rw</string>
+
+    <string name="copyright">© %1$d SchoolBridge. Tous droits réservés.</string>
+
+    <string name="welcome_back">Bon retour</string>
+    <string name="password">Mot de passe</string>
+    <string name="login">Connexion</string>
+    <string name="dont_have_account">Vous n’avez pas de compte ? Inscrivez-vous</string>
+    <string name="continue_as_guest">Continuer en tant qu’invité</string>
+    <string name="error_enter_phone_password">Veuillez entrer le téléphone et le mot de passe</string>
+    <string name="error_invalid_phone">Numéro de téléphone rwandais invalide</string>
+    <string name="error_invalid_credentials">Identifiants invalides %1$s</string>
+
+
+    <string name="welcome_guest">Bienvenue, invité</string>
+    <string name="school_icon">Icône de l\'école</string>
+    <string name="welcome_to_schoolbridge">Bienvenue sur SchoolBridge !</string>
+    <string name="sign_up_prompt">Inscrivez-vous pour lier vos enfants et accéder aux messages, finances et mises à jour scolaires.</string>
+    <string name="create_account">Créer un compte</string>
+    <string name="log_in">Se connecter</string>
+
+
+    <string name="welcome_user">Bienvenue, %1$s %2$s</string>
+    <string name="settings">Paramètres</string>
+
+    <string name="your_children">Vos enfants</string>
+    <string name="recent_alerts">Alertes récentes</string>
+    <string name="alert_midterm_exams">Les examens de mi-parcours commencent lundi prochain.</string>
+    <string name="alert_uniform_inspection">Inspection de l’uniforme vendredi.</string>
+    <string name="upcoming_events">Événements à venir</string>
+    <string name="event_meeting">Réunion parents-professeurs</string>
+    <string name="event_sports_day">Journée sportive</string>
+
+    <string name="app_logo">Logo de l\'application</string>
+    <string name="first_name">Prénom</string>
+    <string name="last_name">Nom</string>
+    <string name="phone_number">Numéro de téléphone</string>
+    <string name="next">Suivant</string>
+    <string name="go_to_login">Vous avez déjà un compte ? Retour à la connexion</string>
+
+    <string name="gender_male">Homme</string>
+    <string name="gender_female">Femme</string>
+    <string name="gender_other">Autre</string>
+    <string name="select_gender">Sélectionner le genre</string>
+
+    <string name="help_title">Aide &amp; FAQs</string>
+    <string name="faq_intro">Trouvez des réponses aux questions courantes concernant le lien avec les enfants, les paiements, la messagerie, et plus encore.</string>
+    <string name="faq_footer_note">Besoin de plus d’aide ? Contactez l’école ou visitez notre site web.</string>
+
+    <string name="search_placeholder">Rechercher les FAQ…</string>
+    <string name="clear_search">Effacer la recherche</string>
+</resources>
