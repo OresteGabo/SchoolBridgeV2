@@ -2,6 +2,11 @@ package com.schoolbridge.v2.data.dto.auth
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 
 /**
  * Data Transfer Object (DTO) for a **user login response** received from the API.
@@ -43,3 +48,18 @@ data class LoginResponseDto(
     //@SerialName("activeRoles")
     val activeRoles: List<String>
 )
+/*
+// Example using a WebSocket client in Kotlin
+val client = OkHttpClient()
+val request = Request.Builder().url("wss://your-websocket-url").build()
+val webSocket = client.newWebSocket(request, object : WebSocketListener() {
+    override fun onOpen(webSocket: WebSocket, response: Response) {
+        // Connection established
+    }
+
+    override fun onMessage(webSocket: WebSocket, text: String) {
+        // Handle incoming message
+        val update = parseUpdate(text)
+        updateUI(update)
+    }
+})*/
