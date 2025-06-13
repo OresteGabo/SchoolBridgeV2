@@ -80,6 +80,8 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.schoolbridge.v2.data.session.CurrentUser.Address
 import com.schoolbridge.v2.domain.user.Gender
 import com.schoolbridge.v2.domain.user.User
+import com.schoolbridge.v2.ui.common.components.AppSubHeader
+import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
 import kotlin.collections.forEachIndexed
 import kotlin.collections.isNullOrEmpty
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
@@ -206,12 +208,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // --- QR Code Section ---
-            Text(
-                text = "Your SchoolBridge ID",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            AppSubHeader("QR code for verification or access")
             Card(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -247,22 +244,18 @@ fun ProfileScreen(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+            AppSubSectionDivider()
 
 
             // --- Contact Information Section ---
             // Replaced SectionHeader with Text for simpler integration
-            Text(
-                text = "Contact Information",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            AppSubHeader("Contact Information")
+
             ProfileField("Phone Number", editablePhone, isEditing, { editablePhone = it })
             ProfileField("Email", editableEmail, isEditing, { editableEmail = it })
             ProfileReadonlyField("National ID", maskRwandaId(currentUser?.userId ?: "N/A"))
 
-            Spacer(Modifier.height(24.dp))
-
+            AppSubSectionDivider()
             // --- Address Information Section ---
             Text(
                 text = "Address Information",
@@ -273,14 +266,11 @@ fun ProfileScreen(
             ProfileField("District", editableDistrict, isEditing, { editableDistrict = it })
             ProfileField("Sector", editableSector, isEditing, { editableSector = it })
 
-            Spacer(Modifier.height(24.dp))
+            //HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+            AppSubSectionDivider()
 
             // --- Account Details Section ---
-            Text(
-                text = "Account Details",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            AppSubHeader("Account Details")
             /*ListItem(
                 headlineContent = { Text("Joined") },
                 supportingContent = { Text(currentUser.dateOfBirth.toString() ?: "Date not available") }
@@ -290,19 +280,9 @@ fun ProfileScreen(
 
             // --- Linked Children Section ---
             // Replaced AppSubHeader with Text for simpler integration
-            Text(
-                text = "Linked Children (${currentUser?.linkedStudents?.size ?: 0})",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            /*if (currentUser.isParent && currentUser.parentDetails?.linkedChildren.isNullOrEmpty()) {
-                Text(
-                    text = "No children linked yet. Link your child to view their academic progress and more.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp)
-                )
-            } else {
+            AppSubHeader("Linked Children (${currentUser?.linkedStudents?.size ?: 0})")
+
+            if(currentUser?.isParent() ==true && currentUser?.linkedStudents?.isNotEmpty() == true){
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -310,10 +290,10 @@ fun ProfileScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column {
-                        currentUser.value.parentDetails?.linkedChildren?.forEachIndexed { index, child ->
+                        currentUser!!.linkedStudents?.forEachIndexed { index, child ->
                             ListItem(
-                                headlineContent = { Text("${child.studentFirstName} ${child.studentLastName}") },
-                                supportingContent = { Text("Student ID: ${child.studentId}") },
+                                headlineContent = { Text("${child.firstName} ${child.lastName}") },
+                                supportingContent = { Text("Student ID: ${child.id}") },
                                 leadingContent = {
                                     Icon(
                                         imageVector = Icons.Default.AccountCircle,
@@ -326,13 +306,13 @@ fun ProfileScreen(
                                     .clickable { /* Handle click to view child details */ }
                                     .padding(horizontal = 8.dp)
                             )
-                            /*if (index < (currentUser.value.parentDetails?.linkedChildren?.size ==null 0: ?)) {
+                            if (index < (currentUser!!.linkedStudents?.size?.toInt() ?: 0)) {
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                            }*/
+                            }
                         }
                     }
                 }
-            }*/
+            }
 
             // --- Verified Badge/Info ---
             if (userVerified.value) { // Show this only if verified
