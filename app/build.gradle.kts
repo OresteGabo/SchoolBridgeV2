@@ -3,6 +3,12 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+
+    // *** CRITICAL: Apply the Hilt plugin (no version here) ***
+    //id("com.google.dagger.hilt.android")
+
+    // *** CRITICAL: Apply the KSP plugin (no version here) ***
+    //id("com.google.devtools.ksp")
 }
 
 android {
@@ -134,4 +140,27 @@ dependencies {
 
     // For JsonNamingStrategy.SnakeCase (should be part of core kotlinx.serialization-json)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+
+    // --- DataStore Preferences ---
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // --- Hilt (Dependency Injection) ---
+    implementation("com.google.dagger:hilt-android:2.51.1")
+
+    // *** CRITICAL: Use 'ksp' for Hilt Annotation Processors ***
+    // These lines are what require the 'ksp' plugin to be applied above.
+    //ksp("com.google.dagger:hilt-android-compiler:2.51.1")
+    //ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    // --- WorkManager Runtime ---
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // --- Testing Dependencies ---
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.google.zxing:core:3.5.3")
 }
