@@ -1,52 +1,60 @@
 package com.schoolbridge.v2.data.dto.auth
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
+
+
+
+import com.schoolbridge.v2.data.session.CurrentUser // Import the CurrentUser DTO for nested data classes
+
 
 /**
  * Data Transfer Object (DTO) for a **user login response** received from the API.
  *
- * This DTO contains the data returned by the backend after a successful user login.
- * It typically includes authentication tokens necessary for subsequent authenticated API calls,
- * and basic user information to quickly identify the logged-in user.
+ * This DTO contains the data returned by the backend after a successful user login,
+ * including authentication tokens and comprehensive user profile information.
  *
  * **Real-life Example:**
  * After a user successfully sends a [LoginRequestDto] to the `/auth/login` endpoint,
- * the backend responds with this `LoginResponseDto`. The `authToken` is then saved
- * (e.g., in `UserPreferences`) and used in HTTP headers for future requests.
+ * the backend responds with this `LoginResponseDto`. The `authToken` and detailed
+ * user profile data are then saved (e.g., in `UserPreferences` via `UserSessionManager`)
+ * and used for session management and displaying user-specific content.
  *
  * @property authToken The primary access token (e.g., JWT) used to authenticate subsequent API requests.
- * This token usually has a short lifespan. Example: `"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwODJ9.Signature"`
+ * This token usually has a short lifespan.
  * @property refreshToken An optional, longer-lived token used to obtain new `authToken`s after
  * the current one expires, without requiring the user to re-login.
- * @property userId The unique identifier of the logged-in user. Example: "usr_abc123"
- * @property email The email address of the logged-in user. Example: "user@example.com"
- * @property firstName The first name of the logged-in user. Example: "Alice"
- * @property lastName The last name of the logged-in user. Example: "Smith"
+ * @property userId The unique identifier of the logged-in user.
+ * @property email The email address of the logged-in user.
+ * @property firstName The first name of the logged-in user.
+ * @property lastName The last name of the logged-in user.
  * @property activeRoles A list of strings representing the roles the logged-in user currently possesses.
- * This helps the app quickly determine UI features and permissions. Example: `["STUDENT", "PARENT"]`, `["TEACHER"]`
+ * This helps the app quickly determine UI features and permissions.
+ * @property phoneNumber The phone number of the user. Example: "+250 788 123 456"
+ * @property nationalId The national identification number of the user (often masked or not directly exposed for security).
+ * @property address The user's address details, encapsulated in an [CurrentUser.Address] object.
+ * @property profilePictureUrl The URL to the user's profile picture.
+ * @property role The primary role of the user (e.g., "Parent", "Teacher", "Student").
+ * @property joinDate The date the user joined the system.
+ * @property linkedStudents A list of children linked to this user, encapsulated in [CurrentUser.LinkedStudent] objects.
+ * @property gender The gender of the user. (Uncomment if you decide to include and use Gender enum from your model)
  */
 @Serializable
 data class LoginResponseDto(
-    //@SerialName("authToken")
     val authToken: String,
-    //@SerialName("refreshToken")
     val refreshToken: String,
-    //@SerialName("userId")
     val userId: String,
-    //@SerialName("email")
-    val email: String, // Assuming your backend response includes email
-    //@SerialName("firstName")
+    val email: String,
     val firstName: String,
-    //@SerialName("lastName")
     val lastName: String,
-    //@SerialName("activeRoles")
-    val activeRoles: List<String>
+    val activeRoles: List<String>,
+
+    val phoneNumber: String?,
+    val nationalId: String?,
+    val address: CurrentUser.Address?, // <--- MAKE THIS NULLABLE
+    val profilePictureUrl: String?,
+    val role: String?,
+    val joinDate: String?,
+    val linkedStudents: List<CurrentUser.LinkedStudent>? // <--- MAKE THIS NULLABLE
 )
 /*
 // Example using a WebSocket client in Kotlin
