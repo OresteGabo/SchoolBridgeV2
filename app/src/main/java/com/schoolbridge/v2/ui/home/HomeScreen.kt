@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -88,33 +89,6 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             HomeScreenWithChildren(students =students)
-            Text(
-                text = "Welcome to SchoolBridge!",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Spacer(Modifier.height(16.dp))
-
-            // Display personalized welcome if currentUser is available
-
-            Text(
-                text = "Hello, ${currentUser?.firstName}!", // Personalized greeting
-                style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Email: ${currentUser?.email}",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = "Your roles: ${currentUser?.activeRoles?.joinToString(", ")}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-
-            Spacer(Modifier.height(32.dp))
-            Text(
-                text = "Explore your personalized dashboard here.",
-                style = MaterialTheme.typography.bodyMedium
-            )
         }
     }
 }
@@ -138,18 +112,42 @@ private fun HomeScreenWithChildren(students: List<CurrentUser.LinkedStudent>?) {
 
     SpacerL()
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         AppSubHeader("💬 " + t(R.string.recent_alerts))
+        TextButton(onClick = { /* TODO: open all alerts */ }) {
+            Text(
+                text = "View All",//t(R.string.view_all), // use "All" or "View All"
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
+
     SpacerS()
+
+    //TODO FETCH ALERTS THAT COMES FROM WHERE THE USER IS SUBSCRIBED (ALL TEACHER OF ALL HIS KIDS + SCHOOLS),... (we only show 3 then the rest we add All on top right )
     AlertCardCompact(t(R.string.alert_midterm_exams))
     AlertCardCompact(t(R.string.alert_uniform_inspection))
 
     SpacerL()
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         AppSubHeader("📅 " + t(R.string.upcoming_events))
+        TextButton(onClick = { /* TODO: open all alerts */ }) {
+            Text(
+                text = "View All",//t(R.string.view_all), // use "All" or "View All"
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
+
     SpacerS()
     EventCardCompact(t(R.string.event_meeting), "June 10")
     EventCardCompact(t(R.string.event_sports_day), "June 20")
@@ -328,7 +326,7 @@ fun StudentCardProfileStyle(student: CurrentUser.LinkedStudent) {
                 )
 
                 Text(
-                    text = "DOB: 25/06/1995 }",//text = "DOB: ${student.dabtOfBirth}",
+                    text = "DOB: 25/06/1995",//text = "DOB: ${student.dabtOfBirth}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
