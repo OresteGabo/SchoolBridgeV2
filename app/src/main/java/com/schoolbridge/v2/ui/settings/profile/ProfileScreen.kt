@@ -79,10 +79,10 @@ import coil.compose.AsyncImage
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import com.schoolbridge.v2.data.session.CurrentUser // Import CurrentUser directly
 import com.schoolbridge.v2.domain.user.Gender // Assuming Gender is defined elsewhere
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
+import com.schoolbridge.v2.ui.common.components.SpacerL
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
 import androidx.compose.ui.graphics.Color as ComposeColor
 
@@ -101,7 +101,7 @@ fun ProfileScreen(
     var showQrDialog by remember { mutableStateOf(false) }
     // This should ideally come from the User model or a ViewModel indicating verification status
     // For now, let's keep it as true for demonstration
-    val userVerified = remember { mutableStateOf(true) }
+    val userVerified = remember { mutableStateOf(false) }
 
     // Editable states, initialized from currentUser properties or defaults
     var editablePhone by remember { mutableStateOf("") }
@@ -130,11 +130,13 @@ fun ProfileScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    //if (userVerified.value){VerifiedBadge()}
-                    VerificationNeededBadge(
-                        modifier = Modifier,
-                        onClick = {}
-                    )
+                    if (userVerified.value){VerifiedBadge()}
+                    else{
+                        VerificationNeededBadge(
+                            modifier = Modifier,
+                            onClick = {}
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = currentOnBack) {
@@ -354,7 +356,8 @@ fun ProfileScreen(
             }
 
             // --- Verified Badge/Info ---
-            if (!userVerified.value) { // Show this only if verified
+            SpacerL()
+            if (userVerified.value) { // Show this only if verified
                 Spacer(modifier = Modifier.height(24.dp))
                 ElevatedCard(
                     modifier = Modifier
@@ -388,7 +391,6 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 onVerifyClick = {}
             )}
-            Spacer(modifier = Modifier.height(32.dp)) // Add some bottom padding
         }
     }
 
