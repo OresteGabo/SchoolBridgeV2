@@ -23,21 +23,23 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.data.remote.AuthApiService // Import AuthApiService
 import com.schoolbridge.v2.data.session.UserSessionManager // Import UserSessionManager
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navigateToHome: () -> Unit,
-    // Add these parameters to receive dependencies from the navigation graph
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
-    // The viewModel parameter is now initialized using the factory that takes the new dependencies
     viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(authApiService, userSessionManager))
 ) {
     val context = LocalContext.current
     val isLoading = viewModel.isLoading
     val loginError = viewModel.loginError
     val loginSuccess = viewModel.loginSuccess
+
+    //val isSessionReady by viewModel.isSessionFullyReady.collectAsState()
+
 
     LaunchedEffect(loginSuccess) {
         loginSuccess?.let {
