@@ -18,31 +18,30 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.schoolbridge.v2.data.remote.AuthApiService
-import com.schoolbridge.v2.data.remote.AuthApiServiceImpl
-import com.schoolbridge.v2.ui.onboarding.auth.LoginViewModel
+
+import com.schoolbridge.v2.data.remote.AuthApiService // Import AuthApiService
+import com.schoolbridge.v2.data.session.UserSessionManager // Import UserSessionManager
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
-import androidx.lifecycle.ViewModelProvider.Factory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    navigateToHome: () -> Unit ,//callback here
-    // For now, we'll just show a Toast on success
-    viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(AuthApiServiceImpl())) // Pass your service implementation
+    navigateToHome: () -> Unit,
+    // Add these parameters to receive dependencies from the navigation graph
+    authApiService: AuthApiService,
+    userSessionManager: UserSessionManager,
+    // The viewModel parameter is now initialized using the factory that takes the new dependencies
+    viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(authApiService, userSessionManager))
 ) {
     val context = LocalContext.current
     val isLoading = viewModel.isLoading
     val loginError = viewModel.loginError
     val loginSuccess = viewModel.loginSuccess
 
-    // Effect for showing success/error messages as Toasts
     LaunchedEffect(loginSuccess) {
         loginSuccess?.let {
             Toast.makeText(context, "Login Successful! Welcome, ${it.firstName}", Toast.LENGTH_LONG).show()
-            // Here you would typically navigate to the main screen
             navigateToHome()
             viewModel.resetState()
         }
@@ -50,9 +49,9 @@ fun LoginScreen(
 
     LaunchedEffect(loginError) {
         loginError?.let {
-            Log.d("ERROR_LOGIN",it)
+            Log.d("ERROR_LOGIN", it)
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            viewModel.resetState() // Optional: reset state on error to allow re-typing
+            viewModel.resetState()
         }
     }
 
@@ -66,7 +65,7 @@ fun LoginScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 24.dp)
-                .imePadding(), // Adjusts padding for software keyboard
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -88,7 +87,7 @@ fun LoginScreen(
                 ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                isError = loginError != null // Show error state if there's an error
+                isError = loginError != null
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -104,18 +103,18 @@ fun LoginScreen(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = { viewModel.login() } // Submit on Done key
+                    onDone = { viewModel.login() }
                 ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                isError = loginError != null // Show error state if there's an error
+                isError = loginError != null
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = viewModel::login,
-                enabled = !isLoading, // Disable button while loading
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -129,8 +128,6 @@ fun LoginScreen(
                     Text("Login", style = MaterialTheme.typography.titleMedium)
                 }
             }
-
-            // Optional: Error message display below button
 
             loginError?.let { errorMessage ->
                 Text(
@@ -154,22 +151,6 @@ fun LoginScreen(
     }
 }
 
-// ViewModel Factory to provide the AuthApiService
-class LoginViewModelFactory(private val authApiService: AuthApiService) : Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(LoginViewModel::class.java)) {
-            return LoginViewModel(authApiService) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
 
 
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    SchoolBridgeV2Theme {  // Use your app's theme for accurate preview
-        LoginScreen(navigateToHome = {})
-    }
-}
+
