@@ -1,10 +1,8 @@
 package com.schoolbridge.v2.data.dto.auth
 
 import kotlinx.serialization.Serializable
-
-
-
-import com.schoolbridge.v2.data.session.CurrentUser // Import the CurrentUser DTO for nested data classes
+import com.schoolbridge.v2.domain.user.CurrentUser
+import com.schoolbridge.v2.domain.user.Gender
 
 
 /**
@@ -54,7 +52,9 @@ data class LoginResponseDto(
     val profilePictureUrl: String?,
     val role: String?,
     val joinDate: String?,
-    val linkedStudents: List<CurrentUser.LinkedStudent>? // <--- MAKE THIS NULLABLE
+    val linkedStudents: List<CurrentUser.LinkedStudent>?, // <--- MAKE THIS NULLABLE
+    val gender: Gender?,
+    val isVerified: Boolean
 )
 /*
 // Example using a WebSocket client in Kotlin
