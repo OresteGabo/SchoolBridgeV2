@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.Lock
@@ -66,6 +67,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -74,55 +76,51 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.schoolbridge.v2.data.session.UserSessionManager // Updated import
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import com.schoolbridge.v2.data.session.CurrentUser.Address
-import com.schoolbridge.v2.domain.user.Gender
-import com.schoolbridge.v2.domain.user.User
+import com.schoolbridge.v2.data.session.CurrentUser // Import CurrentUser directly
+import com.schoolbridge.v2.domain.user.Gender // Assuming Gender is defined elsewhere
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
-import kotlin.collections.forEachIndexed
-import kotlin.collections.isNullOrEmpty
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
+import androidx.compose.ui.graphics.Color as ComposeColor
 
-// Assuming these exist in your project, otherwise create them or replace with Text
-// import com.schoolbridge.v2.ui.components.AppSubHeader
-// import com.schoolbridge.v2.ui.components.SectionHeader
-
-
-@RequiresApi(Build.VERSION_CODES.Q) // Keep this if you use Bitmap.set, createBitmap, etc.
+@RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     userSessionManager: UserSessionManager, // Inject UserSessionManager
     onBack: () -> Unit // Callback for back navigation
 ) {
-    // Get the current user from the session manager
-    //val currentUser = userSessionManager.currentUser
-    //Collect the currentUser StateFlow directly, providing an initial value of null
+    // Collect the currentUser StateFlow directly, providing an initial value of null
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
-
 
     val currentOnBack by rememberUpdatedState(onBack)
     var isEditing by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
     // This should ideally come from the User model or a ViewModel indicating verification status
+    // For now, let's keep it as true for demonstration
     val userVerified = remember { mutableStateOf(true) }
 
-    // Editable states initialized from currentUser
-    var editablePhone ="250788000000"//by remember { mutableStateOf(currentUser?.phoneNumber ?: "Not provided") }
-    var editableEmail by remember { mutableStateOf(currentUser?.email ?: "Not provided") }
-    var editableDistrict = "gicumbi"//by remember { mutableStateOf(currentUser?.address?.district ?: "Unknown") }
-    var editableSector ="kageyo"//by remember { mutableStateOf(currentUser?.address?.sector ?: "Unknown") }
+    // Editable states, initialized from currentUser properties or defaults
+    var editablePhone by remember { mutableStateOf("") }
+    var editableEmail by remember { mutableStateOf("") }
+    var editableDistrict by remember { mutableStateOf("") }
+    var editableSector by remember { mutableStateOf("") }
+    var editableCell by remember { mutableStateOf("") }
+    var editableVillage by remember { mutableStateOf("") }
 
-    // Update editable states when currentUser changes (e.g., after login or refresh)
-    LaunchedEffect(isEditing, currentUser) {
-        currentUser?.let {
-            /*editablePhone = it.phoneNumber ?: "Not provided"
-            editableEmail = it.email ?: "Not provided"
-            editableDistrict = it.address?.district ?: "Unknown"
-            editableSector = it.address?.sector ?: "Unknown"*/
+    // Update editable states when currentUser changes
+    // This ensures UI updates if user data is loaded or refreshed
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            editablePhone = user.phoneNumber ?: ""
+            editableEmail = user.email
+            editableDistrict = user.address?.district ?: ""
+            editableSector = user.address?.sector ?: ""
+            editableCell = user.address?.cell ?: ""
+            editableVillage = user.address?.village ?: ""
         }
     }
 
@@ -131,7 +129,13 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("My Profile") },
+                title = {
+                    //if (userVerified.value){VerifiedBadge()}
+                    VerificationNeededBadge(
+                        modifier = Modifier,
+                        onClick = {}
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = currentOnBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -143,10 +147,15 @@ fun ProfileScreen(
                             if (isEditing) {
                                 Log.d(
                                     "ProfileScreen",
-                                    "Saving changes: $editablePhone, $editableEmail, $editableDistrict, $editableSector"
+                                    "Saving changes: $editablePhone, $editableEmail, $editableDistrict, $editableSector, $editableCell, $editableVillage"
                                 )
-                                // TODO: Call a ViewModel function here to save the updated data
-                                // Example: profileViewModel.saveProfile(editablePhone, editableEmail, ...)
+                                // TODO: In a real app, you would pass these updated values to a ViewModel
+                                // and then to your UserSessionManager or a repository to persist them.
+                                // Example: profileViewModel.updateUser(
+                                //    phoneNumber = editablePhone,
+                                //    email = editableEmail,
+                                //    address = CurrentUser.Address(editableDistrict, editableSector, editableCell, editableVillage)
+                                // )
                                 Toast.makeText(context, "Profile saved!", Toast.LENGTH_SHORT).show()
                             }
                             isEditing = !isEditing
@@ -180,38 +189,44 @@ fun ProfileScreen(
                         .size(80.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape) // Added border for better visibility
+                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                 )
                 Spacer(modifier = Modifier.width(20.dp))
 
                 Column {
-                    Column{ // Changed to Row to align name and badge
+                    Row(verticalAlignment = Alignment.CenterVertically) { // Align name and badge horizontally
                         Text(
                             text = buildString {
                                 val title = when (currentUser?.gender) {
                                     Gender.MALE -> "Mr."
                                     Gender.FEMALE -> "Mrs."
-                                    else -> ""
+                                    else -> "" // Handle null or other genders
                                 }
                                 append("$title ${currentUser?.firstName ?: ""} ${currentUser?.lastName ?: ""}".trim())
                             },
                             style = MaterialTheme.typography.headlineSmall
                         )
-                        if (userVerified.value) {
+                        if (userVerified.value) { // Only show badge if user is verified
                             Spacer(modifier = Modifier.width(8.dp))
-                            VerifiedBadge()
+                            //VerifiedBadge()
                         }
                     }
+
+                    Text(
+                        text = "Your roles: ${currentUser?.activeRoles?.joinToString(", ")}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // --- QR Code Section ---
-            AppSubHeader("QR code for verification or access")
+            AppSubHeader("QR Code for Verification or Access")
             Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -246,43 +261,67 @@ fun ProfileScreen(
 
             AppSubSectionDivider()
 
-
             // --- Contact Information Section ---
-            // Replaced SectionHeader with Text for simpler integration
             AppSubHeader("Contact Information")
 
-            ProfileField("Phone Number", editablePhone, isEditing, { editablePhone = it })
-            ProfileField("Email", editableEmail, isEditing, { editableEmail = it })
-            ProfileReadonlyField("National ID", maskRwandaId(currentUser?.userId ?: "N/A"))
+            ProfileField(
+                "Phone Number",
+                editablePhone,
+                isEditing,
+                { editablePhone = it },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            ProfileField(
+                "Email",
+                editableEmail,
+                isEditing,
+                { editableEmail = it },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            )
+            ProfileReadonlyField("National ID", maskRwandaId(currentUser?.nationalId ?: "N/A"))
 
             AppSubSectionDivider()
+
             // --- Address Information Section ---
-            Text(
-                text = "Address Information",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            // If district/sector are editable, use ProfileField. Otherwise, ProfileReadonlyField.
+            AppSubHeader("Address Information")
+
             ProfileField("District", editableDistrict, isEditing, { editableDistrict = it })
             ProfileField("Sector", editableSector, isEditing, { editableSector = it })
+            ProfileField("Cell", editableCell, isEditing, { editableCell = it })
+            ProfileField("Village", editableVillage, isEditing, { editableVillage = it })
 
-            //HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
             AppSubSectionDivider()
 
             // --- Account Details Section ---
             AppSubHeader("Account Details")
-            /*ListItem(
-                headlineContent = { Text("Joined") },
-                supportingContent = { Text(currentUser.dateOfBirth.toString() ?: "Date not available") }
-            )*/
+            ListItem(
+                headlineContent = { Text("Primary Role") },
+                supportingContent = { Text(currentUser?.role?.replaceFirstChar(Char::titlecase) ?: "N/A") }
+            )
+            ListItem(
+                headlineContent = { Text("Joined Date") },
+                supportingContent = { Text(currentUser?.joinDate ?: "N/A") }
+            )
+            ListItem(
+                headlineContent = { Text("User ID") },
+                supportingContent = { Text(currentUser?.userId ?: "N/A") }
+            )
 
-            Spacer(modifier = Modifier.height(16.dp))
+
+            AppSubSectionDivider()
 
             // --- Linked Children Section ---
-            // Replaced AppSubHeader with Text for simpler integration
             AppSubHeader("Linked Children (${currentUser?.linkedStudents?.size ?: 0})")
 
-            if(currentUser?.isParent() ==true && currentUser?.linkedStudents?.isNotEmpty() == true){
+            if (currentUser?.linkedStudents.isNullOrEmpty()) {
+                Text(
+                    text = "No linked students found.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -306,7 +345,7 @@ fun ProfileScreen(
                                     .clickable { /* Handle click to view child details */ }
                                     .padding(horizontal = 8.dp)
                             )
-                            if (index < (currentUser!!.linkedStudents?.size?.toInt() ?: 0)) {
+                            if (index < (currentUser?.linkedStudents!!.size - 1)) { // Only add divider if not the last item
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             }
                         }
@@ -315,10 +354,11 @@ fun ProfileScreen(
             }
 
             // --- Verified Badge/Info ---
-            if (userVerified.value) { // Show this only if verified
+            if (!userVerified.value) { // Show this only if verified
                 Spacer(modifier = Modifier.height(24.dp))
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable {
                             Log.i("INFO_BADGE", "BADGE VERIFIED full information")
                             Toast.makeText(context, "Your account is officially verified!", Toast.LENGTH_SHORT).show()
@@ -344,6 +384,11 @@ fun ProfileScreen(
                     }
                 }
             }
+            else{VerificationInfoCard(
+                modifier = Modifier.fillMaxWidth(),
+                onVerifyClick = {}
+            )}
+            Spacer(modifier = Modifier.height(32.dp)) // Add some bottom padding
         }
     }
 
@@ -372,7 +417,8 @@ fun ProfileScreen(
                             tonalElevation = 4.dp,
                             modifier = Modifier.padding(8.dp)
                         ) {
-                            UserQrCode(uid = "THIS IS THE UUID HERE") // Use currentUser.id
+                            // Use currentUser.userId for the QR code content
+                            UserQrCode(uid = currentUser!!.userId)
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         BridgeLockInfo(context = context)
@@ -410,8 +456,53 @@ fun ProfileScreen(
 }
 
 
-// These helper composables are included as they are crucial for the ProfileScreen's structure
-// and utilize Material 3 components.
+// In your ProfileScreen.kt file, add this new composable function:
+
+@Composable
+fun VerificationInfoCard(modifier: Modifier = Modifier, onVerifyClick: () -> Unit) {
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onVerifyClick), // Make the entire card clickable
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info, // Use Info icon for information/action
+                contentDescription = "Verification Needed",
+                tint = MaterialTheme.colorScheme.secondary, // Use your theme's secondary color
+                modifier = Modifier.size(24.dp) // Slightly larger icon for emphasis
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Your account is not verified.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Verify your account for enhanced security and full access to features.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Tap here to verify now!", // Clear call to action
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary // Highlight the call to action
+                )
+            }
+        }
+    }
+}
+
+// --- Helper Composables (No changes needed, keeping them as they are) ---
 
 @Composable
 fun VerifiedBadge(modifier: Modifier = Modifier) {
@@ -522,7 +613,13 @@ fun ProfileField(
         } else {
             ListItem(
                 headlineContent = { Text(label) },
-                supportingContent = { Text(value, style = MaterialTheme.typography.bodyLarge) },
+                supportingContent = {
+                    // Display "Not provided" or "Unknown" only if the value is empty
+                    Text(
+                        if (value.isBlank()) "Not provided" else value,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -574,63 +671,71 @@ fun UserQrCode(uid: String, modifier: Modifier = Modifier) {
     )
 }
 
-fun maskRwandaId(id: String): String {
-    val digits = id.filter { it.isDigit() }
+fun maskRwandaId(nationalId: String): String {
+    val digits = nationalId.filter { it.isDigit() }
     return if (digits.length >= 17) {
-        val firstGroup = digits[0].toString()
-        val secondGroup = digits.substring(1, 5)
-        val thirdGroup = digits[digits.length - 3].toString()
-        val fourthGroup = digits.takeLast(2)
-        "$firstGroup $secondGroup •••••••• $thirdGroup $fourthGroup"
+        val firstChar = nationalId[0].toString()
+        val secondGroup = digits.substring(1, 5) // Characters 1-4 (0-indexed)
+        val lastThreeDigits = digits.substring(digits.length - 3) // Last 3 digits
+        "$firstChar $secondGroup •••••••• $lastThreeDigits"
     } else {
-        "Invalid ID"
+        nationalId // Return as is if not long enough to mask meaningfully
     }
 }
 /*
-// You might still want a preview for development:
-@Preview(showBackground = true, widthDp = 360)
 @Composable
-@RequiresApi(Build.VERSION_CODES.Q)
-fun ProfileScreenPreview() {
-    // This is a dummy UserSessionManager for preview purposes
-    val previewUserSessionManager = object : UserSessionManager {
-        override val currentUser = mutableStateOf(
-            User(
-                id = "user123",
-                firstName = "Jean-Pierre",
-                lastName = "Mugisha",
-                email = "jp.mugisha@example.com",
-                phoneNumber = "+250 788 123 456",
-                gender = Gender.MALE,
-
-                profilePictureUrl = null, // Or provide a sample image URL
-
-                dateOfBirth = TODO(),
-                activeRoles = TODO(),
-                verificationStatus = TODO(),
-                verificationMethodUsed = TODO(),
-                verificationNotes = TODO(),
-                verifiedByUserId = TODO(),
-                verifiedByUserMethod = TODO(),
-                studentDetails = TODO(),
-                teacherDetails = TODO(),
-                parentDetails = TODO(),
-                schoolAdminDetails = TODO()
+fun VerificationNeededBadge(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .background(
+                MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp), // A subtle background
+                RoundedCornerShape(percent = 50)
             )
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(percent = 50)) // Added border for clarity
+            .clickable(onClick = onClick) // Make it clickable
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info, // A common icon for information/action needed
+            contentDescription = "Verification Needed",
+            tint = ComposeColor(0xFFFFA500), // Muted orange/amber color, can adjust to your palette
+            modifier = Modifier.size(16.dp)
         )
-
-        fun saveSession(user: User) {}
-        override suspend fun clearSession() {}
-        suspend fun isLoggedIn(): Boolean = true
-        fun getToken(): String? = "dummy_token"
-    }
-
-    MaterialTheme { // Wrap in MaterialTheme for proper theming
-        ProfileScreen(
-            userSessionManager = previewUserSessionManager,
-            onBack = {}
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "Verify Account", // Clear call to action
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface // Good contrast text color
         )
     }
 }
 
 */
+@Composable
+fun VerificationNeededBadge(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .background(
+                MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp), // A subtle background
+                RoundedCornerShape(percent = 50)
+            )
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(percent = 50)) // Added border for clarity
+            .clickable(onClick = onClick) // Make it clickable
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info, // A common icon for information/action needed
+            contentDescription = "Verification Needed",
+            tint = MaterialTheme.colorScheme.secondary, // Using secondary color from the theme
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "Verify your Account",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface // Good contrast text color
+        )
+    }
+}
