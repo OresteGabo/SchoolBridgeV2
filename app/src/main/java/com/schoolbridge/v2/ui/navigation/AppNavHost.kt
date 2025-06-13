@@ -1,21 +1,34 @@
 // src/main/java/com/schoolbridge/v2/ui/navigation/AppNavHost.kt
 package com.schoolbridge.v2.ui.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.schoolbridge.v2.data.remote.AuthApiService
+import com.schoolbridge.v2.data.session.UserSessionManager
 
-// Import other screen composables as you create them
-import com.schoolbridge.v2.ui.onboarding.OnboardingScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.finance.FinanceScreen
 import com.schoolbridge.v2.ui.home.HomeScreen
 import com.schoolbridge.v2.ui.onboarding.auth.LoginScreen
+import com.schoolbridge.v2.ui.onboarding.auth.LoginViewModelFactory
+import com.schoolbridge.v2.ui.settings.SettingsScreen
 import com.schoolbridge.v2.ui.settings.profile.ProfileScreen
-// etc.
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
+import com.schoolbridge.v2.ui.onboarding.legal.TermsOfServiceScreen
+import com.schoolbridge.v2.ui.settings.about.AboutScreen
+import com.schoolbridge.v2.ui.settings.dataprivacy.DataPrivacySettingsScreen
+import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -24,12 +37,17 @@ import com.schoolbridge.v2.ui.settings.profile.ProfileScreen
  * @param navController The [NavHostController] instance that manages navigation within the host.
  * If null, a default one is remembered.
  * @param startDestination The route to the initial screen when the app starts.
+ * @param authApiService The API service for authentication.
+ * @param userSessionManager Manages the user's session data.
  * @param modifier The modifier to be applied to the layout.
  */
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun AppNavHost(
     navController: NavHostController = rememberNavController(),
-    startDestination: String, // This will typically be AuthScreen.Onboarding.route or AuthScreen.Login.route
+    startDestination: String,
+    authApiService: AuthApiService,
+    userSessionManager: UserSessionManager,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -41,141 +59,185 @@ fun AppNavHost(
         composable(AuthScreen.Onboarding.route) {
             // TODO: Implement your OnboardingScreen composable
             // OnboardingScreen(onFinishOnboarding = { navController.navigate(AuthScreen.Login.route) })
-            println("Navigated to Onboarding Screen") // Placeholder
+            println("Navigated to Onboarding Screen") // Placeholder for OnboardingScreen
         }
 
         composable(AuthScreen.Login.route) {
             LoginScreen(
                 navigateToHome = {
-                    // After successful login, navigate to the main app flow
-                    // and clear the back stack so the user can't go back to login
                     navController.navigate(MainAppScreen.Home.route) {
-                        popUpTo(AuthScreen.Login.route) {
-                            inclusive = true // Remove login from back stack
-                        }
-                        // If you have an onboarding, you might want to pop up to the start destination
-                        // or even clear the entire back stack depending on your flow.
-                        // popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                        // Clear login from back stack to prevent going back to it
+                        popUpTo(AuthScreen.Login.route) { inclusive = true }
                     }
-                }
-                // viewModel parameter will be provided by default or your custom factory
+                },
+                viewModel = viewModel(
+                    factory = LoginViewModelFactory(
+                        authApiService,
+                        userSessionManager
+                    )
+                ),
+                authApiService = authApiService,
+                userSessionManager = userSessionManager
             )
         }
 
         composable(AuthScreen.SignUp.route) {
             // TODO: Implement your SignUpScreen composable
             // SignUpScreen(onSignUpSuccess = { navController.navigate(AuthScreen.Login.route) })
-            println("Navigated to Sign Up Screen") // Placeholder
+            println("Navigated to Sign Up Screen") // Placeholder for SignUpScreen
         }
 
         composable(AuthScreen.ForgotPassword.route) {
             // TODO: Implement your ForgotPasswordScreen composable
-            println("Navigated to Forgot Password Screen") // Placeholder
+            // ForgotPasswordScreen(onResetSuccess = { navController.navigate(AuthScreen.Login.route) })
+            println("Navigated to Forgot Password Screen") // Placeholder for ForgotPasswordScreen
         }
 
         // --- Main Application Flow (Post-Login) ---
         // These use the routes defined in MainAppScreen
         composable(MainAppScreen.Home.route) {
-            HomeScreen() // Your actual Home Screen composable
+            HomeScreen(
+                userSessionManager = userSessionManager,
+                onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
+                modifier = modifier
+            )
         }
 
         composable(MainAppScreen.Message.route) {
-            // TODO: Implement your MessageScreen composable
-             MessageScreen()
-            println("Navigated to Message Screen") // Placeholder
+            MessageScreen()
+            println("Navigated to Message Screen") // Placeholder for MessageScreen
         }
 
         composable(MainAppScreen.Finance.route) {
-            // TODO: Implement your FinanceScreen composable
-             FinanceScreen()
-            println("Navigated to Finance Screen") // Placeholder
+            FinanceScreen()
+            println("Navigated to Finance Screen") // Placeholder for FinanceScreen
         }
 
-        composable(MainAppScreen.Profile.route) {
-            // TODO: Implement your ProfileScreen composable
-            println("Navigated to Profile Screen") // Placeholder
-        }
-
-        composable(MainAppScreen.Notifications.route) {
-            // TODO: Implement your NotificationsScreen composable
-            println("Navigated to Notifications Screen") // Placeholder
-        }
-
+        // --- Settings Flow ---
         composable(MainAppScreen.Settings.route) {
-            // TODO: Implement your SettingsScreen composable
-            println("Navigated to Settings Screen") // Placeholder
+            SettingsScreen(
+                onLogout = {
+                    // Perform logout logic (clear session) then navigate to login
+                    CoroutineScope(Dispatchers.IO).launch {
+                        userSessionManager.clearSession()
+                    }
+                    navController.navigate(AuthScreen.Login.route) {
+                        // Clear entire back stack to prevent navigating back to logged-in state
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = true
+                        }
+                    }
+                },
+                onBack = { navController.navigateUp() }, // Navigate back to the previous screen (Home)
+                onViewLinkRequests = { /* TODO: Implement navigation for Link Requests if a screen exists */ },
+                onNavigateToProfile = { navController.navigate(MainAppScreen.Profile.route) },
+                onNavigateToNotifications = { navController.navigate(MainAppScreen.Notifications.route) },
+                onNavigateToHelp = { navController.navigate(MainAppScreen.HelpFAQ.route) },
+                onNavigateToAbout = { navController.navigate(MainAppScreen.About.route) },
+                onDataPrivacy = { navController.navigate(MainAppScreen.DataPrivacy.route) },
+                //onNavigateToLanguage = { navController.navigate(MainAppScreen.Language.route) },
+                //onNavigateToTheme = { navController.navigate(MainAppScreen.Theme.route) }
+            )
         }
 
-        composable(MainAppScreen.Language.route) {
-            // TODO: Implement your LanguageSettingScreen composable
-            println("Navigated to Language Setting Screen") // Placeholder
+        // --- Individual Settings Sub-Screens ---
+        composable(MainAppScreen.Profile.route) {
+            // Pass userSessionManager if ProfileScreen needs user data
+            ProfileScreen(
+                userSessionManager = userSessionManager,
+                onBack = navController::navigateUp
+            )
         }
-
-        composable(MainAppScreen.Theme.route) {
-            // TODO: Implement your ThemeSettingScreen composable
-            println("Navigated to Theme Setting Screen") // Placeholder
+        composable(MainAppScreen.Notifications.route) {
+            //NotificationsScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Notifications Screen") // Placeholder for NotificationsScreen
         }
-
+        /*composable(MainAppScreen.Language.route) {
+            // LanguageSettingScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Language Setting Screen") // Placeholder for LanguageSettingScreen
+        }*/
+        /*composable(MainAppScreen.Theme.route) {
+            // ThemeSettingScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Theme Setting Screen") // Placeholder for ThemeSettingScreen
+        }*/
         composable(MainAppScreen.HelpFAQ.route) {
-            // TODO: Implement your HelpFAQScreen composable
-            println("Navigated to Help/FAQ Screen") // Placeholder
+            HelpFAQScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Help/FAQ Screen") // Placeholder for HelpFAQScreen
+        }
+        composable(MainAppScreen.About.route) {
+            AboutScreen(onBack = { navController.navigateUp() })
+            println("Navigated to About Screen") // Placeholder for AboutScreen
+        }
+        composable(MainAppScreen.DataPrivacy.route) {
+            DataPrivacySettingsScreen(
+                onBack = { navController.navigateUp() },
+                navController = navController,
+                onTermsClick = {
+                    navController.navigate(MainAppScreen.Terms.route)
+                },
+                onPrivacyClick = {
+                    navController.navigate(MainAppScreen.PrivacyPolicy.route)
+                }
+            )
+            println("Navigated to Data Privacy Screen") // Placeholder for DataPrivacyScreen
         }
 
-        composable(MainAppScreen.About.route) {
-            // TODO: Implement your AboutScreen composable
-            println("Navigated to About Screen") // Placeholder
+
+        composable(MainAppScreen.Terms.route) {
+            TermsOfServiceScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Terms of Service Screen") // Placeholder for TermsOfServiceScreen
         }
-// **FIXED LINES HERE:**
+
+        composable(MainAppScreen.PrivacyPolicy.route) {
+            TermsOfServiceScreen(onBack = { navController.navigateUp() })
+            println("Navigated to Privacy Policy Screen") // Placeholder for PrivacyPolicyScreen
+        }
+
+        // --- Academic Sections ---
+        composable(MainAppScreen.CoursesList.route) {
+            // CoursesListScreen()
+            println("Navigated to Courses List Screen") // Placeholder for CoursesListScreen
+        }
+
         composable(MainAppScreen.CourseDetail.ROUTE_PATTERN) { backStackEntry ->
             val courseId = backStackEntry.arguments?.getString("courseId")
             if (courseId != null) {
                 // TODO: Implement your CourseDetailScreen composable, passing the courseId
-                println("Navigated to Course Detail for ID: $courseId")
+                println("Navigated to Course Detail for ID: $courseId") // Placeholder for CourseDetailScreen
             } else {
                 println("Error: Course ID missing for CourseDetailScreen")
             }
         }
 
-        // **FIXED LINES HERE:**
+        composable(MainAppScreen.GradesList.route) {
+            // GradesListScreen()
+            println("Navigated to Grades List Screen") // Placeholder for GradesListScreen
+        }
+
         composable(MainAppScreen.EvaluationDetail.ROUTE_PATTERN) { backStackEntry ->
             val evaluationId = backStackEntry.arguments?.getString("evaluationId")
             if (evaluationId != null) {
                 // TODO: Implement your EvaluationDetailScreen composable, passing the evaluationId
-                println("Navigated to Evaluation Detail for ID: $evaluationId")
+                println("Navigated to Evaluation Detail for ID: $evaluationId") // Placeholder for EvaluationDetailScreen
             } else {
                 println("Error: Evaluation ID missing for EvaluationDetailScreen")
             }
         }
 
-        composable(MainAppScreen.DataPrivacy.route) {
-            // TODO: Implement your DataPrivacyScreen composable
-            println("Navigated to Data Privacy Screen") // Placeholder
-        }
-
-        composable(MainAppScreen.CoursesList.route) {
-            // TODO: Implement your CoursesListScreen composable
-            println("Navigated to Courses List Screen") // Placeholder
-        }
-
-        composable(MainAppScreen.GradesList.route) {
-            // TODO: Implement your GradesListScreen composable
-            println("Navigated to Grades List Screen") // Placeholder
-        }
-
+        // --- User-specific dashboards/lists (for different roles) ---
         composable(MainAppScreen.StudentDashboard.route) {
-            // TODO: Implement your StudentDashboardScreen composable
-            println("Navigated to Student Dashboard Screen") // Placeholder
+            // StudentDashboardScreen()
+            println("Navigated to Student Dashboard Screen") // Placeholder for StudentDashboardScreen
         }
 
         composable(MainAppScreen.ParentChildrenList.route) {
-            // TODO: Implement your ParentChildrenListScreen composable
-            println("Navigated to Parent Children List Screen") // Placeholder
+            // ParentChildrenListScreen()
+            println("Navigated to Parent Children List Screen") // Placeholder for ParentChildrenListScreen
         }
 
         composable(MainAppScreen.TeacherAssignedCourses.route) {
-            // TODO: Implement your TeacherAssignedCoursesScreen composable
-            println("Navigated to Teacher Assigned Courses Screen") // Placeholder
+            // TeacherAssignedCoursesScreen()
+            println("Navigated to Teacher Assigned Courses Screen") // Placeholder for TeacherAssignedCoursesScreen
         }
     }
 }
-
