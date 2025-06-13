@@ -59,17 +59,22 @@ sealed class MainAppScreen(
 
     // --- Other Main App Screens (not necessarily on a bottom navigation bar) ---
     // These might be accessible via settings, deep links, navigation drawer, or specific feature flows.
-    object Profile : MainAppScreen("profile_screen")
-    object Notifications : MainAppScreen("notifications_screen")
-    object Settings : MainAppScreen("settings_screen")
-    object Language : MainAppScreen("language_setting_screen")
-    object Theme : MainAppScreen("theme_setting_screen")
-    object HelpFAQ : MainAppScreen("help_faq_screen")
-    object About : MainAppScreen("about_screen")
-    object DataPrivacy : MainAppScreen("data_privacy_screen") // Distinct from onboarding's PrivacyPolicy
+    data object Profile : MainAppScreen("profile_screen") // Changed to data object
+    data object Notifications : MainAppScreen("notifications_screen") // Changed to data object
+
+    // **Updated Settings-related screens to use data object for consistency**
+    data object Settings : MainAppScreen("settings_screen") // The main settings list screen
+    data object Language : MainAppScreen("language_setting_screen")
+    data object Theme : MainAppScreen("theme_setting_screen")
+    data object HelpFAQ : MainAppScreen("help_faq_screen")
+    data object About : MainAppScreen("about_screen")
+    data object DataPrivacy : MainAppScreen("data_privacy_screen") // Distinct from onboarding's PrivacyPolicy
+
+    data object Terms : MainAppScreen("terms_screen")
+    data object PrivacyPolicy : MainAppScreen("privacy_policy_screen")
 
     // --- Academic Sections (examples of nested routes or detail screens) ---
-    object CoursesList : MainAppScreen("courses_list_screen")
+    data object CoursesList : MainAppScreen("courses_list_screen") // Changed to data object
 
     /**
      * Route for displaying details of a specific course, identified by its ID.
@@ -83,7 +88,7 @@ sealed class MainAppScreen(
         fun createRoute(courseId: String) = "course_detail_screen/$courseId"
     }
 
-    object GradesList : MainAppScreen("grades_list_screen")
+    data object GradesList : MainAppScreen("grades_list_screen") // Changed to data object
 
     /**
      * Route for displaying details of a specific evaluation, identified by its ID.
@@ -98,9 +103,9 @@ sealed class MainAppScreen(
     }
 
     // --- User-specific dashboards/lists (for different roles) ---
-    object StudentDashboard : MainAppScreen("student_dashboard_screen")
-    object ParentChildrenList : MainAppScreen("parent_children_list_screen")
-    object TeacherAssignedCourses : MainAppScreen("teacher_assigned_courses_screen")
+    data object StudentDashboard : MainAppScreen("student_dashboard_screen") // Changed to data object
+    data object ParentChildrenList : MainAppScreen("parent_children_list_screen") // Changed to data object
+    data object TeacherAssignedCourses : MainAppScreen("teacher_assigned_courses_screen") // Changed to data object
 
     // TODO: Add more specific routes as your application's features are implemented.
 }
