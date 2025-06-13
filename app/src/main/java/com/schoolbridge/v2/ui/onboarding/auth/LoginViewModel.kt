@@ -1,4 +1,3 @@
-// src/main/java/com/schoolbridge/v2/ui/onboarding/auth/LoginViewModel.kt
 package com.schoolbridge.v2.ui.onboarding.auth
 
 import android.util.Log
@@ -8,17 +7,23 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schoolbridge.v2.data.dto.auth.LoginRequestDto
-import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
 import com.schoolbridge.v2.data.remote.AuthApiService
-import com.schoolbridge.v2.data.session.UserSessionManager // Import your UserSessionManager
+import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.user.CurrentUser
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
-import kotlinx.serialization.SerializationException // Ensure this import is correct
+import kotlinx.serialization.SerializationException
 
 class LoginViewModel(
     private val authApiService: AuthApiService,
-    private val userSessionManager: UserSessionManager // Inject UserSessionManager
-) : ViewModel() {
+    private val userSessionManager: UserSessionManager
+) : ViewModel()
+{
 
     var usernameOrEmail by mutableStateOf("")
         private set
@@ -32,7 +37,13 @@ class LoginViewModel(
     var loginError by mutableStateOf<String?>(null)
         private set
 
-    var loginSuccess by mutableStateOf<LoginResponseDto?>(null)
+    val isSessionFullyReady = userSessionManager.currentUser
+        .filterNotNull()
+        .map { true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // CHANGE 1: Change the type of loginSuccess to CurrentUser?
+    var loginSuccess by mutableStateOf<CurrentUser?>(null)
         private set
 
     fun onUsernameOrEmailChange(newValue: String) {
@@ -53,7 +64,7 @@ class LoginViewModel(
 
         isLoading = true
         loginError = null
-        loginSuccess = null
+        loginSuccess = null // Reset success state
 
         viewModelScope.launch {
             try {
@@ -62,10 +73,21 @@ class LoginViewModel(
                 val response = authApiService.login(request)
                 Log.d("LOGIN_FLOW", "Login response: $response")
 
-                // Save the login response using the session manager
+                // Save the login response using the session manager.
+                // This call is suspend and will complete *after* DataStore write and _currentUser update.
                 userSessionManager.saveLoginResponse(response)
+                Log.d("LOGIN_FLOW", "User session manager saveLoginResponse completed.")
 
-                loginSuccess = response // Update UI state
+                // CHANGE 2: Retrieve the CurrentUser directly from the session manager
+                // This ensures we're signaling success *only* when the session manager has the data ready.
+                // Using .first() on the StateFlow guarantees we wait for the first non-null value
+                // which should be the one just set by saveLoginResponse.
+                val currentUserAfterLogin = userSessionManager.currentUser.first { it != null }
+                Log.d("LOGIN_FLOW", "Retrieved CurrentUser from session manager: $currentUserAfterLogin")
+
+                // CHANGE 3: Set loginSuccess to the CurrentUser object
+                loginSuccess = currentUserAfterLogin
+
             } catch (e: SerializationException) {
                 Log.e("LOGIN_FLOW", "Serialization error: ${e.message}", e)
                 loginError = "Data format error. Please try again."
@@ -82,7 +104,6 @@ class LoginViewModel(
     }
 
     fun resetState() {
-        // No need to clear username/password here if user might retry
         isLoading = false
         loginError = null
         loginSuccess = null
