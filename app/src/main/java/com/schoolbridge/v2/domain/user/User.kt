@@ -7,6 +7,7 @@ import com.schoolbridge.v2.domain.user.roles.Teacher
 import java.time.LocalDate // Assuming LocalDate is used for dates
 import com.schoolbridge.v2.data.enums.UserVerificationStatus // Import the new enum
 import com.schoolbridge.v2.data.enums.VerificationMethod // Import the new enum
+import kotlinx.serialization.Serializable
 
 /**
  * Represents the core user profile on the client-side.
@@ -142,4 +143,44 @@ data class User(
         }
     }
     */
+}
+
+
+data class CurrentUser(
+    val userId: String,
+    val email: String,
+    val firstName: String,
+    val lastName: String,
+    val activeRoles: List<String>,
+    val phoneNumber: String?,
+    val nationalId: String?,
+    val address: Address?, // Nested data class
+    val profilePictureUrl: String?,
+    val role: String?, // Assuming a primary role for the user
+    val joinDate: String?,
+    val linkedStudents: List<LinkedStudent>?, // Nested data class
+    val gender: Gender?, // Make sure gender is directly passed and not hardcoded to null
+    val isVerified: Boolean // <--- ADDED THIS PROPERTY
+) {
+    @Serializable // Keep if you use it for other serialization, otherwise remove if only Gson is used here
+    data class Address(
+        val district: String?,
+        val sector: String?,
+        val cell: String?,
+        val village: String?
+    )
+
+    @Serializable // Keep if you use it for other serialization, otherwise remove if only Gson is used here
+    data class LinkedStudent(
+        val id: String,
+        val firstName: String,
+        val lastName: String
+    )
+
+    fun isParent(): Boolean {
+        return activeRoles.contains("parent")
+    }
+    fun isStudent(): Boolean {
+        return activeRoles.contains("student")
+    }
 }
