@@ -54,6 +54,13 @@ data class CurrentUser(
         val lastName: String
     )
     val gender: Gender? = null // Example: You might need to parse this from LoginResponseDto
+
+    fun isParent(): Boolean {
+        return activeRoles.contains("parent")
+    }
+    fun isStudent(): Boolean {
+        return activeRoles.contains("student")
+    }
 }
 
 @Singleton
