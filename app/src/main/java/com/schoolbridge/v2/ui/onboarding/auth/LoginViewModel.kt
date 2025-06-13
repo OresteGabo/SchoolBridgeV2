@@ -1,3 +1,4 @@
+// src/main/java/com/schoolbridge/v2/ui/onboarding/auth/LoginViewModel.kt
 package com.schoolbridge.v2.ui.onboarding.auth
 
 import android.util.Log
@@ -9,12 +10,14 @@ import androidx.lifecycle.viewModelScope
 import com.schoolbridge.v2.data.dto.auth.LoginRequestDto
 import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
 import com.schoolbridge.v2.data.remote.AuthApiService
+import com.schoolbridge.v2.data.session.UserSessionManager // Import your UserSessionManager
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
 import java.io.IOException
+import kotlinx.serialization.SerializationException // Ensure this import is correct
 
 class LoginViewModel(
-    private val authApiService: AuthApiService // Inject the API service
+    private val authApiService: AuthApiService,
+    private val userSessionManager: UserSessionManager // Inject UserSessionManager
 ) : ViewModel() {
 
     var usernameOrEmail by mutableStateOf("")
@@ -34,52 +37,52 @@ class LoginViewModel(
 
     fun onUsernameOrEmailChange(newValue: String) {
         usernameOrEmail = newValue
-        loginError = null // Clear error when user types
+        loginError = null
     }
 
     fun onPasswordChange(newValue: String) {
         password = newValue
-        loginError = null // Clear error when user types
+        loginError = null
     }
 
     fun login() {
-        // Basic validation
         if (usernameOrEmail.isBlank() || password.isBlank()) {
             loginError = "Username/Email and Password cannot be empty."
             return
         }
 
         isLoading = true
-        loginError = null // Clear previous errors
-        loginSuccess = null // Clear previous success
+        loginError = null
+        loginSuccess = null
 
         viewModelScope.launch {
             try {
                 val request = LoginRequestDto(usernameOrEmail, password)
-                Log.d("ERROR_LOGIN", "Sending login request: $request")
+                Log.d("LOGIN_FLOW", "Sending login request: $request")
                 val response = authApiService.login(request)
-                Log.d("ERROR_LOGIN_RESPONSE", "Login response: $response")
-                loginSuccess = response
+                Log.d("LOGIN_FLOW", "Login response: $response")
+
+                // Save the login response using the session manager
+                userSessionManager.saveLoginResponse(response)
+
+                loginSuccess = response // Update UI state
             } catch (e: SerializationException) {
-                Log.e("ERROR_LOGIN", "Serialization error: ${e.message}")
-                loginError = "Serialization error occurred."
+                Log.e("LOGIN_FLOW", "Serialization error: ${e.message}", e)
+                loginError = "Data format error. Please try again."
             } catch (e: IOException) {
-                Log.e("ERROR_LOGIN", "Network error: ${e.message}")
-                loginError = "Network error occurred."
+                Log.e("LOGIN_FLOW", "Network error: ${e.message}", e)
+                loginError = "Network error occurred. Please check your internet connection."
             } catch (e: Exception) {
-                Log.e("ERROR_LOGIN", "Unexpected error: ${e.message}")
-                loginError = "An unexpected error occurred."
+                Log.e("LOGIN_FLOW", "Unexpected error: ${e.message}", e)
+                loginError = "An unexpected error occurred. Please try again later."
             } finally {
                 isLoading = false
             }
-
         }
     }
 
-    // Optional: Clear state for next login attempt if needed
     fun resetState() {
-        usernameOrEmail = ""
-        password = ""
+        // No need to clear username/password here if user might retry
         isLoading = false
         loginError = null
         loginSuccess = null
