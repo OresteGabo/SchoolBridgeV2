@@ -188,13 +188,13 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
             Column {
-                AnimatedVisibility(
-                    visible = sectionAnimatedStates.value[0],
-                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
-                        initialOffsetY = { it / 4 },
-                        animationSpec = tween(150)
-                    )
-                ) {
+//                AnimatedVisibility(
+//                    visible = sectionAnimatedStates.value[0],
+//                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+//                        initialOffsetY = { it / 4 },
+//                        animationSpec = tween(150)
+//                    )
+//                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -229,7 +229,7 @@ fun ProfileScreen(
                             )
                         }
                     }
-                }
+                //}
 
                 Spacer(modifier = Modifier.height(32.dp))
 
