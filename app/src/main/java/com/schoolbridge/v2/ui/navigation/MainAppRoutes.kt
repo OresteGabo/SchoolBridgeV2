@@ -103,7 +103,6 @@ sealed class MainAppScreen(
     }
 
 
-    // --- Events Section: NEW ROUTE ---
     /**
      * Route for displaying details of a specific event, identified by its ID.
      * Example usage: `navController.navigate(MainAppScreen.EventDetails.createRoute("event_xyz"))`
@@ -112,9 +111,11 @@ sealed class MainAppScreen(
         companion object {
             const val ROUTE_PATTERN = "event_details_screen/{eventId}"
             const val EVENT_ID_ARG = "eventId" // Define argument key for clarity
+            fun createRoute(eventId: String) = "event_details_screen/$eventId"
         }
-        fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
+
+
     // --- User-specific dashboards/lists (for different roles) ---
     data object StudentDashboard : MainAppScreen("student_dashboard_screen") // Changed to data object
     data object ParentChildrenList : MainAppScreen("parent_children_list_screen") // Changed to data object
