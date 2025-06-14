@@ -12,11 +12,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,177 +44,33 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.input.VisualTransformation
 
 @Preview(showBackground = true)
 @Composable
 private fun pp() {
     CredentialsSetupScreen(
-        onComplete = {
-            email, password ->
-        },
-        onNext = {}
+        onContinue = TODO(),
+        modifier = TODO()
     ) 
     //PasswordStrengthIndicator(strength = PasswordStrength.FAIR, modifier = Modifier)
 }
 
-/**
- * Represents the different levels of password strength.
- */
-enum class PasswordStrength {
-    NONE, // No input or extremely weak
-    WEAK,
-    FAIR,
-    GOOD,
-    STRONG
-}
-
-/**
- * Calculates the strength of a given password based on predefined rules.
- * This is a pure function that can be easily tested.
- *
- * @param password The password string to evaluate.
- * @return The [PasswordStrength] level of the password.
- */
-private fun calculatePasswordStrength(password: String): PasswordStrength {
-    if (password.isEmpty()) {
-        return PasswordStrength.NONE
-    }
-
-    var score = 0
-    val hasLowercase = password.any { it.isLowerCase() }
-    val hasUppercase = password.any { it.isUpperCase() }
-    val hasDigit = password.any { it.isDigit() }
-    val hasSpecialChar = password.any { !it.isLetterOrDigit() }
-
-    // Score based on length
-    if (password.length >= 8) score++
-    if (password.length >= 12) score++
-    if (password.length >= 16) score++
-
-    // Score based on character types
-    val charTypeCount = listOf(hasLowercase, hasUppercase, hasDigit, hasSpecialChar).count { it }
-
-    when (charTypeCount) {
-        1 -> score += 0 // Only one type of character, minimal strength
-        2 -> score += 1
-        3 -> score += 2
-        4 -> score += 3
-    }
-
-    // Map score to PasswordStrength enum
-    return when {
-        password.length < 6 -> PasswordStrength.NONE // Too short to be considered even weak
-        score < 3 -> PasswordStrength.WEAK
-        score < 5 -> PasswordStrength.FAIR
-        score < 7 -> PasswordStrength.GOOD
-        else -> PasswordStrength.STRONG
-    }
-}
-
-/**
- * A Composable that visualizes the strength of a password using colored bars and textual feedback.
- *
- * @param strength The [PasswordStrength] level to display.
- * @param modifier The modifier to be applied to the layout.
- */
-@Composable
-fun PasswordStrengthIndicator(
-    strength: PasswordStrength,
-    modifier: Modifier = Modifier
-) {
-    val inactiveColor = MaterialTheme.colorScheme.outline
-    val weakColor = MaterialTheme.colorScheme.error
-    val fairColor = MaterialTheme.colorScheme.tertiary
-    val strongColor = MaterialTheme.colorScheme.primary
-
-    // Now, we destructure from the BarColors data class
-    val (bar1Color, bar2Color, bar3Color, bar4Color) = remember(strength) {
-        when (strength) {
-            PasswordStrength.NONE ->
-                BarColors(inactiveColor, inactiveColor, inactiveColor, inactiveColor)
-            PasswordStrength.WEAK ->
-                BarColors(weakColor, inactiveColor, inactiveColor, inactiveColor)
-            PasswordStrength.FAIR ->
-                BarColors(fairColor, fairColor, inactiveColor, inactiveColor)
-            PasswordStrength.GOOD ->
-                BarColors(strongColor, strongColor, strongColor, inactiveColor)
-            PasswordStrength.STRONG ->
-                BarColors(strongColor, strongColor, strongColor, strongColor)
-        }
-    }
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // ... (Your Box Composables remain the same, using bar1Color, etc.) ...
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .background(bar1Color)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .background(bar2Color)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .background(bar3Color)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .background(bar4Color)
-            )
-        }
-
-        // ... (Your Textual feedback remains the same) ...
-        val strengthText = when (strength) {
-            PasswordStrength.NONE -> "Enter a password"
-            PasswordStrength.WEAK -> "Weak password"
-            PasswordStrength.FAIR -> "Fair password"
-            PasswordStrength.GOOD -> "Good password"
-            PasswordStrength.STRONG -> "Strong password"
-        }
-
-        val textColor = when (strength) {
-            PasswordStrength.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-            PasswordStrength.WEAK -> weakColor
-            PasswordStrength.FAIR -> fairColor
-            PasswordStrength.GOOD, PasswordStrength.STRONG -> strongColor
-        }
-
-        Text(
-            text = strengthText,
-            color = textColor,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-    }
-}
-data class BarColors(
-    val bar1: Color,
-    val bar2: Color,
-    val bar3: Color,
-    val bar4: Color
-)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CredentialsSetupScreen(
-    onComplete: (email: String?, password: String) -> Unit,
-    onNext: () -> Unit
+    onContinue: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    val passwordsMatch = password == confirmPassword && password.isNotEmpty()
+    val isValid = passwordsMatch && calculatePasswordStrength(password) >= PasswordStrength.FAIR
+
+    var email by remember { mutableStateOf("") }
+
 
     // Calculate password strength in real-time as the password changes
     val passwordStrength by remember(password) {
@@ -228,13 +90,13 @@ fun CredentialsSetupScreen(
 
     val keyboardController = LocalSoftwareKeyboardController.current
 
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.Start
     ) {
         Text("Secure Your Account", fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
@@ -269,77 +131,181 @@ fun CredentialsSetupScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Input
+
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Next
-            ),
-            visualTransformation = PasswordVisualTransformation()
+            singleLine = true,
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                val icon = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(icon, contentDescription = null)
+                }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        PasswordStrengthIndicatorWithTips(password = password)
 
-        // Password Strength Indicator integrated here
-        PasswordStrengthIndicator(strength = passwordStrength)
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Confirm Password Input
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             label = { Text("Confirm Password") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    keyboardController?.hide()
-                    if (canSubmit) {
-                        onComplete(if (email.isNotBlank()) email else null, password)
-                        onNext()
-                    }
+            singleLine = true,
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                val icon = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(icon, contentDescription = null)
                 }
-            ),
-            visualTransformation = PasswordVisualTransformation()
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth()
         )
+
+        if (confirmPassword.isNotEmpty() && !passwordsMatch) {
+            Text(
+                "Passwords do not match",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Error message for password mismatch
-        if (!isMatch && confirmPassword.isNotEmpty()) {
-            Text("Passwords do not match", color = Color.Red, fontSize = 12.sp)
-        }
-        // The password strength indicator now handles the "too short" feedback,
-        // so you might not need this redundant check here.
-        // if (!isPasswordValid && password.isNotEmpty()) {
-        //     Text("Password should be at least 6 characters", color = Color.Red, fontSize = 12.sp)
-        // }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Button(
-            onClick = {
-                onComplete(
-                    if (email.isNotBlank()) email else null,
-                    password
-                )
-                onNext()
-            },
-            enabled = canSubmit,
+            onClick = { onContinue(password) },
+            enabled = isValid,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Create Account")
+            Text("Continue")
         }
     }
 }
+
+@Composable
+fun PasswordStrengthIndicatorWithTips(
+    password: String,
+    modifier: Modifier = Modifier
+) {
+    val strength = remember(password) { calculatePasswordStrength(password) }
+
+    // Choose color palette
+    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+    val weakColor = MaterialTheme.colorScheme.error
+    val fairColor = MaterialTheme.colorScheme.tertiary
+    val strongColor = MaterialTheme.colorScheme.primary
+
+    val barColors = when (strength) {
+        PasswordStrength.NONE -> List(4) { inactiveColor }
+        PasswordStrength.WEAK -> listOf(weakColor, inactiveColor, inactiveColor, inactiveColor)
+        PasswordStrength.FAIR -> listOf(fairColor, fairColor, inactiveColor, inactiveColor)
+        PasswordStrength.GOOD -> listOf(strongColor, strongColor, strongColor, inactiveColor)
+        PasswordStrength.STRONG -> List(4) { strongColor }
+    }
+
+    Column(modifier = modifier.fillMaxWidth(),) {
+
+        // Strength bars
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            barColors.forEach { color ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .background(color, RoundedCornerShape(2.dp))
+                )
+            }
+        }
+
+        // Label
+        val label = when (strength) {
+            PasswordStrength.NONE -> "Too short"
+            PasswordStrength.WEAK -> "Weak"
+            PasswordStrength.FAIR -> "Fair"
+            PasswordStrength.GOOD -> "Good"
+            PasswordStrength.STRONG -> "Strong"
+        }
+
+        val labelColor = when (strength) {
+            PasswordStrength.WEAK -> weakColor
+            PasswordStrength.FAIR -> fairColor
+            else -> strongColor
+        }
+
+        Text(
+            text = label,
+            color = labelColor,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        // Tips
+        if (password.isNotEmpty()) {
+            val hasUppercase = password.any { it.isUpperCase() }
+            val hasDigit = password.any { it.isDigit() }
+            val hasSpecial = password.any { !it.isLetterOrDigit() }
+
+            val tips = buildList {
+                if (password.length < 8) add("Increase length")
+                if (!hasUppercase) add("Add uppercase")
+                if (!hasDigit) add("Add a number")
+                if (!hasSpecial) add("Add symbols (!@#\$...)")
+            }
+
+            if (tips.isNotEmpty()) {
+                Text(
+                    text = "Tips: ${tips.joinToString(", ")}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+// Strength levels
+enum class PasswordStrength {
+    NONE, WEAK, FAIR, GOOD, STRONG
+}
+
+// Strength calculation
+fun calculatePasswordStrength(password: String): PasswordStrength {
+    if (password.length < 6) return PasswordStrength.NONE
+
+    val lengthScore = when {
+        password.length >= 16 -> 4
+        password.length >= 12 -> 3
+        password.length >= 8 -> 2
+        else -> 1
+    }
+
+    val diversity = listOf(
+        password.any { it.isLowerCase() },
+        password.any { it.isUpperCase() },
+        password.any { it.isDigit() },
+        password.any { !it.isLetterOrDigit() }
+    ).count { it }
+
+    val totalScore = lengthScore + diversity + if (diversity >= 3 && password.length >= 12) 1 else 0
+
+    return when (totalScore) {
+        in 0..2 -> PasswordStrength.WEAK
+        in 3..4 -> PasswordStrength.FAIR
+        in 5..6 -> PasswordStrength.GOOD
+        else -> PasswordStrength.STRONG
+    }
+}
+
 
 fun isValidEmail(email: String): Boolean {
     return Patterns.EMAIL_ADDRESS.matcher(email).matches()
