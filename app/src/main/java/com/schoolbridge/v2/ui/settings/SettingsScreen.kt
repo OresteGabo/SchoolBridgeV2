@@ -1,6 +1,10 @@
 package com.schoolbridge.v2.ui.settings
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,8 +71,7 @@ fun SettingsScreen(
     onNavigateToHelp: () -> Unit,
     onNavigateToAbout: () -> Unit,
     onDataPrivacy: () -> Unit,
-
-    ) {
+) {
     val settingsItems = SettingOption.all.filterNot { it is SettingOption.Logout }
 
     var showDialog by remember { mutableStateOf(false) }
@@ -79,9 +83,27 @@ fun SettingsScreen(
         "sw" to "Swahili (Coming soon)"
     )
 
-    /*var currentLanguage by remember {
-        "en" //mutableStateOf(SessionManager.currentLocale)
-    }*/
+    // State for overall content animation
+    var animateContent by remember { mutableStateOf(false) }
+
+    // State for individual item animations within LazyColumn
+    // This will be a map to track animation state for each item by index
+    val animatedItemStates = remember { mutableStateOf(List(settingsItems.size) { false }) }
+
+
+    LaunchedEffect(Unit) {
+        animateContent = true // Trigger the main content animation
+
+        // Staggered animation for LazyColumn items
+        settingsItems.forEachIndexed { index, _ ->
+            kotlinx.coroutines.delay(80) // Small delay for each item
+            animatedItemStates.value = animatedItemStates.value.toMutableList().also {
+                it[index] = true
+            }
+        }
+    }
+
+
     val onChange: (String) -> Unit = { newLanguage ->
         //currentLanguage = newLanguage
         //SessionManager.currentLocale= newLanguage
@@ -106,45 +128,83 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp) // Apply horizontal padding here
         ) {
-            LazyColumn() {
-                items(settingsItems.size) { optionIndex ->
-                    val option = settingsItems[optionIndex]
-                    Log.d("Settings", "Rendering: ${option.title}") // <-- Add this
-
-                    SettingItem(
-                        option = option,
-                        onClick = {
-                            when (option) {
-                                is SettingOption.Profile -> onNavigateToProfile()
-                                is SettingOption.Notifications -> onNavigateToNotifications()
-                                is SettingOption.Language -> { showDialog = true }
-                                is SettingOption.ViewLinkRequests -> onViewLinkRequests()
-                                is SettingOption.HelpFAQ -> onNavigateToHelp()
-                                is SettingOption.About -> onNavigateToAbout()
-                                is SettingOption.DataPrivacy -> onDataPrivacy()
-                                else -> {}
-                            }
-                        },
-                        currentLanguage = "en" //languageNames.getOrDefault(currentLanguage, currentLanguage),
-                    )
-                }
-
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            // Animated content for the main settings list
+            AnimatedVisibility(
+                visible = animateContent,
+                enter = fadeIn(animationSpec = tween(durationMillis = 300)) +
+                        slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight / 10 }, // Slide slightly from top
+                            animationSpec = tween(durationMillis = 300)
+                        ),
+                modifier = Modifier.weight(1f) // Ensures LazyColumn takes available space
             ) {
-                Text("Logout")
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                        .padding(vertical = 16.dp),
+                    //contentPadding = Modifier.padding(vertical = 16.dp) // Padding for LazyColumn content
+                ) {
+                    items(settingsItems.size) { optionIndex ->
+                        val option = settingsItems[optionIndex]
+                        val itemAnimated = animatedItemStates.value[optionIndex]
+
+                        // Apply animation to each SettingItem
+                        AnimatedVisibility(
+                            visible = itemAnimated,
+                            enter = fadeIn(animationSpec = tween(durationMillis = 300)) +
+                                    slideInVertically(
+                                        initialOffsetY = { it / 2 }, // Slide from half height of item
+                                        animationSpec = tween(durationMillis = 300)
+                                    ),
+                            modifier = Modifier.fillMaxWidth() // Ensure visibility applies to full width
+                        ) {
+                            SettingItem(
+                                option = option,
+                                onClick = {
+                                    when (option) {
+                                        is SettingOption.Profile -> onNavigateToProfile()
+                                        is SettingOption.Notifications -> onNavigateToNotifications()
+                                        is SettingOption.Language -> {
+                                            showDialog = true
+                                        }
+                                        is SettingOption.ViewLinkRequests -> onViewLinkRequests()
+                                        is SettingOption.HelpFAQ -> onNavigateToHelp()
+                                        is SettingOption.About -> onNavigateToAbout()
+                                        is SettingOption.DataPrivacy -> onDataPrivacy()
+                                        else -> {}
+                                    }
+                                },
+                                currentLanguage = "en" // languageNames.getOrDefault(currentLanguage, currentLanguage),
+                            )
+                        }
+                    }
+                }
             }
+
+
+            // Logout Button with animation
+            AnimatedVisibility(
+                visible = animateContent, // Same animation trigger as LazyColumn
+                enter = fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 400)) + // Delayed slightly more
+                        slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight / 5 },
+                            animationSpec = tween(durationMillis = 300, delayMillis = 400)
+                        ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier.padding(bottom = 16.dp), // Add some bottom padding
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("Logout")
+                }
+            }
+
 
             if (showDialog) {
                 AlertDialog(
