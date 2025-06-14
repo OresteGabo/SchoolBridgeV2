@@ -6,6 +6,11 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -85,25 +90,21 @@ import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
 import androidx.compose.ui.graphics.Color as ComposeColor
+import kotlinx.coroutines.delay
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    userSessionManager: UserSessionManager, // Inject UserSessionManager
-    onBack: () -> Unit // Callback for back navigation
+    userSessionManager: UserSessionManager,
+    onBack: () -> Unit
 ) {
-    // Collect the currentUser StateFlow directly, providing an initial value of null
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
 
     val currentOnBack by rememberUpdatedState(onBack)
     var isEditing by remember { mutableStateOf(false) }
     var showQrDialog by remember { mutableStateOf(false) }
-    // This should ideally come from the User model or a ViewModel indicating verification status
-    // For now, let's keep it as true for demonstration
-    val userVerified = remember { mutableStateOf(false) }
 
-    // Editable states, initialized from currentUser properties or defaults
     var editablePhone by remember { mutableStateOf("") }
     var editableEmail by remember { mutableStateOf("") }
     var editableDistrict by remember { mutableStateOf("") }
@@ -111,8 +112,9 @@ fun ProfileScreen(
     var editableCell by remember { mutableStateOf("") }
     var editableVillage by remember { mutableStateOf("") }
 
-    // Update editable states when currentUser changes
-    // This ensures UI updates if user data is loaded or refreshed
+    var animateContent by remember { mutableStateOf(false) }
+    val sectionAnimatedStates = remember { mutableStateOf(MutableList(8) { false }) }
+
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
             editablePhone = user.phoneNumber ?: ""
@@ -122,19 +124,30 @@ fun ProfileScreen(
             editableCell = user.address?.cell ?: ""
             editableVillage = user.address?.village ?: ""
         }
+
+        animateContent = true
+
+        val delayStep = 50L
+        for (i in sectionAnimatedStates.value.indices) {
+            delay(delayStep)
+            sectionAnimatedStates.value = sectionAnimatedStates.value.toMutableList().also {
+                it[i] = true
+            }
+        }
     }
 
-    val context = LocalContext.current // Get context for toasts
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    if (userVerified.value){VerifiedBadge()}
-                    else{
+                    if (currentUser?.isVerified == true) {
+                        VerifiedBadge()
+                    } else {
                         VerificationNeededBadge(
                             modifier = Modifier,
-                            onClick = {}
+                            onClick = { /* Handle click to initiate verification */ }
                         )
                     }
                 },
@@ -147,17 +160,6 @@ fun ProfileScreen(
                     IconButton(
                         onClick = {
                             if (isEditing) {
-                                Log.d(
-                                    "ProfileScreen",
-                                    "Saving changes: $editablePhone, $editableEmail, $editableDistrict, $editableSector, $editableCell, $editableVillage"
-                                )
-                                // TODO: In a real app, you would pass these updated values to a ViewModel
-                                // and then to your UserSessionManager or a repository to persist them.
-                                // Example: profileViewModel.updateUser(
-                                //    phoneNumber = editablePhone,
-                                //    email = editableEmail,
-                                //    address = CurrentUser.Address(editableDistrict, editableSector, editableCell, editableVillage)
-                                // )
                                 Toast.makeText(context, "Profile saved!", Toast.LENGTH_SHORT).show()
                             }
                             isEditing = !isEditing
@@ -172,283 +174,352 @@ fun ProfileScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        AnimatedVisibility(
+            visible = animateContent,
+            enter = fadeIn(animationSpec = tween(durationMillis = 150)) +
+                    slideInVertically(
+                        initialOffsetY = { fullHeight -> fullHeight / 20 },
+                        animationSpec = tween(durationMillis = 150)
+                    ),
             modifier = Modifier
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                AsyncImage(
-                    model = currentUser?.profilePictureUrl, // Use actual profile picture URL
-                    contentDescription = "Profile Picture",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(20.dp))
-
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) { // Align name and badge horizontally
-                        Text(
-                            text = buildString {
-                                val title = when (currentUser?.gender) {
-                                    Gender.MALE -> "Mr."
-                                    Gender.FEMALE -> "Mrs."
-                                    else -> "" // Handle null or other genders
-                                }
-                                append("$title ${currentUser?.firstName ?: ""} ${currentUser?.lastName ?: ""}".trim())
-                            },
-                            style = MaterialTheme.typography.headlineSmall
+            Column {
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[0],
+                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = tween(150)
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        AsyncImage(
+                            model = currentUser?.profilePictureUrl,
+                            contentDescription = "Profile Picture",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                         )
-                        if (userVerified.value) { // Only show badge if user is verified
-                            Spacer(modifier = Modifier.width(8.dp))
-                            //VerifiedBadge()
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = buildString {
+                                        val title = if (currentUser?.gender == Gender.MALE) "Mr." else if (currentUser?.gender == Gender.FEMALE) "Mrs." else ""
+                                        append("$title ${currentUser?.firstName ?: ""} ${currentUser?.lastName ?: ""}".trim())
+                                    },
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            }
+
+                            Text(
+                                text = "Your roles: ${currentUser?.activeRoles?.joinToString(", ") ?: "N/A"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-
-                    Text(
-                        text = "Your roles: ${currentUser?.activeRoles?.joinToString(", ")}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
                 }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            // --- QR Code Section ---
-            AppSubHeader("QR Code for Verification or Access")
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Your digital SchoolBridge ID",
-                        style = MaterialTheme.typography.titleMedium
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[1],
+                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = tween(150)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "This QR code can be used to verify your identity at school or via SchoolBridge services.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "We ensure data access is encrypted and used only with your consent.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { showQrDialog = true },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Icon(Icons.Default.QrCode, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Show QR Code")
-                    }
-                }
-            }
-
-            AppSubSectionDivider()
-
-            // --- Contact Information Section ---
-            AppSubHeader("Contact Information")
-
-            ProfileField(
-                "Phone Number",
-                editablePhone,
-                isEditing,
-                { editablePhone = it },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-            )
-            ProfileField(
-                "Email",
-                editableEmail,
-                isEditing,
-                { editableEmail = it },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
-            ProfileReadonlyField("National ID", maskRwandaId(currentUser?.nationalId ?: "N/A"))
-
-            AppSubSectionDivider()
-
-            // --- Address Information Section ---
-            AppSubHeader("Address Information")
-
-            ProfileField("District", editableDistrict, isEditing, { editableDistrict = it })
-            ProfileField("Sector", editableSector, isEditing, { editableSector = it })
-            ProfileField("Cell", editableCell, isEditing, { editableCell = it })
-            ProfileField("Village", editableVillage, isEditing, { editableVillage = it })
-
-
-            AppSubSectionDivider()
-
-            // --- Account Details Section ---
-            AppSubHeader("Account Details")
-            ListItem(
-                headlineContent = { Text("Primary Role") },
-                supportingContent = { Text(currentUser?.role?.replaceFirstChar(Char::titlecase) ?: "N/A") }
-            )
-            ListItem(
-                headlineContent = { Text("Joined Date") },
-                supportingContent = { Text(currentUser?.joinDate ?: "N/A") }
-            )
-            ListItem(
-                headlineContent = { Text("User ID") },
-                supportingContent = { Text(currentUser?.userId ?: "N/A") }
-            )
-
-
-            AppSubSectionDivider()
-
-            // --- Linked Children Section ---
-            AppSubHeader("Linked Children (${currentUser?.linkedStudents?.size ?: 0})")
-
-            if (currentUser?.linkedStudents.isNullOrEmpty()) {
-                Text(
-                    text = "No linked students found.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column {
-                        currentUser!!.linkedStudents?.forEachIndexed { index, child ->
-                            ListItem(
-                                headlineContent = { Text("${child.firstName} ${child.lastName}") },
-                                supportingContent = { Text("Student ID: ${child.id}") },
-                                leadingContent = {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountCircle,
-                                        contentDescription = "Child Icon",
-                                        tint = MaterialTheme.colorScheme.secondary
-                                    )
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { /* Handle click to view child details */ }
-                                    .padding(horizontal = 8.dp)
-                            )
-                            if (index < (currentUser?.linkedStudents!!.size - 1)) { // Only add divider if not the last item
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        AppSubHeader("QR Code for Verification or Access")
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Your digital SchoolBridge ID",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "This QR code can be used to verify your identity at school or via SchoolBridge services.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "We ensure data access is encrypted and used only with your consent.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { showQrDialog = true },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Icon(Icons.Default.QrCode, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Show QR Code")
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // --- Verified Badge/Info ---
-            SpacerL()
-            if (userVerified.value) { // Show this only if verified
-                Spacer(modifier = Modifier.height(24.dp))
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            Log.i("INFO_BADGE", "BADGE VERIFIED full information")
-                            Toast.makeText(context, "Your account is officially verified!", Toast.LENGTH_SHORT).show()
-                        },
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[2],
+                    enter = fadeIn(animationSpec = tween(150))
+                ) {
+                    AppSubSectionDivider()
+                }
+
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[3],
+                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = tween(150)
                     )
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Verified,
-                            contentDescription = "Verified",
-                            tint = MaterialTheme.colorScheme.primary
+                    Column {
+                        AppSubHeader("Contact Information")
+                        ProfileField(
+                            "Phone Number",
+                            editablePhone,
+                            isEditing,
+                            { editablePhone = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Your profile is verified via ID or MoMo match.",
-                            style = MaterialTheme.typography.bodyMedium
+                        ProfileField(
+                            "Email",
+                            editableEmail,
+                            isEditing,
+                            { editableEmail = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        )
+                        ProfileReadonlyField("National ID", maskRwandaId(currentUser?.nationalId ?: "N/A"))
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[4],
+                    enter = fadeIn(animationSpec = tween(150))
+                ) {
+                    AppSubSectionDivider()
+                }
+
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[5],
+                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = tween(150)
+                    )
+                ) {
+                    Column {
+                        AppSubHeader("Address Information")
+                        ProfileField("District", editableDistrict, isEditing, { editableDistrict = it })
+                        ProfileField("Sector", editableSector, isEditing, { editableSector = it })
+                        ProfileField("Cell", editableCell, isEditing, { editableCell = it })
+                        ProfileField("Village", editableVillage, isEditing, { editableVillage = it })
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[6],
+                    enter = fadeIn(animationSpec = tween(150))
+                ) {
+                    AppSubSectionDivider()
+                }
+
+                AnimatedVisibility(
+                    visible = sectionAnimatedStates.value[7],
+                    enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = tween(150)
+                    )
+                ) {
+                    Column {
+                        AppSubHeader("Account Details")
+                        ListItem(
+                            headlineContent = { Text("Primary Role") },
+                            supportingContent = { Text(currentUser?.role?.replaceFirstChar(Char::titlecase) ?: "N/A") }
+                        )
+                        ListItem(
+                            headlineContent = { Text("Joined Date") },
+                            supportingContent = { Text(currentUser?.joinDate ?: "N/A") }
+                        )
+                        ListItem(
+                            headlineContent = { Text("User ID") },
+                            supportingContent = { Text(currentUser?.userId ?: "N/A") }
                         )
                     }
                 }
+
+                AppSubSectionDivider()
+
+                Column {
+                    AppSubHeader("Linked Children (${currentUser?.linkedStudents?.size ?: 0})")
+
+                    if (currentUser?.linkedStudents.isNullOrEmpty()) {
+                        Text(
+                            text = "No linked students found.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    } else {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column {
+                                currentUser!!.linkedStudents?.forEachIndexed { index, child ->
+                                    ListItem(
+                                        headlineContent = { Text("${child.firstName} ${child.lastName}") },
+                                        supportingContent = { Text("Student ID: ${child.id}") },
+                                        leadingContent = {
+                                            Icon(
+                                                imageVector = Icons.Default.AccountCircle,
+                                                contentDescription = "Child Icon",
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { /* Handle click to view child details */ }
+                                            .padding(horizontal = 8.dp)
+                                    )
+                                    if (index < (currentUser?.linkedStudents!!.size - 1)) {
+                                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                SpacerL()
+                AnimatedVisibility(
+                    visible = animateContent,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 150, delayMillis = 300)) +
+                            slideInVertically(
+                                initialOffsetY = { fullHeight -> fullHeight / 5 },
+                                animationSpec = tween(durationMillis = 150, delayMillis = 300)
+                            )
+                ) {
+                    Column {
+                        if (currentUser?.isVerified == true) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            ElevatedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        Toast.makeText(context, "Your account is officially verified!", Toast.LENGTH_SHORT).show()
+                                    },
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Verified,
+                                        contentDescription = "Verified",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Your profile is verified via ID or MoM match.",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        } else {
+                            VerificationInfoCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                onVerifyClick = { /* Handle verify click */ }
+                            )
+                        }
+                    }
+                }
             }
-            else{VerificationInfoCard(
-                modifier = Modifier.fillMaxWidth(),
-                onVerifyClick = {}
-            )}
         }
     }
 
-    // QR Code Dialog
     if (showQrDialog && currentUser != null) {
-        Dialog(onDismissRequest = { showQrDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .fillMaxWidth()
-            ) {
-                Box {
-                    Column(
-                        modifier = Modifier
-                            .padding(24.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            tonalElevation = 4.dp,
-                            modifier = Modifier.padding(8.dp)
+        AnimatedVisibility(
+            visible = showQrDialog,
+            enter = fadeIn(animationSpec = tween(durationMillis = 100)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 100))
+        ) {
+            Dialog(onDismissRequest = { showQrDialog = false }) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    tonalElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                        .fillMaxWidth()
+                ) {
+                    Box {
+                        Column(
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Use currentUser.userId for the QR code content
-                            UserQrCode(uid = currentUser!!.userId)
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        BridgeLockInfo(context = context)
-                        Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Want to manage what data is shared?\nGo to Settings → Data & Privacy.",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontStyle = FontStyle.Italic,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                tonalElevation = 4.dp,
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                UserQrCode(uid = currentUser!!.userId)
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            BridgeLockInfo(context = context)
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = {
-                                Toast.makeText(context, "Coming soon: Add to Google Wallet", Toast.LENGTH_SHORT).show()
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Wallet,
-                                contentDescription = "Add to Wallet",
-                                modifier = Modifier.size(20.dp)
+                            Text(
+                                text = "Want to manage what data is shared?\nGo to Settings → Data & Privacy.",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontStyle = FontStyle.Italic,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add to Wallet")
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Button(
+                                onClick = {
+                                    Toast.makeText(context, "Coming soon: Add to Google Wallet", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Wallet,
+                                    contentDescription = "Add to Wallet",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add to Wallet")
+                            }
                         }
                     }
                 }
@@ -456,6 +527,7 @@ fun ProfileScreen(
         }
     }
 }
+
 
 
 // In your ProfileScreen.kt file, add this new composable function:
