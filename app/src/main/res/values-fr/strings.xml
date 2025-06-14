@@ -130,4 +130,21 @@
 
     <string name="search_placeholder">Rechercher les FAQ…</string>
     <string name="clear_search">Effacer la recherche</string>
+
+
+    <string name="event_science_fair">Foire Scientifique Scolaire</string>
+    <string name="confirm_presence">Confirmer la Présence</string>
+    <string name="decline_presence">Décliner la Présence</string>
+    <string name="your_presence_confirmed">Votre Présence Confirmée</string>
+    <string name="attendance_mandatory">Présence Obligatoire</string>
+    <string name="optional_event">Événement Facultatif</string>
+    <string name="absence_sanctioned">Toute absence injustifiée pourra entraîner des sanctions.</string>
+    <string name="rsvp_by">Confirmer avant le :</string>
+    <string name="event_details">Détails de l\'Événement</string>
+    <string name="date_time">Date &amp; Heure</string>
+    <string name="location">Lieu</string>
+    <string name="organizer">Organisateur</string>
+    <string name="contact">Contact</string>
+    <string name="target_audience">Public Cible</string>
+    <string name="localized_string">Chaîne Localisée</string>
 </resources>

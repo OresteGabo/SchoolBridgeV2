@@ -130,4 +130,21 @@
 
     <string name="search_placeholder">Shakisha FAQ…</string>
     <string name="clear_search">Siba ibyo washakishe</string>
+
+
+    <string name="event_science_fair">Imurikagurisha ry\'Ubumenyi mu Ishuri</string>
+    <string name="confirm_presence">Emeza ko Uzaza</string>
+    <string name="decline_presence">Anga ko Uzaza</string>
+    <string name="your_presence_confirmed">Kuba uhari Byemewe</string>
+    <string name="attendance_mandatory">Kuba uhari ni Ngombwa</string>
+    <string name="optional_event">Ibirori utemerewe kubura (optional)</string>
+    <string name="absence_sanctioned">Kubura nta mpamvu byashyirirwaho ibihano.</string>
+    <string name="rsvp_by">Emeza ko uzaza mbere ya:</string>
+    <string name="event_details">Amakuru y\'Ibirori</string>
+    <string name="date_time">Itariki n\'Igihe</string>
+    <string name="location">Aho Bizabera</string>
+    <string name="organizer">Uwabiteguye</string>
+    <string name="contact">Uko Wababona</string>
+    <string name="target_audience">Abagenerwa</string>
+    <string name="localized_string">Inyandiko Yahinduwe</string>
 </resources>

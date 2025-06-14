@@ -144,5 +144,22 @@
     <string name="common_questions">Common Questions</string>
     <string name="search_results_for">Search results for "%1$s"</string>
     <string name="from_online">Results from online</string>
+
+
+    <string name="event_science_fair">School Science Fair</string>
+    <string name="confirm_presence">Confirm Presence</string>
+    <string name="decline_presence">Decline Presence</string>
+    <string name="your_presence_confirmed">Your Presence Confirmed</string>
+    <string name="attendance_mandatory">Attendance is Mandatory</string>
+    <string name="optional_event">Optional Event</string>
+    <string name="absence_sanctioned">Unexcused absence may lead to sanctions.</string>
+    <string name="rsvp_by">RSVP by:</string>
+    <string name="event_details">Event Details</string>
+    <string name="date_time">Date &amp; Time</string>
+    <string name="location">Location</string>
+    <string name="organizer">Organizer</string>
+    <string name="contact">Contact</string>
+    <string name="target_audience">Target Audience</string>
+    <string name="localized_string">Localized String</string>
 </resources>
 
