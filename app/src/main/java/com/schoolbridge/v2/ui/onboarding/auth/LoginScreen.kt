@@ -31,6 +31,8 @@ fun LoginScreen(
     navigateToHome: () -> Unit,
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
+    onForgotPassword: () -> Unit,
+    onCreateAccount: () -> Unit,
     viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(authApiService, userSessionManager))
 ) {
     val context = LocalContext.current
@@ -142,11 +144,11 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { /* Handle forgot password */ }) {
+            TextButton(onClick = onForgotPassword) {
                 Text("Forgot Password?")
             }
 
-            TextButton(onClick = { /* Handle sign up */ }) {
+            TextButton(onClick = onCreateAccount) {
                 Text("Don't have an account? Sign Up")
             }
         }
