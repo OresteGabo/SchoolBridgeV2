@@ -10,12 +10,14 @@ import com.schoolbridge.v2.data.dto.auth.LoginRequestDto
 import com.schoolbridge.v2.data.remote.AuthApiService
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.CurrentUser
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import kotlinx.serialization.SerializationException
 
@@ -64,7 +66,7 @@ class LoginViewModel(
 
         isLoading = true
         loginError = null
-        loginSuccess = null // Reset success state
+        loginSuccess = null
 
         viewModelScope.launch {
             try {
@@ -73,35 +75,29 @@ class LoginViewModel(
                 val response = authApiService.login(request)
                 Log.d("LOGIN_FLOW", "Login response: $response")
 
-                // Save the login response using the session manager.
-                // This call is suspend and will complete *after* DataStore write and _currentUser update.
-                userSessionManager.saveLoginResponse(response)
-                Log.d("LOGIN_FLOW", "User session manager saveLoginResponse completed.")
+                // ✅ Protect this from cancellation due to navigation
+                val user = withContext(NonCancellable) {
+                    userSessionManager.saveLoginResponse(response)
+                }
 
-                // CHANGE 2: Retrieve the CurrentUser directly from the session manager
-                // This ensures we're signaling success *only* when the session manager has the data ready.
-                // Using .first() on the StateFlow guarantees we wait for the first non-null value
-                // which should be the one just set by saveLoginResponse.
-                val currentUserAfterLogin = userSessionManager.currentUser.first { it != null }
-                Log.d("LOGIN_FLOW", "Retrieved CurrentUser from session manager: $currentUserAfterLogin")
-
-                // CHANGE 3: Set loginSuccess to the CurrentUser object
-                loginSuccess = currentUserAfterLogin
+                loginSuccess = user
+                Log.d("LOGIN_FLOW", "Login complete. User: $user")
 
             } catch (e: SerializationException) {
-                Log.e("LOGIN_FLOW", "Serialization error: ${e.message}", e)
                 loginError = "Data format error. Please try again."
             } catch (e: IOException) {
-                Log.e("LOGIN_FLOW", "Network error: ${e.message}", e)
-                loginError = "Network error occurred. Please check your internet connection."
+                loginError = "Network error. Please check your internet connection."
             } catch (e: Exception) {
-                Log.e("LOGIN_FLOW", "Unexpected error: ${e.message}", e)
-                loginError = "An unexpected error occurred. Please try again later."
+                Log.e("LOGIN_FLOW", "Unexpected error", e)
+                loginError = "An unexpected error occurred: ${e.message}"
             } finally {
                 isLoading = false
             }
         }
     }
+
+
+
 
     fun resetState() {
         isLoading = false
