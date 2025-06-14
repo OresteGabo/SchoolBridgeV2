@@ -40,12 +40,8 @@ fun LoginScreen(
     val loginError = viewModel.loginError
     val loginSuccess = viewModel.loginSuccess
 
-    //val isSessionReady by viewModel.isSessionFullyReady.collectAsState()
-
-
     LaunchedEffect(loginSuccess) {
         loginSuccess?.let {
-            Toast.makeText(context, "Login Successful! Welcome, ${it.firstName}", Toast.LENGTH_LONG).show()
             navigateToHome()
             viewModel.resetState()
         }
