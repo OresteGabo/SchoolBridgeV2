@@ -163,4 +163,24 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.google.zxing:core:3.5.3")
+
+    implementation(platform("androidx.compose:compose-bom:2024.06.00")) // Use the latest BOM version
+    implementation("androidx.compose.ui:ui-text-google-fonts")
+
+    implementation("com.google.android.gms:play-services-base:18.4.0") // Use the latest stable version
+    // or if you only need the fonts provider specifically:
+    // implementation("com.google.android.gms:play-services-fido:19.0.1") // This module specifically includes the font provider
+
+    // And don't forget your Compose UI Google Fonts dependency
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.8")
+// Use the latest stable version
+    // Or if you only need the fonts provider specifically (though base is often sufficient)
+    implementation("com.google.android.gms:play-services-fido:19.0.1") // Or the latest stable version
+
+    implementation("com.google.android.gms:play-services-base:18.4.0") // Use the latest stable version
+    // Or if you only need the fonts provider specifically (though base is often sufficient)
+    // implementation("com.google.android.gms:play-services-fido:19.0.1") // Or the latest stable version
+
+    // Also ensure you have the Compose UI Google Fonts dependency
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.8")
 }
