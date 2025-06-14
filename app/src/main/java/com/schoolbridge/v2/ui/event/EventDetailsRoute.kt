@@ -55,6 +55,7 @@ data class Event(
     val contactInfo: String,
     val attachments: List<String> = emptyList(),
     val targetAudience: String
+
 )
 
 
