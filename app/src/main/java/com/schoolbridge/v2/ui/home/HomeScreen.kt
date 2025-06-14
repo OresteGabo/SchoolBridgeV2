@@ -49,18 +49,28 @@ import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.common.components.SpacerS
-
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.runtime.*
 
 /**
- * The main route Composable for the Home screen.
- * This Composable is responsible for observing data from the [UserSessionManager]
- * and delegating the UI rendering to [HomeScreenContent].
+ * Entry point for the Home screen.
+ * Observes [UserSessionManager] and delegates UI rendering to [HomeUI].
  *
- * It acts as the state holder for the Home screen.
- *
- * @param userSessionManager The manager for user session data.
- * @param onSettingsClick Callback invoked when the settings icon is clicked.
- * @param modifier The modifier to be applied to the layout.
+ * @param userSessionManager Manages session and provides user data.
+ * @param onSettingsClick Called when the settings icon is tapped.
+ * @param modifier Modifier applied to the screen layout.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,37 +79,31 @@ fun HomeRoute(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Collect the currentUser StateFlow directly, providing an initial value of null.
-    // This allows the UI to react to null (loading/no data) state.
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
 
     Scaffold(
-        topBar = {
-            HomeTopBar(onSettingsClick = onSettingsClick)
-        },
+        topBar = { HomeTopBar(onSettingsClick = onSettingsClick) },
         modifier = modifier
     ) { paddingValues ->
-        // Pass necessary data and callbacks to the content Composable.
         HomeUI(
             currentUser = currentUser,
-            onViewAllAlertsClick = { /* TODO: Implement navigation to all alerts */ },
-            onViewAllEventsClick = { /* TODO: Implement navigation to all events */ },
+            onViewAllAlertsClick = { /* TODO: Navigate to all alerts */ },
+            onViewAllEventsClick = { /* TODO: Navigate to all events */ },
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
         )
     }
 }
+
 /**
- * Displays the main content of the Home screen.
- * This Composable is responsible for rendering the UI based on the provided data.
- * It's designed to be stateless and highly testable.
+ * Stateless content for the Home screen.
+ * Displays students, alerts, and events based on [currentUser].
  *
- * @param currentUser The [CurrentUser] object containing user and linked student data.
- * Can be null if data is still loading or no user is logged in.
- * @param onViewAllAlertsClick Callback invoked when "View All" for alerts is clicked.
- * @param onViewAllEventsClick Callback invoked when "View All" for events is clicked.
- * @param modifier The modifier to be applied to the layout.
+ * @param currentUser Contains user and linked student info, nullable while loading.
+ * @param onViewAllAlertsClick Callback for viewing all alerts.
+ * @param onViewAllEventsClick Callback for viewing all events.
+ * @param modifier Modifier applied to the layout.
  */
 @Composable
 private fun HomeUI(
@@ -114,51 +118,45 @@ private fun HomeUI(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Display children section if there are linked students
-        val students = currentUser?.linkedStudents
-        StudentListSection(students = students)
-
+        StudentListSection(students = currentUser?.linkedStudents)
         SpacerL()
-
-        // Display recent alerts section
         AlertsSection(onViewAllAlertsClick = onViewAllAlertsClick)
-
         SpacerL()
-
-        // Display upcoming events section
         EventsSection(onViewAllEventsClick = onViewAllEventsClick)
     }
 }
+
 /**
- * Composable for the Top App Bar of the Home screen.
+ * Top App Bar for the Home screen.
  *
- * @param onSettingsClick Callback invoked when the settings icon is clicked.
- * @param modifier The modifier to be applied to the Top App Bar.
+ * @param onSettingsClick Invoked when the settings icon is tapped.
+ * @param modifier Modifier applied to the top bar.
  */
-@OptIn(ExperimentalMaterial3Api::class) // Required for TopAppBar
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeTopBar(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
-        title = { Text("SchoolBridge") }, // A more general app title
+        title = { Text("SchoolBridge") },
         actions = {
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings" // Use localized string if available
+                    contentDescription = "Settings"
                 )
             }
         },
         modifier = modifier
     )
 }
+
 /**
- * Displays a horizontal list of linked student profile cards.
+ * Displays horizontally scrollable student cards.
  *
- * @param students The list of [CurrentUser.LinkedStudent] objects to display. Can be null or empty.
- * @param modifier The modifier to be applied to the section.
+ * @param students List of linked students, nullable.
+ * @param modifier Modifier applied to the section.
  */
 @Composable
 private fun StudentListSection(
@@ -166,7 +164,7 @@ private fun StudentListSection(
     modifier: Modifier = Modifier
 ) {
     if (!students.isNullOrEmpty()) {
-        Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Row(modifier = modifier.fillMaxWidth()) {
             AppSubHeader("📚 " + t(R.string.your_children))
         }
         SpacerS()
@@ -177,11 +175,12 @@ private fun StudentListSection(
         }
     }
 }
+
 /**
- * Displays a section for recent alerts, including a header and compact alert cards.
+ * Section for recent alerts.
  *
- * @param onViewAllAlertsClick Callback invoked when "View All" for alerts is clicked.
- * @param modifier The modifier to be applied to the section.
+ * @param onViewAllAlertsClick Callback for the "View All" button.
+ * @param modifier Modifier applied to the section.
  */
 @Composable
 private fun AlertsSection(
@@ -195,24 +194,23 @@ private fun AlertsSection(
     ) {
         AppSubHeader("💬 " + t(R.string.recent_alerts))
         TextButton(onClick = onViewAllAlertsClick) {
-            Text(
-                text = "View All", // t(R.string.view_all), // use "All" or "View All"
-                style = MaterialTheme.typography.labelLarge
-            )
+            Text(text = "View All", style = MaterialTheme.typography.labelLarge)
         }
     }
 
     SpacerS()
 
-    // TODO: Fetch alerts dynamically based on user subscriptions (e.g., via a ViewModel)
-    AlertCardCompact(t(R.string.alert_midterm_exams))
-    AlertCardCompact(t(R.string.alert_uniform_inspection))
+    val alerts = listOf(t(R.string.alert_midterm_exams), t(R.string.alert_uniform_inspection))
+    alerts.forEachIndexed { index, alert ->
+        AlertCardCompact(message = alert, index = index)
+    }
 }
+
 /**
- * Displays a section for upcoming events, including a header and compact event cards.
+ * Section for upcoming events.
  *
- * @param onViewAllEventsClick Callback invoked when "View All" for events is clicked.
- * @param modifier The modifier to be applied to the section.
+ * @param onViewAllEventsClick Callback for the "View All" button.
+ * @param modifier Modifier applied to the section.
  */
 @Composable
 private fun EventsSection(
@@ -226,185 +224,222 @@ private fun EventsSection(
     ) {
         AppSubHeader("📅 " + t(R.string.upcoming_events))
         TextButton(onClick = onViewAllEventsClick) {
-            Text(
-                text = "View All", // t(R.string.view_all), // use "All" or "View All"
-                style = MaterialTheme.typography.labelLarge
-            )
+            Text(text = "View All", style = MaterialTheme.typography.labelLarge)
         }
     }
 
     SpacerS()
 
-    // TODO: Fetch events dynamically via a ViewModel
-    EventCardCompact(t(R.string.event_meeting), "June 10")
-    EventCardCompact(t(R.string.event_sports_day), "June 20")
-}
-/**
- * A compact card Composable for displaying a single alert message.
- *
- * @param message The alert message to display.
- * @param modifier The modifier to be applied to the card.
- */
-@Composable
-fun AlertCardCompact(message: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Accent bar
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(
-                        MaterialTheme.colorScheme.error,
-                        RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
-                    )
-            )
-            // Content
-            Text(
-                text = message,
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
-        }
+    val events = listOf(
+        Pair(t(R.string.event_meeting), "June 10"),
+        Pair(t(R.string.event_sports_day), "June 20")
+    )
+    events.forEachIndexed { index, event ->
+        EventCardCompact(title = event.first, date = event.second, index = index)
     }
 }
-/**
- * A compact card Composable for displaying a single event with its title and date.
- *
- * @param title The title of the event.
- * @param date The date of the event.
- * @param modifier The modifier to be applied to the card.
- */
-@Composable
-fun EventCardCompact(title: String, date: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Accent bar
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
-                    )
-            )
 
-            // Content
-            Column(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+/**
+ * Compact card for a single alert.
+ *
+ * @param message Alert message to display.
+ * @param index Used for staggered animation delay.
+ * @param modifier Modifier applied to the card.
+ */
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun AlertCardCompact(message: String, index: Int, modifier: Modifier = Modifier) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(1000)) + slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(1000, delayMillis = index * 100)
+        )
+    ) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .fillMaxHeight()
+                        .background(
+                            MaterialTheme.colorScheme.error,
+                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                        )
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    text = message,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         }
     }
 }
+
+/**
+ * Compact card for a single event.
+ *
+ * @param title Title of the event.
+ * @param date Date of the event.
+ * @param index Used for staggered animation delay.
+ * @param modifier Modifier applied to the card.
+ */
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun EventCardCompact(title: String, date: String, index: Int, modifier: Modifier = Modifier) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(1000)) + slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(1000, delayMillis = index * 100)
+        )
+    ) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .fillMaxHeight()
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                        )
+                )
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = date,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
 /**
  * A card Composable for displaying a linked student's profile information in a compact style.
  *
  * @param student The [CurrentUser.LinkedStudent] object to display.
  * @param modifier The modifier to be applied to the card.
  */
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun StudentCard(student: CurrentUser.LinkedStudent, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .width(240.dp)
-            .height(280.dp)
-            .padding(8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
-            // Side Accent Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(12.dp)
-                    .background(MaterialTheme.colorScheme.primary)
-            )
+    var visible by remember { mutableStateOf(false) }
 
-            Column(
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 1000)) +
+                slideInHorizontally(animationSpec = tween(durationMillis = 1000))
+    ) {
+        Card(
+            modifier = modifier
+                .width(240.dp)
+                .height(280.dp)
+                .padding(8.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(6.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
+        ) {
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
+                // Vertical accent bar
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
+                        .fillMaxHeight()
+                        .width(12.dp)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = student.firstName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.Bold
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = student.firstName.firstOrNull()?.toString() ?: "",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                    )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = student.firstName + " " + student.lastName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Excella high school",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "S5 - MCB",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "${student.firstName} ${student.lastName}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = "Reg No: ${student.id}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = "DOB: 25/06/1995", // TODO: Replace with actual student.dateOfBirth
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
