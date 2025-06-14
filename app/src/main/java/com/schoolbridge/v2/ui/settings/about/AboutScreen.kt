@@ -1,5 +1,9 @@
 package com.schoolbridge.v2.ui.settings.about
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Construction
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +47,7 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.components.FeatureBullet
 import com.schoolbridge.v2.ui.common.components.SectionHeader
+import kotlinx.coroutines.delay
 
 
 @Preview
@@ -50,6 +58,7 @@ private fun AboutScreenPreview() {
     )
 }
 
+// --- AboutScreen Composable with Animations ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
@@ -67,8 +76,7 @@ fun AboutScreen(onBack: () -> Unit) {
             icon = Icons.Default.Construction,
             isCurrent = true
         ),
-        /*
-        VersionInfo(
+        /*VersionInfo(
             title = "V2: Intambwe",
             meaning = "“Intambwe” means step — progress toward reports and live updates.",
             releaseDate = "Planned: Late 2025",
@@ -87,6 +95,21 @@ fun AboutScreen(onBack: () -> Unit) {
             isCurrent = false
         )*/
     )
+
+    // State to control the visibility of each section for staggered animation
+    // Adjusted count based on distinct logical sections we want to animate
+    val sectionVisibility = remember { mutableStateOf(MutableList(8) { false }) }
+
+    LaunchedEffect(Unit) {
+        val delayStep = 80L // Small delay for light staggering
+        // Animate each logical section of the settings
+        for (i in sectionVisibility.value.indices) {
+            delay(delayStep)
+            sectionVisibility.value = sectionVisibility.value.toMutableList().also {
+                it[i] = true
+            }
+        }
+    }
 
     if (openVersionSheet.value) {
         ModalBottomSheet(
@@ -132,70 +155,125 @@ fun AboutScreen(onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp) // Apply horizontal padding once
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(t(R.string.app_version), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(t(R.string.about_description))
-            Spacer(Modifier.height(16.dp))
-            //HorizontalDivider()
-            //Spacer(Modifier.height(16.dp))
-            // Current Version Card
-            VersionCard(version = versions.first(), onClick = { openVersionSheet.value = true })
-            Spacer(Modifier.height(12.dp))
-
-            // Future Versions
-            versions.drop(1).forEach {
-                VersionCard(version = it, onClick = {})
-                Spacer(Modifier.height(12.dp))
+            // Section 0: App Version and Description
+            AnimatedVisibility(
+                visible = sectionVisibility.value[0],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    Text(t(R.string.app_version), style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(t(R.string.about_description))
+                    Spacer(Modifier.height(16.dp))
+                }
             }
 
-            //HorizontalDivider()
+            // Section 1: Current Version Card
+            AnimatedVisibility(
+                visible = sectionVisibility.value[1],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    VersionCard(version = versions.first(), onClick = { openVersionSheet.value = true })
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
 
-            // Features
-            SectionHeader(t(R.string.features_title))
-            Spacer(Modifier.height(8.dp))
-            FeatureBullet("📨 " + t(R.string.feature_messaging))
-            FeatureBullet("📊 " + t(R.string.feature_fees))
-            FeatureBullet("📚 " + t(R.string.feature_linked_children))
-            FeatureBullet("🧾 " + t(R.string.feature_verification))
-            FeatureBullet("📍 " + t(context, R.string.feature_school_search))
+            // Section 2: Future Versions (loop through if more than one)
+            // This will animate as a single block for simplicity
+            if (versions.drop(1).isNotEmpty()) {
+                AnimatedVisibility(
+                    visible = sectionVisibility.value[2],
+                    enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+                ) {
+                    Column {
+                        versions.drop(1).forEach {
+                            VersionCard(version = it, onClick = {})
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+                }
+            }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
 
-            // Privacy
-            SectionHeader(t(R.string.privacy_title))
-            Text(t(R.string.privacy_description))
+            // Section 3: Features
+            AnimatedVisibility(
+                visible = sectionVisibility.value[3],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    HorizontalDivider()
+                    Spacer(Modifier.height(16.dp))
+                    SectionHeader(t(R.string.features_title))
+                    Spacer(Modifier.height(8.dp))
+                    FeatureBullet("📨 " + t(R.string.feature_messaging))
+                    FeatureBullet("📊 " + t(R.string.feature_fees))
+                    FeatureBullet("📚 " + t(R.string.feature_linked_children))
+                    FeatureBullet("🧾 " + t(R.string.feature_verification))
+                    FeatureBullet("📍 " + t(context, R.string.feature_school_search))
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
+            // Section 4: Privacy
+            AnimatedVisibility(
+                visible = sectionVisibility.value[4],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    HorizontalDivider()
+                    SectionHeader(t(R.string.privacy_title))
+                    Text(t(R.string.privacy_description))
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
 
-            // Developer Info
-            SectionHeader(t(R.string.developed_by_title))
-            Text(t(R.string.developed_by_description))
+            // Section 5: Developer Info
+            AnimatedVisibility(
+                visible = sectionVisibility.value[5],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    HorizontalDivider()
+                    SectionHeader(t(R.string.developed_by_title))
+                    Text(t(R.string.developed_by_description))
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
+            // Section 6: Contact
+            AnimatedVisibility(
+                visible = sectionVisibility.value[6],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Column {
+                    HorizontalDivider()
+                    SectionHeader(t(R.string.contact_title))
+                    Text(t(R.string.contact_email))
+                    Text(t(R.string.contact_phone))
+                    Text(t(R.string.contact_website))
+                    Spacer(Modifier.height(32.dp))
+                }
+            }
 
-            // Contact
-            SectionHeader(t(R.string.contact_title))
-            Text(t(R.string.contact_email))
-            Text(t(R.string.contact_phone))
-            Text(t(R.string.contact_website))
-
-            Spacer(Modifier.height(32.dp))
-            Text(
-                text = t(R.string.copyright, 2025),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
-            )
+            // Section 7: Copyright
+            AnimatedVisibility(
+                visible = sectionVisibility.value[7],
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) + slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(durationMillis = 200))
+            ) {
+                Text(
+                    text = t(R.string.copyright, 2025),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+            }
         }
     }
 }
-
 @Composable
 fun VersionCard(version: VersionInfo, onClick: () -> Unit) {
     Card(
