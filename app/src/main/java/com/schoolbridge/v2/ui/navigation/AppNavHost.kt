@@ -4,6 +4,7 @@ package com.schoolbridge.v2.ui.navigation
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -25,7 +26,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.schoolbridge.v2.domain.user.Gender
+import com.schoolbridge.v2.ui.event.EventDetailsRoute
+import com.schoolbridge.v2.ui.event.EventRepository
 import com.schoolbridge.v2.ui.onboarding.auth.CredentialsSetupScreen
 import com.schoolbridge.v2.ui.onboarding.auth.SignUpScreen
 import com.schoolbridge.v2.ui.onboarding.legal.TermsOfServiceScreen
@@ -115,15 +120,67 @@ fun AppNavHost(
             println("Navigated to Forgot Password Screen") // Placeholder for ForgotPasswordScreen
         }
 
+
         // --- Main Application Flow (Post-Login) ---
         // These use the routes defined in MainAppScreen
         composable(MainAppScreen.Home.route) {
             HomeRoute(
                 userSessionManager = userSessionManager,
                 onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
+                onEventClick = { eventId ->
+                    navController.navigate("eventDetails/$eventId")
+                },
                 modifier = modifier
             )
         }
+/*
+        composable(MainAppScreen.Home.route) {
+            HomeRoute(
+                userSessionManager = userSessionManager,
+                onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
+                onEventClick = { eventId ->
+                    // Use the createRoute function for type-safe navigation
+                    navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
+                },
+                modifier = modifier
+            )
+        }*/
+
+
+        // --- Event Details Route (now using MainAppScreen.EventDetails) ---
+        /*composable(
+            route = MainAppScreen.EventDetails.ROUTE_PATTERN, // Use the pattern from the sealed class
+            arguments = listOf(navArgument(MainAppScreen.EventDetails.EVENT_ID_ARG) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString(MainAppScreen.EventDetails.EVENT_ID_ARG)
+            if (eventId != null) {
+                // Your existing EventDetailsRoute logic remains the same
+                EventDetailsRoute(
+                    eventId = eventId,
+                    onBackClick = { navController.popBackStack() },
+                    eventRepository = remember { EventRepository() } // Or inject via DI
+                )
+            } else {
+                // Handle case where eventId is null, e.g., show an error screen or navigate back
+                // For now, let's just log and pop back
+                println("Error: Event ID is missing for EventDetailsRoute")
+                navController.popBackStack()
+            }
+        }*/
+
+        composable("eventDetails/{eventId}") { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId")
+            if (eventId != null) {
+             EventDetailsRoute(
+                 eventId = eventId,
+                 onBackClick = { navController.popBackStack() },
+                 eventRepository = remember { EventRepository() } // Or inject via DI
+             )
+            }
+        }
+
 
         composable(MainAppScreen.Message.route) {
             MessageScreen()
@@ -157,8 +214,6 @@ fun AppNavHost(
                 onNavigateToHelp = { navController.navigate(MainAppScreen.HelpFAQ.route) },
                 onNavigateToAbout = { navController.navigate(MainAppScreen.About.route) },
                 onDataPrivacy = { navController.navigate(MainAppScreen.DataPrivacy.route) },
-                //onNavigateToLanguage = { navController.navigate(MainAppScreen.Language.route) },
-                //onNavigateToTheme = { navController.navigate(MainAppScreen.Theme.route) }
             )
         }
 
@@ -174,14 +229,7 @@ fun AppNavHost(
             NotificationSettingsScreen(onBack = { navController.navigateUp() })
             println("Navigated to Notifications Screen") // Placeholder for NotificationsScreen
         }
-        /*composable(MainAppScreen.Language.route) {
-            // LanguageSettingScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Language Setting Screen") // Placeholder for LanguageSettingScreen
-        }*/
-        /*composable(MainAppScreen.Theme.route) {
-            // ThemeSettingScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Theme Setting Screen") // Placeholder for ThemeSettingScreen
-        }*/
+
         composable(MainAppScreen.HelpFAQ.route) {
             HelpFAQScreen(onBack = { navController.navigateUp() })
             println("Navigated to Help/FAQ Screen") // Placeholder for HelpFAQScreen
