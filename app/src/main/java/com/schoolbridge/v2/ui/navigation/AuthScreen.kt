@@ -12,4 +12,6 @@ sealed class AuthScreen(val route: String) {
     object Login : AuthScreen("login_screen")
     object SignUp : AuthScreen("signup_screen") // Assuming you'll have a sign-up
     object ForgotPassword : AuthScreen("forgot_password_screen") // Assuming a forgot password flow
+    object CredentialsSetup : AuthScreen("credentials_setup_screen") // Assuming credentials setup
+
 }
