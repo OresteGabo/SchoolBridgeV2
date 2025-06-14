@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,24 +35,7 @@ import java.time.LocalDateTime // Import LocalDateTime
 import java.time.format.DateTimeFormatter // Import DateTimeFormatter
 
 // --- Dummy Data Classes and Helper Functions (as provided in previous responses) ---
-/*
-// Re-defining Event data class with an 'id' for navigation
-data class Event(
-    val id: String,
-    val title: String,
-    val description: String,
-    val startTime: LocalDateTime,
-    val endTime: LocalDateTime,
-    val location: String,
-    val isMandatory: Boolean,
-    val requiresRSVP: Boolean,
-    val rsvpDeadline: LocalDateTime?,
-    val organizer: String,
-    val contactInfo: String,
-    val attachments: List<String> = emptyList(),
-    val targetAudience: String
-)
-*/
+
 data class UserEventStatus(
     val eventId: String,
     val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
@@ -350,15 +334,24 @@ private fun EventsSection(
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun EventCardCompact(
-    event: Event, // Changed from title and date to Event object
+    event: Event,
     index: Int,
-    onEventClick: (String) -> Unit, // New callback for click
+    onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         visible = true
+    }
+
+    // Determine the accent color based on whether the event is mandatory
+    val accentColor = if (event.isMandatory) {
+        // A strong color for mandatory events, e.g., error color or a custom "important" color
+        MaterialTheme.colorScheme.error
+    } else {
+        // Your primary color or a secondary color for optional events
+        MaterialTheme.colorScheme.primary
     }
 
     AnimatedVisibility(
@@ -374,16 +367,18 @@ fun EventCardCompact(
                 .height(IntrinsicSize.Min)
                 .padding(vertical = 4.dp),
             shape = RoundedCornerShape(12.dp),
+            // You might change the container color slightly too if desired
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
             onClick = { onEventClick(event.id) } // Trigger navigation on click
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
+                // Vertical accent bar - now changes color based on 'isMandatory'
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
-                            MaterialTheme.colorScheme.primary,
+                            accentColor, // Use the determined accentColor
                             RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
@@ -392,14 +387,25 @@ fun EventCardCompact(
                         .padding(12.dp)
                         .fillMaxWidth()
                 ) {
-                    Text(
-                        text = event.title, // Use event.title
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Icon for mandatory events
+                        if (event.isMandatory) {
+                            Icon(
+                                imageVector = Icons.Filled.Lock, // Or Icons.Filled.Warning
+                                contentDescription = t(R.string.attendance_mandatory), // Localized text for accessibility
+                                tint = accentColor, // Use the same accent color for consistency
+                                modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                            )
+                        }
+                        Text(
+                            text = event.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = event.startTime.format(DateTimeFormatter.ofPattern("MMM dd")), // Use event.startTime
+                        text = event.startTime.format(DateTimeFormatter.ofPattern("MMM dd")),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
