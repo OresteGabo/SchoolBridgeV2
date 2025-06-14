@@ -2,6 +2,7 @@
 package com.schoolbridge.v2.ui.navigation
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -128,27 +129,16 @@ fun AppNavHost(
                 userSessionManager = userSessionManager,
                 onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
                 onEventClick = { eventId ->
-                    navController.navigate("eventDetails/$eventId")
-                },
-                modifier = modifier
-            )
-        }
-/*
-        composable(MainAppScreen.Home.route) {
-            HomeRoute(
-                userSessionManager = userSessionManager,
-                onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
-                onEventClick = { eventId ->
                     // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
                 },
                 modifier = modifier
             )
-        }*/
+        }
 
 
         // --- Event Details Route (now using MainAppScreen.EventDetails) ---
-        /*composable(
+        composable(
             route = MainAppScreen.EventDetails.ROUTE_PATTERN, // Use the pattern from the sealed class
             arguments = listOf(navArgument(MainAppScreen.EventDetails.EVENT_ID_ARG) {
                 type = NavType.StringType
@@ -168,18 +158,9 @@ fun AppNavHost(
                 println("Error: Event ID is missing for EventDetailsRoute")
                 navController.popBackStack()
             }
-        }*/
-
-        composable("eventDetails/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")
-            if (eventId != null) {
-             EventDetailsRoute(
-                 eventId = eventId,
-                 onBackClick = { navController.popBackStack() },
-                 eventRepository = remember { EventRepository() } // Or inject via DI
-             )
-            }
         }
+
+
 
 
         composable(MainAppScreen.Message.route) {
