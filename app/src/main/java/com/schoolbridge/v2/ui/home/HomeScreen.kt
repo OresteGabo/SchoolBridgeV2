@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,85 +43,160 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.R
-import com.schoolbridge.v2.data.session.UserSessionManager // Import your UserSessionManager
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.common.components.SpacerS
 
-@OptIn(ExperimentalMaterial3Api::class) // Required for TopAppBar
+
+/**
+ * The main route Composable for the Home screen.
+ * This Composable is responsible for observing data from the [UserSessionManager]
+ * and delegating the UI rendering to [HomeScreenContent].
+ *
+ * It acts as the state holder for the Home screen.
+ *
+ * @param userSessionManager The manager for user session data.
+ * @param onSettingsClick Callback invoked when the settings icon is clicked.
+ * @param modifier The modifier to be applied to the layout.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+fun HomeRoute(
     userSessionManager: UserSessionManager,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    // Collect the currentUser StateFlow directly
-    //Collect the currentUser StateFlow directly, providing an initial value of null
+    // Collect the currentUser StateFlow directly, providing an initial value of null.
+    // This allows the UI to react to null (loading/no data) state.
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
 
-    val students: List<CurrentUser.LinkedStudent>? = currentUser?.linkedStudents
-
-    // Determine the display name
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("SchoolBridge") }, // A more general app title
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                }
-            )
+            HomeTopBar(onSettingsClick = onSettingsClick)
         },
         modifier = modifier
     ) { paddingValues ->
-        Column(
+        // Pass necessary data and callbacks to the content Composable.
+        HomeUI(
+            currentUser = currentUser,
+            onViewAllAlertsClick = { /* TODO: Implement navigation to all alerts */ },
+            onViewAllEventsClick = { /* TODO: Implement navigation to all events */ },
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            HomeScreenWithChildren(students =students)
-        }
+                .fillMaxSize()
+        )
     }
 }
+/**
+ * Displays the main content of the Home screen.
+ * This Composable is responsible for rendering the UI based on the provided data.
+ * It's designed to be stateless and highly testable.
+ *
+ * @param currentUser The [CurrentUser] object containing user and linked student data.
+ * Can be null if data is still loading or no user is logged in.
+ * @param onViewAllAlertsClick Callback invoked when "View All" for alerts is clicked.
+ * @param onViewAllEventsClick Callback invoked when "View All" for events is clicked.
+ * @param modifier The modifier to be applied to the layout.
+ */
 @Composable
-private fun HomeScreenWithChildren(students: List<CurrentUser.LinkedStudent>?) {
+private fun HomeUI(
+    currentUser: CurrentUser?,
+    onViewAllAlertsClick: () -> Unit,
+    onViewAllEventsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Display children section if there are linked students
+        val students = currentUser?.linkedStudents
+        StudentListSection(students = students)
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-        AppSubHeader("📚 " + t(R.string.your_children))
+        SpacerL()
+
+        // Display recent alerts section
+        AlertsSection(onViewAllAlertsClick = onViewAllAlertsClick)
+
+        SpacerL()
+
+        // Display upcoming events section
+        EventsSection(onViewAllEventsClick = onViewAllEventsClick)
     }
-    SpacerS()
-
-    if (students.isNullOrEmpty()) {
-        Text(text = "No children linked to this account")
-    } else {
+}
+/**
+ * Composable for the Top App Bar of the Home screen.
+ *
+ * @param onSettingsClick Callback invoked when the settings icon is clicked.
+ * @param modifier The modifier to be applied to the Top App Bar.
+ */
+@OptIn(ExperimentalMaterial3Api::class) // Required for TopAppBar
+@Composable
+private fun HomeTopBar(
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        title = { Text("SchoolBridge") }, // A more general app title
+        actions = {
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings" // Use localized string if available
+                )
+            }
+        },
+        modifier = modifier
+    )
+}
+/**
+ * Displays a horizontal list of linked student profile cards.
+ *
+ * @param students The list of [CurrentUser.LinkedStudent] objects to display. Can be null or empty.
+ * @param modifier The modifier to be applied to the section.
+ */
+@Composable
+private fun StudentListSection(
+    students: List<CurrentUser.LinkedStudent>?,
+    modifier: Modifier = Modifier
+) {
+    if (!students.isNullOrEmpty()) {
+        Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+            AppSubHeader("📚 " + t(R.string.your_children))
+        }
+        SpacerS()
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(students.size, key = { it }) {
-                StudentCardProfileStyle(student = students[it])
+            itemsIndexed(students) { _, student ->
+                StudentCard(student = student)
             }
         }
     }
-
-    SpacerL()
-
+}
+/**
+ * Displays a section for recent alerts, including a header and compact alert cards.
+ *
+ * @param onViewAllAlertsClick Callback invoked when "View All" for alerts is clicked.
+ * @param modifier The modifier to be applied to the section.
+ */
+@Composable
+private fun AlertsSection(
+    onViewAllAlertsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         AppSubHeader("💬 " + t(R.string.recent_alerts))
-        TextButton(onClick = { /* TODO: open all alerts */ }) {
+        TextButton(onClick = onViewAllAlertsClick) {
             Text(
-                text = "View All",//t(R.string.view_all), // use "All" or "View All"
+                text = "View All", // t(R.string.view_all), // use "All" or "View All"
                 style = MaterialTheme.typography.labelLarge
             )
         }
@@ -128,35 +204,51 @@ private fun HomeScreenWithChildren(students: List<CurrentUser.LinkedStudent>?) {
 
     SpacerS()
 
-    //TODO FETCH ALERTS THAT COMES FROM WHERE THE USER IS SUBSCRIBED (ALL TEACHER OF ALL HIS KIDS + SCHOOLS),... (we only show 3 then the rest we add All on top right )
+    // TODO: Fetch alerts dynamically based on user subscriptions (e.g., via a ViewModel)
     AlertCardCompact(t(R.string.alert_midterm_exams))
     AlertCardCompact(t(R.string.alert_uniform_inspection))
-
-    SpacerL()
-
+}
+/**
+ * Displays a section for upcoming events, including a header and compact event cards.
+ *
+ * @param onViewAllEventsClick Callback invoked when "View All" for events is clicked.
+ * @param modifier The modifier to be applied to the section.
+ */
+@Composable
+private fun EventsSection(
+    onViewAllEventsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         AppSubHeader("📅 " + t(R.string.upcoming_events))
-        TextButton(onClick = { /* TODO: open all alerts */ }) {
+        TextButton(onClick = onViewAllEventsClick) {
             Text(
-                text = "View All",//t(R.string.view_all), // use "All" or "View All"
+                text = "View All", // t(R.string.view_all), // use "All" or "View All"
                 style = MaterialTheme.typography.labelLarge
             )
         }
     }
 
     SpacerS()
+
+    // TODO: Fetch events dynamically via a ViewModel
     EventCardCompact(t(R.string.event_meeting), "June 10")
     EventCardCompact(t(R.string.event_sports_day), "June 20")
 }
-
+/**
+ * A compact card Composable for displaying a single alert message.
+ *
+ * @param message The alert message to display.
+ * @param modifier The modifier to be applied to the card.
+ */
 @Composable
-fun AlertCardCompact(message: String) {
+fun AlertCardCompact(message: String, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .padding(vertical = 4.dp),
@@ -184,11 +276,17 @@ fun AlertCardCompact(message: String) {
         }
     }
 }
-
+/**
+ * A compact card Composable for displaying a single event with its title and date.
+ *
+ * @param title The title of the event.
+ * @param date The date of the event.
+ * @param modifier The modifier to be applied to the card.
+ */
 @Composable
-fun EventCardCompact(title: String, date: String) {
+fun EventCardCompact(title: String, date: String, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .padding(vertical = 4.dp),
@@ -196,8 +294,7 @@ fun EventCardCompact(title: String, date: String) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             // Accent bar
             Box(
@@ -231,10 +328,16 @@ fun EventCardCompact(title: String, date: String) {
         }
     }
 }
+/**
+ * A card Composable for displaying a linked student's profile information in a compact style.
+ *
+ * @param student The [CurrentUser.LinkedStudent] object to display.
+ * @param modifier The modifier to be applied to the card.
+ */
 @Composable
-fun StudentCardProfileStyle(student: CurrentUser.LinkedStudent) {
+fun StudentCard(student: CurrentUser.LinkedStudent, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .width(240.dp)
             .height(280.dp)
             .padding(8.dp),
@@ -264,34 +367,6 @@ fun StudentCardProfileStyle(student: CurrentUser.LinkedStudent) {
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Profile image or fallback
-                /*if (student.profileImageRes != null) {
-                    Image(
-                        painter = painterResource(id = student.profileImageRes),
-                        contentDescription = "Student Profile",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text= student.lastName.firstOrNull()?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }*/
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -300,7 +375,7 @@ fun StudentCardProfileStyle(student: CurrentUser.LinkedStudent) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text= student.firstName.firstOrNull()?.uppercase() ?: "?",
+                        text = student.firstName.firstOrNull()?.uppercase() ?: "?",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             fontWeight = FontWeight.Bold
@@ -326,7 +401,7 @@ fun StudentCardProfileStyle(student: CurrentUser.LinkedStudent) {
                 )
 
                 Text(
-                    text = "DOB: 25/06/1995",//text = "DOB: ${student.dabtOfBirth}",
+                    text = "DOB: 25/06/1995", // TODO: Replace with actual student.dateOfBirth
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
