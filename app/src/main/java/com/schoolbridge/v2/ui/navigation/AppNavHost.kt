@@ -15,7 +15,7 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 
 import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.finance.FinanceScreen
-import com.schoolbridge.v2.ui.home.HomeScreen
+import com.schoolbridge.v2.ui.home.HomeRoute
 import com.schoolbridge.v2.ui.onboarding.auth.LoginScreen
 import com.schoolbridge.v2.ui.onboarding.auth.LoginViewModelFactory
 import com.schoolbridge.v2.ui.settings.SettingsScreen
@@ -25,10 +25,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
+import com.schoolbridge.v2.domain.user.Gender
+import com.schoolbridge.v2.ui.onboarding.auth.CredentialsSetupScreen
+import com.schoolbridge.v2.ui.onboarding.auth.SignUpScreen
 import com.schoolbridge.v2.ui.onboarding.legal.TermsOfServiceScreen
 import com.schoolbridge.v2.ui.settings.about.AboutScreen
 import com.schoolbridge.v2.ui.settings.dataprivacy.DataPrivacySettingsScreen
 import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
+import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -77,14 +81,32 @@ fun AppNavHost(
                     )
                 ),
                 authApiService = authApiService,
-                userSessionManager = userSessionManager
+                userSessionManager = userSessionManager,
+                onForgotPassword = {navController.navigate(AuthScreen.ForgotPassword.route)},
+                onCreateAccount = { navController.navigate(AuthScreen.SignUp.route) }
             )
         }
 
         composable(AuthScreen.SignUp.route) {
             // TODO: Implement your SignUpScreen composable
-            // SignUpScreen(onSignUpSuccess = { navController.navigate(AuthScreen.Login.route) })
+             SignUpScreen(
+                 navController = navController,
+                 onContinueAsGuest = {},
+                 onTermsClick = {},
+                 onPrivacyClick = {},
+                 onNext = { firstName, lastName, phone, gender ->
+                     navController.navigate(AuthScreen.CredentialsSetup.route)
+                 },
+                 onPrivacyPolicyClick = {}
+             )
             println("Navigated to Sign Up Screen") // Placeholder for SignUpScreen
+        }
+
+        composable(AuthScreen.CredentialsSetup.route) {
+            CredentialsSetupScreen(
+                onContinue = {},
+                modifier = Modifier
+            )
         }
 
         composable(AuthScreen.ForgotPassword.route) {
@@ -96,7 +118,7 @@ fun AppNavHost(
         // --- Main Application Flow (Post-Login) ---
         // These use the routes defined in MainAppScreen
         composable(MainAppScreen.Home.route) {
-            HomeScreen(
+            HomeRoute(
                 userSessionManager = userSessionManager,
                 onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
                 modifier = modifier
@@ -149,7 +171,7 @@ fun AppNavHost(
             )
         }
         composable(MainAppScreen.Notifications.route) {
-            //NotificationsScreen(onBack = { navController.navigateUp() })
+            NotificationSettingsScreen(onBack = { navController.navigateUp() })
             println("Navigated to Notifications Screen") // Placeholder for NotificationsScreen
         }
         /*composable(MainAppScreen.Language.route) {
