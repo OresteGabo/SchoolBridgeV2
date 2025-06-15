@@ -16,13 +16,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.data.session.UserSessionManager
@@ -418,6 +422,8 @@ fun EventCardCompact(
 
 /**
  * Compact card for a single alert.
+ * Maintains card consistency with a vertical accent bar, using the theme's secondary colors
+ * to differentiate from event cards. Includes an icon for clear alert semantics.
  *
  * @param message Alert message to display.
  * @param index Used for staggered animation delay.
@@ -445,24 +451,47 @@ fun AlertCardCompact(message: String, index: Int, modifier: Modifier = Modifier)
                 .height(IntrinsicSize.Min)
                 .padding(vertical = 4.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            // Use the secondary color container for the alert card background
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
-            Row(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically // Vertically align contents
+            ) {
+                // Vertical accent bar - uses the secondary color for alerts
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
-                            MaterialTheme.colorScheme.error,
+                            MaterialTheme.colorScheme.secondary, // Strong secondary color for accent
                             RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
-                Text(
-                    text = message,
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f) // Let the content row take up remaining space
+                        .padding(12.dp), // Padding for the content inside the card
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // ICON: Provide clear visual cue for an alert
+                    Icon(
+                        imageVector = Icons.Filled.Info, // Or WarningAmber, NotificationImportant
+                        contentDescription = "Alert", // Localize this for accessibility
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer, // Tint icon to match text for consistency
+                        modifier = Modifier
+                            .size(20.dp) // Maintain consistent icon size with mandatory events
+                            .padding(end = 8.dp)
+                    )
+
+                    // TEXT: The alert message
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer // Text color contrasting with secondary container
+                    )
+                }
             }
         }
     }
