@@ -18,7 +18,9 @@ import com.schoolbridge.v2.ui.settings.SettingOption
 fun SettingItem(
     option: SettingOption,
     onClick: () -> Unit,
-    currentLanguage: String
+    currentLanguage: String,
+    isDarkTheme: Boolean,                  // Add theme state
+    onThemeToggle: (Boolean) -> Unit       // Callback to toggle theme
 ) {
     val linkRequestStatus = if (option is SettingOption.ViewLinkRequests) "pending" else null
 
@@ -36,10 +38,8 @@ fun SettingItem(
             when (option) {
                 is SettingOption.Theme -> {
                     Switch(
-                        checked = true,//SessionManager.isDarkMode == true,
-                        onCheckedChange = {
-                            //SessionManager.isDarkMode = !(SessionManager.isDarkMode ?: false)
-                        }
+                        checked = isDarkTheme,
+                        onCheckedChange = { onThemeToggle(it) }
                     )
                 }
 
