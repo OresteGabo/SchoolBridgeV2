@@ -5,6 +5,8 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
 import com.schoolbridge.v2.domain.user.Gender
 import com.schoolbridge.v2.ui.event.EventDetailsRoute
 import com.schoolbridge.v2.ui.event.EventRepository
@@ -39,6 +42,9 @@ import com.schoolbridge.v2.ui.settings.about.AboutScreen
 import com.schoolbridge.v2.ui.settings.dataprivacy.DataPrivacySettingsScreen
 import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
+import com.schoolbridge.v2.ui.theme.ThemeViewModel
+import androidx.compose.runtime.getValue        // for 'by' delegate on State
+import androidx.compose.runtime.collectAsState  // to convert StateFlow to Compose State
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -58,8 +64,11 @@ fun AppNavHost(
     startDestination: String,
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
+    themeViewModel: ThemeViewModel,               // Added
+    themePreferenceManager: ThemePreferenceManager, // Added
     modifier: Modifier = Modifier
 ) {
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -177,24 +186,26 @@ fun AppNavHost(
         composable(MainAppScreen.Settings.route) {
             SettingsScreen(
                 onLogout = {
-                    // Perform logout logic (clear session) then navigate to login
                     CoroutineScope(Dispatchers.IO).launch {
                         userSessionManager.clearSession()
                     }
                     navController.navigate(AuthScreen.Login.route) {
-                        // Clear entire back stack to prevent navigating back to logged-in state
                         popUpTo(navController.graph.findStartDestination().id) {
                             inclusive = true
                         }
                     }
                 },
-                onBack = { navController.navigateUp() }, // Navigate back to the previous screen (Home)
-                onViewLinkRequests = { /* TODO: Implement navigation for Link Requests if a screen exists */ },
+                onBack = { navController.navigateUp() },
+                onViewLinkRequests = { /* TODO */ },
                 onNavigateToProfile = { navController.navigate(MainAppScreen.Profile.route) },
                 onNavigateToNotifications = { navController.navigate(MainAppScreen.Notifications.route) },
                 onNavigateToHelp = { navController.navigate(MainAppScreen.HelpFAQ.route) },
                 onNavigateToAbout = { navController.navigate(MainAppScreen.About.route) },
                 onDataPrivacy = { navController.navigate(MainAppScreen.DataPrivacy.route) },
+                isDarkTheme = isDarkTheme,
+                onToggleTheme = { enabled ->
+                    themeViewModel.toggleTheme(enabled)
+                }
             )
         }
 
