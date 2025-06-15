@@ -15,35 +15,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log // Import Log
 
-val Context.appThemeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_prefs")
+class ThemePreferenceManager(private val context: Context) {
 
-@Singleton
-class ThemePreferenceManager @Inject constructor(
-    @ApplicationContext private val context: Context
-) {
-    private object PreferencesKeys {
-        val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
+    private val Context.dataStore by preferencesDataStore("settings")
+
+    companion object {
+        val DARK_MODE_KEY = booleanPreferencesKey("dark_mode_enabled")
     }
 
-    val isDarkMode: Flow<Boolean> = context.appThemeDataStore.data
-        .map { preferences ->
-            val value = preferences[PreferencesKeys.IS_DARK_MODE] == true
-            Log.d("ThemePrefManager", "isDarkMode collected, value: $value")
-            value
-        }
-        .catch { e -> // Add catch to log any errors during collection
-            Log.e("ThemePrefManager", "Error collecting isDarkMode: ${e.message}", e)
-            emit(false) // Emit a default value to prevent the Flow from crashing
+    val isDarkModeFlow: Flow<Boolean> = context.dataStore.data
+        .map { prefs ->
+            prefs[DARK_MODE_KEY] == true // default to light theme
         }
 
-    suspend fun setIsDarkMode(isDark: Boolean) {
-        try {
-            context.appThemeDataStore.edit { preferences ->
-                preferences[PreferencesKeys.IS_DARK_MODE] = isDark
-            }
-            Log.d("ThemePrefManager", "setIsDarkMode: saved $isDark")
-        } catch (e: Exception) {
-            Log.e("ThemePrefManager", "Error saving isDarkMode: ${e.message}", e)
+    suspend fun setDarkMode(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[DARK_MODE_KEY] = enabled
         }
     }
 }
