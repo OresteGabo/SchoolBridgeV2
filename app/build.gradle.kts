@@ -156,6 +156,10 @@ dependencies {
     // --- WorkManager Runtime ---
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    implementation ("androidx.datastore:datastore-preferences:1.1.7")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1" ) // for lifecycleScope in Activities/Fragments
+
+
     // --- Testing Dependencies ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
