@@ -32,12 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
+import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
+import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
@@ -211,6 +214,7 @@ fun HomeRoute(
 
     Scaffold(
         topBar = { HomeTopBar(onSettingsClick = onSettingsClick) },
+        bottomBar = { CustomBottomNavBar() },
         modifier = modifier
     ) { paddingValues ->
         HomeUI(
@@ -377,12 +381,9 @@ fun EventCardCompact(
         visible = true
     }
 
-    // Determine the accent color based on whether the event is mandatory
     val accentColor = if (event.isMandatory) {
-        // A strong color for mandatory events, e.g., error color or a custom "important" color
         MaterialTheme.colorScheme.error
     } else {
-        // Your primary color or a secondary color for optional events
         MaterialTheme.colorScheme.primary
     }
 
@@ -399,53 +400,74 @@ fun EventCardCompact(
                 .height(IntrinsicSize.Min)
                 .padding(vertical = 4.dp),
             shape = RoundedCornerShape(12.dp),
-            // You might change the container color slightly too if desired
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            onClick = { onEventClick(event.id) } // Trigger navigation on click
+            onClick = {
+                Log.d("EventCardCompact", "Event clicked: ${event.title}")
+                event.isRead = true
+                onEventClick(event.id) }
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // Vertical accent bar - now changes color based on 'isMandatory'
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
-                            accentColor, // Use the determined accentColor
+                            accentColor,
                             RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
-                Column(
+                Box(
                     modifier = Modifier
                         .padding(12.dp)
                         .fillMaxWidth()
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Icon for mandatory events
-                        if (event.isMandatory) {
-                            Icon(
-                                imageVector = Icons.Filled.Lock, // Or Icons.Filled.Warning
-                                contentDescription = t(R.string.attendance_mandatory), // Localized text for accessibility
-                                tint = accentColor, // Use the same accent color for consistency
-                                modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (event.isMandatory) {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = t(R.string.attendance_mandatory),
+                                    tint = accentColor,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(end = 4.dp)
+                                )
+                            }
+                            Text(
+                                text = event.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = event.title,
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = event.startTime.format(DateTimeFormatter.ofPattern("MMM dd")),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = event.startTime.format(DateTimeFormatter.ofPattern("MMM dd")),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+
+                    // "NEW" badge
+                    if (!event.isRead) {
+                        Text(
+                            text = "NEW",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 
 /**
@@ -457,6 +479,7 @@ fun EventCardCompact(
  * @param index Used for staggered animation delay.
  * @param modifier Modifier applied to the card.
  */
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AlertCardCompact(
     alert: Alert,
