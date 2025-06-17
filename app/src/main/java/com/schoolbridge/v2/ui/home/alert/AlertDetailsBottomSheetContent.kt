@@ -41,9 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.ui.home.InfoRowWithIcon
-import com.schoolbridge.v2.ui.home.SeverityChip
 import java.time.format.DateTimeFormatter
 import com.schoolbridge.v2.ui.home.common.NewBadge
+import com.schoolbridge.v2.ui.home.common.SeverityChip
 
 /* ------------ MAIN BOTTOM‑SHEET CONTENT ------------ */
 @Composable
@@ -91,7 +91,9 @@ fun AlertDetailsBottomSheetContent(
                 )
             }
 
-            SeverityChip(alert.severity)
+            SeverityChip(
+                alert.severity,
+            )
         }
 
         Spacer(Modifier.height(16.dp))
