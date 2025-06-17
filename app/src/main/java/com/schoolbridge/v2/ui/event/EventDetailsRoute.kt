@@ -352,51 +352,124 @@ fun EventDetailRow(icon: ImageVector, label: String, value: String) {
 // Dummy EventRepository for demonstration
 open class EventRepository {
     private val _events = MutableStateFlow(
-        listOf(
-            Event(
-                id = "1",
-                title = "Parent-Teacher Meeting",
-                description = "An important meeting to discuss student progress and upcoming academic plans. Your presence is crucial.",
-                startTime = LocalDateTime.of(2025, 7, 10, 9, 0), // Future date
-                endTime = LocalDateTime.of(2025, 7, 10, 12, 0),
-                location = "School Auditorium",
-                isMandatory = true,
-                requiresRSVP = true,
-                rsvpDeadline = LocalDateTime.of(2025, 7, 5, 23, 59),
-                organizer = "School Administration",
-                contactInfo = "admin@school.com",
-                targetAudience = "All Parents"
-            ),
-            Event(
-                id = "2",
-                title = "Annual Sports Day",
-                description = "Come and support our students as they compete in various sports events! A fun day for the whole family.",
-                startTime = LocalDateTime.of(2025, 8, 20, 8, 30), // Future date
-                endTime = LocalDateTime.of(2025, 8, 20, 16, 0),
-                location = "School Sports Ground",
-                isMandatory = false,
-                requiresRSVP = false,
-                rsvpDeadline = null,
-                organizer = "Sports Department",
-                contactInfo = "sports@school.com",
-                attachments = listOf("SportsDaySchedule.pdf", "ParticipationRules.docx"),
-                targetAudience = "All Students and Parents"
-            ),
-            Event(
-                id = "3",
-                title = "School Science Fair",
-                description = "Showcasing innovative science projects by our talented students. Visitors are welcome to explore and learn.",
-                startTime = LocalDateTime.of(2025, 9, 15, 10, 0), // Future date
-                endTime = LocalDateTime.of(2025, 9, 15, 15, 0),
-                location = "School Gymnasium",
-                isMandatory = false,
-                requiresRSVP = true,
-                rsvpDeadline = LocalDateTime.of(2025, 9, 10, 23, 59),
-                organizer = "Science Department",
-                contactInfo = "science@school.com",
-                targetAudience = "Students, Parents, and Public"
-            )
-        )
+                listOf(
+                    Event(
+                        id = "1",
+                        title = "Parent-Teacher Meeting",
+                        description = "An important meeting to discuss student progress and upcoming academic plans. Your presence is crucial.",
+                        startTime = LocalDateTime.of(2025, 7, 10, 9, 0), // Future date
+                        endTime = LocalDateTime.of(2025, 7, 10, 12, 0),
+                        location = "School Auditorium",
+                        isMandatory = true,
+                        requiresRSVP = true,
+                        rsvpDeadline = LocalDateTime.of(2025, 7, 5, 23, 59),
+                        organizer = "School Administration",
+                        contactInfo = "admin@school.com",
+                        targetAudience = "All Parents"
+                    ),
+                    Event(
+                        id = "2",
+                        title = "Annual Sports Day",
+                        description = "Come and support our students as they compete in various sports events! A fun day for the whole family.",
+                        startTime = LocalDateTime.of(2025, 8, 20, 8, 30), // Future date
+                        endTime = LocalDateTime.of(2025, 8, 20, 16, 0),
+                        location = "School Sports Ground",
+                        isMandatory = false,
+                        requiresRSVP = false,
+                        rsvpDeadline = null,
+                        organizer = "Sports Department",
+                        contactInfo = "sports@school.com",
+                        attachments = listOf("SportsDaySchedule.pdf", "ParticipationRules.docx"),
+                        targetAudience = "All Students and Parents"
+                    ),
+                    Event(
+                        id = "3",
+                        title = "School Science Fair",
+                        description = "Showcasing innovative science projects by our talented students. Visitors are welcome to explore and learn.",
+                        startTime = LocalDateTime.of(2025, 9, 15, 10, 0), // Future date
+                        endTime = LocalDateTime.of(2025, 9, 15, 15, 0),
+                        location = "School Gymnasium",
+                        isMandatory = false,
+                        requiresRSVP = true,
+                        rsvpDeadline = LocalDateTime.of(2025, 9, 10, 23, 59),
+                        organizer = "Science Department",
+                        contactInfo = "science@school.com",
+                        targetAudience = "Students, Parents, and Public"
+                    ),
+                    Event(
+                        id = "4",
+                        title = "Autumn Festival & Craft Market",
+                        description = "Celebrate the season with fun activities, local crafts, and delicious food. Open to the entire community!",
+                        startTime = LocalDateTime.of(2025, 10, 5, 10, 0),
+                        endTime = LocalDateTime.of(2025, 10, 5, 17, 0),
+                        location = "School Courtyard",
+                        isMandatory = false,
+                        requiresRSVP = false,
+                        rsvpDeadline = null,
+                        organizer = "Community Outreach",
+                        contactInfo = "community@school.com",
+                        attachments = listOf("VendorApplication.pdf"),
+                        targetAudience = "All Community Members"
+                    ),
+                    Event(
+                        id = "5",
+                        title = "Winter Concert Rehearsal",
+                        description = "Mandatory rehearsal for all choir and band members performing in the annual Winter Concert.",
+                        startTime = LocalDateTime.of(2025, 11, 20, 16, 0),
+                        endTime = LocalDateTime.of(2025, 11, 20, 18, 0),
+                        location = "Music Room",
+                        isMandatory = true,
+                        requiresRSVP = false,
+                        rsvpDeadline = null,
+                        organizer = "Music Department",
+                        contactInfo = "music@school.com",
+                        targetAudience = "Choir and Band Members"
+                    ),
+                    Event(
+                        id = "6",
+                        title = "Career Day Expo",
+                        description = "Explore various career paths and meet professionals from diverse industries. A great opportunity for high school students.",
+                        startTime = LocalDateTime.of(2025, 12, 1, 9, 0),
+                        endTime = LocalDateTime.of(2025, 12, 1, 14, 0),
+                        location = "School Gymnasium",
+                        isMandatory = true,
+                        requiresRSVP = true,
+                        rsvpDeadline = LocalDateTime.of(2025, 11, 25, 23, 59),
+                        organizer = "Guidance Counselor's Office",
+                        contactInfo = "guidance@school.com",
+                        attachments = listOf("ParticipatingCompanies.pdf"),
+                        targetAudience = "High School Students"
+                    ),
+                    Event(
+                        id = "7",
+                        title = "Alumni Homecoming Gala",
+                        description = "An evening to reconnect with old friends, faculty, and celebrate the school's legacy. Dinner and awards ceremony.",
+                        startTime = LocalDateTime.of(2026, 1, 15, 18, 0),
+                        endTime = LocalDateTime.of(2026, 1, 15, 22, 0),
+                        location = "Grand Ballroom, City Hotel",
+                        isMandatory = false,
+                        requiresRSVP = true,
+                        rsvpDeadline = LocalDateTime.of(2025, 12, 31, 23, 59),
+                        organizer = "Alumni Association",
+                        contactInfo = "alumni@school.com",
+                        attachments = listOf("GalaMenu.pdf", "DressCode.txt"),
+                        targetAudience = "Alumni, Former Faculty"
+                    ),
+                    Event(
+                        id = "8",
+                        title = "First Aid Training Workshop",
+                        description = "Learn essential first aid skills. Certification provided upon completion. Limited spots available.",
+                        startTime = LocalDateTime.of(2026, 2, 10, 13, 0),
+                        endTime = LocalDateTime.of(2026, 2, 10, 17, 0),
+                        location = "School Nurse's Office",
+                        isMandatory = false,
+                        requiresRSVP = true,
+                        rsvpDeadline = LocalDateTime.of(2026, 2, 5, 23, 59),
+                        organizer = "Health and Safety Committee",
+                        contactInfo = "nurse@school.com",
+                        targetAudience = "Staff, Senior Students"
+                    )
+                )
     )
 
     private val _userEventStatuses = MutableStateFlow(
