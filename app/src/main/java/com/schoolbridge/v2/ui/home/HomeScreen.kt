@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.home // Adjust package as needed
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
@@ -33,19 +34,18 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.messaging.Alert
+import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.Alert.AlertRepository
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.common.components.SpacerS
 import com.schoolbridge.v2.ui.event.Event
 import com.schoolbridge.v2.ui.event.EventRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import java.time.LocalDateTime // Import LocalDateTime
 import java.time.format.DateTimeFormatter // Import DateTimeFormatter
 
 // --- Dummy Data Classes and Helper Functions (as provided in previous responses) ---
@@ -62,13 +62,15 @@ data class UserEventStatus(
  * @param modifier Modifier applied to the section.
  */
 @Composable
-private fun AlertsSection(
-    alertRepository: AlertRepository = remember { AlertRepository() }, // inject or pass your repository if needed
+fun AlertsSection(
+    viewModel: AlertsViewModel = viewModel(), // ViewModel holds state from AlertRepository
     onViewAllAlertsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val maxInitialAlerts = 3 // Number of alerts to show initially
+    val maxInitialAlerts = 3
+
+    val alerts by viewModel.alerts.collectAsState()
 
     val rotationState by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -76,7 +78,7 @@ private fun AlertsSection(
         label = "rotationAnimation"
     )
 
-    val alerts = remember { alertRepository.getAlerts() }
+    val alertsToShow = if (expanded) alerts else alerts.take(maxInitialAlerts)
 
     Column(
         modifier = modifier
@@ -96,14 +98,14 @@ private fun AlertsSection(
 
         SpacerS()
 
-        val alertsToShow = if (expanded) alerts else alerts.take(maxInitialAlerts)
-
         alertsToShow.forEachIndexed { index, alert ->
             AlertCardCompact(
-                message = alert.message,
-                index = index
+                alert = alert,
+                index = index,
+                onClick = {viewModel.markAsRead(alert.id)},
             )
         }
+
 
         if (alerts.size > maxInitialAlerts) {
             Row(
@@ -130,6 +132,7 @@ private fun AlertsSection(
         }
     }
 }
+
 
 
 
@@ -454,14 +457,26 @@ fun EventCardCompact(
  * @param index Used for staggered animation delay.
  * @param modifier Modifier applied to the card.
  */
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun AlertCardCompact(message: String, index: Int, modifier: Modifier = Modifier) {
+fun AlertCardCompact(
+    alert: Alert,
+    index: Int,
+    onClick: (Alert) -> Unit, // <--- callback
+    modifier: Modifier = Modifier
+) {
     var visible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        visible = true
-    }
+    LaunchedEffect(Unit) { visible = true }
+
+    val accentColor = if (alert.isRead)
+        MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
+    else
+        MaterialTheme.colorScheme.secondary
+
+    val textColor = if (alert.isRead)
+        MaterialTheme.colorScheme.onSurfaceVariant
+    else
+        MaterialTheme.colorScheme.onSecondaryContainer
 
     AnimatedVisibility(
         visible = visible,
@@ -474,48 +489,61 @@ fun AlertCardCompact(message: String, index: Int, modifier: Modifier = Modifier)
             modifier = modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .padding(vertical = 4.dp),
+                .padding(vertical = 4.dp)
+                .clickable { onClick(alert) }, // 🔄 Use the callback
             shape = RoundedCornerShape(12.dp),
-            // Use the secondary color container for the alert card background
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically // Vertically align contents
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Vertical accent bar - uses the secondary color for alerts
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
-                            MaterialTheme.colorScheme.secondary, // Strong secondary color for accent
+                            accentColor,
                             RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
 
                 Row(
                     modifier = Modifier
-                        .weight(1f) // Let the content row take up remaining space
-                        .padding(12.dp), // Padding for the content inside the card
+                        .weight(1f)
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // ICON: Provide clear visual cue for an alert
                     Icon(
-                        imageVector = Icons.Filled.Info, // Or WarningAmber, NotificationImportant
-                        contentDescription = "Alert", // Localize this for accessibility
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer, // Tint icon to match text for consistency
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Alert",
+                        tint = textColor,
                         modifier = Modifier
-                            .size(20.dp) // Maintain consistent icon size with mandatory events
+                            .size(20.dp)
                             .padding(end = 8.dp)
                     )
 
-                    // TEXT: The alert message
                     Text(
-                        text = message,
+                        text = alert.message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer // Text color contrasting with secondary container
+                        color = textColor,
+                        modifier = Modifier.weight(1f)
                     )
+
+                    if (!alert.isRead) {
+                        Text(
+                            text = "NEW",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
         }
