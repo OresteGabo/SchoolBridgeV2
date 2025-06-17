@@ -211,6 +211,16 @@ class AlertRepository {
         Log.d(TAG, "Marked alert $id as read")
     }
 
+    /** Mark a single alert (by id) as read. */
+    fun markAsUnread(id: String) {
+        _alerts.update { list ->
+            list.map { alert ->
+                if (alert.id == id) alert.copy(isRead = false) else alert
+            }
+        }
+        Log.d(TAG, "Marked alert $id as unread")
+    }
+
     companion object {
         private const val TAG = "AlertRepository"
     }
