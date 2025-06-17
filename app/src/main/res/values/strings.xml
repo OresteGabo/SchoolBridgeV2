@@ -179,7 +179,7 @@
     <string name="attendance_mandatory">Attendance is Mandatory</string>
     <string name="optional_event">Optional Event</string>
     <string name="absence_sanctioned">Unexcused absence may lead to sanctions.</string>
-    <string name="rsvp_by">RSVP by:</string>
+    <string name="rsvp_by">Respond by:</string>
     <string name="event_details">Event Details</string>
     <string name="date_time">Date &amp; Time</string>
     <string name="location">Location</string>
