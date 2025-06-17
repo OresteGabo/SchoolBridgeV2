@@ -37,6 +37,7 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.Alert.AlertRepository
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.common.components.SpacerS
@@ -62,16 +63,20 @@ data class UserEventStatus(
  */
 @Composable
 private fun AlertsSection(
+    alertRepository: AlertRepository = remember { AlertRepository() }, // inject or pass your repository if needed
     onViewAllAlertsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val maxInitialAlerts = 3 // Define how many alerts to show initially
+    val maxInitialAlerts = 3 // Number of alerts to show initially
 
     val rotationState by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 300), label = "rotationAnimation"
+        animationSpec = tween(durationMillis = 300),
+        label = "rotationAnimation"
     )
+
+    val alerts = remember { alertRepository.getAlerts() }
 
     Column(
         modifier = modifier
@@ -83,61 +88,24 @@ private fun AlertsSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AppSubHeader("💬 " + t( R.string.recent_alerts))
+            AppSubHeader("💬 " + t(R.string.recent_alerts))
             TextButton(onClick = onViewAllAlertsClick) {
-                Text(text = t( R.string.view_all), style = MaterialTheme.typography.labelLarge)
+                Text(text = t(R.string.view_all), style = MaterialTheme.typography.labelLarge)
             }
         }
 
         SpacerS()
 
-        // List of all alert resource IDs
-        val alertIds = remember {
-            listOf(
-                R.string.alert_midterm_exams,
-                R.string.alert_uniform_inspection,
-                R.string.alert_fee_deadline,
-                R.string.alert_health_check,
-                R.string.alert_visitor_day,
-                R.string.alert_sanitation_day,
-                R.string.alert_lost_item,
-                R.string.alert_results_released,
-                R.string.alert_meal_schedule_update,
-                R.string.alert_power_cut,
-                R.string.alert_student_award,
-                R.string.alert_holiday_transport,
-                R.string.alert_missing_assignments,
-                R.string.alert_emergency_drill,
-                R.string.alert_library_books_due,
-                R.string.alert_homework_reminder,
-                R.string.alert_sports_tournament,
-                R.string.alert_health_precautions,
-                R.string.alert_weather_warning,
-                R.string.alert_room_change,
-                R.string.alert_disciplinary_meeting,
-                R.string.alert_id_card_collection,
-                R.string.alert_special_meal_day,
-                R.string.alert_community_service,
-                R.string.alert_club_signup
-            )
-        }
+        val alertsToShow = if (expanded) alerts else alerts.take(maxInitialAlerts)
 
-        // Determine which alerts to show based on the expanded state
-        val alertsToShow = if (expanded) {
-            alertIds
-        } else {
-            alertIds.take(maxInitialAlerts)
-        }
-
-        alertsToShow.forEachIndexed { index, id ->
+        alertsToShow.forEachIndexed { index, alert ->
             AlertCardCompact(
-                message = t( id),
+                message = alert.message,
                 index = index
             )
         }
 
-        // Show "Show More" button only if there are more alerts to display
-        if (alertIds.size > maxInitialAlerts) {
+        if (alerts.size > maxInitialAlerts) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -162,6 +130,7 @@ private fun AlertsSection(
         }
     }
 }
+
 
 
 /**
