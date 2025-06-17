@@ -13,12 +13,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FolderOff
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +61,8 @@ data class Event(
     val organizer: String,
     val contactInfo: String,
     val attachments: List<String> = emptyList(),
-    val targetAudience: String
+    val targetAudience: String,
+    var isRead: Boolean = false
 
 )
 
@@ -123,203 +131,200 @@ fun EventDetailsUI(
     onDeclinePresence: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Surface(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.Start
+            .fillMaxSize()
+            .padding(12.dp),
+        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface
     ) {
-        // Event Title
-        Text(
-            text = event.title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth()
-        )
-        SpacerM()
-
-        // Obligation Status
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (event.isMandatory) {
+            // 🎯 Title
+            Text(
+                text = event.title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // ❗️Mandatory / Optional Indicator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Mandatory Event",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(24.dp)
+                    imageVector = if (event.isMandatory) Icons.Default.Warning else Icons.Default.Info,
+                    contentDescription = null,
+                    tint = if (event.isMandatory) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
-                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = t(R.string.attendance_mandatory),
+                    text = if (event.isMandatory) t(R.string.attendance_mandatory) else t(R.string.optional_event),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Optional Event",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = t(R.string.optional_event),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (event.isMandatory) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
             }
-        }
-        if (event.isMandatory && !event.attachments.contains("sanction_policy.pdf")) { // Example for sanction info
-            Text(
-                text = t(R.string.absence_sanctioned),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 32.dp, top = 4.dp)
+
+            HorizontalDivider()
+
+            // 🗓 Date & Time
+            EventDetailRow(
+                icon = Icons.Default.CalendarToday,
+                label = t(R.string.date_time),
+                value = "${event.startTime.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))} - ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}"
             )
-        }
-        SpacerM()
 
-        // Date & Time
-        EventDetailRow(
-            icon = Icons.Default.CalendarToday,
-            label = t(R.string.date_time),
-            value = "${event.startTime.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))} - ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-        )
-        SpacerS()
+            // 📍 Location
+            EventDetailRow(
+                icon = Icons.Default.LocationOn,
+                label = t(R.string.location),
+                value = event.location
+            )
 
-        // Location
-        EventDetailRow(
-            icon = Icons.Default.LocationOn,
-            label = t(R.string.location),
-            value = event.location
-        )
-        SpacerS()
+            // 👤 Organizer & Contact
+            EventDetailRow(Icons.Default.Person, t(R.string.organizer), event.organizer)
+            EventDetailRow(Icons.Default.Email, t(R.string.contact), event.contactInfo)
 
-        // Organizer and Contact
-        EventDetailRow(
-            icon = Icons.Default.Person,
-            label = t(R.string.organizer),
-            value = event.organizer
-        )
-        SpacerS()
-        EventDetailRow(
-            icon = Icons.Default.Person, // Reusing icon for simplicity
-            label = t(R.string.contact),
-            value = event.contactInfo
-        )
-        SpacerS()
+            // 🎯 Audience
+            EventDetailRow(Icons.Default.Group, t(R.string.target_audience), event.targetAudience)
 
-        // Target Audience
-        EventDetailRow(
-            icon = Icons.Default.Person, // Reusing icon
-            label = t(R.string.target_audience),
-            value = event.targetAudience
-        )
-        SpacerM()
+            HorizontalDivider()
 
-        // Description
-        AppSubHeader("Description")
-        SpacerS()
-        Text(
-            text = event.description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        SpacerM()
+            // 📝 Description
+            AppSubHeader("description")
+            Text(
+                text = event.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        // RSVP Section
-        if (event.requiresRSVP) {
-            AppSubHeader("Your Attendance")
-            SpacerS()
+            // 📢 RSVP
+            if (event.requiresRSVP) {
+                HorizontalDivider()
+                AppSubHeader("Your attendence")
 
-            when (userEventStatus?.isConfirmed) {
-                true -> {
-                    // Confirmed label
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                    ) {
+                when (userEventStatus?.isConfirmed) {
+                    true -> StatusCard(
+                        icon = Icons.Default.CheckCircle,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        text = t(R.string.your_presence_confirmed)
+                    )
+
+                    false -> StatusCard(
+                        icon = Icons.Default.Cancel,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        text = "Decline presence"
+                    )
+
+                    null -> {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Button(
+                                onClick = { onConfirmPresence(event.id) },
+                                modifier = Modifier.weight(1f),
+                                enabled = event.rsvpDeadline == null || LocalDateTime.now().isBefore(event.rsvpDeadline)
+                            ) {
+                                Text(t(R.string.confirm_presence))
+                            }
+                            OutlinedButton(
+                                onClick = { onDeclinePresence(event.id) },
+                                modifier = Modifier.weight(1f),
+                                enabled = event.rsvpDeadline == null || LocalDateTime.now().isBefore(event.rsvpDeadline)
+                            ) {
+                                Text(t(R.string.decline_presence))
+                            }
+                        }
+
+                        event.rsvpDeadline?.let {
+                            Text(
+                                text = "${t(R.string.rsvp_by)} ${it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 📎 Attachments
+            if (event.attachments.isNotEmpty()) {
+                HorizontalDivider()
+                AppSubHeader("attachments")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    event.attachments.forEach { file ->
+                        OutlinedButton(
+                            onClick = { /* TODO: Handle file */ },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Confirmed",
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                imageVector = Icons.Default.AttachFile,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = t(R.string.your_presence_confirmed),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
+                            Text(text = file)
                         }
                     }
                 }
-                false -> {
-                    // Declined state (optional to show, or just allow to re-confirm)
-                    Text(
-                        text = "You have declined presence.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    SpacerS()
-                    Button(onClick = { onConfirmPresence(event.id) }) {
-                        Text(t(R.string.confirm_presence))
-                    }
-                }
-                null -> {
-                    // Not yet responded
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
+            }else {
+                HorizontalDivider()
+                AppSubHeader("attachments")
+                Spacer(Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Button(
-                            onClick = { onConfirmPresence(event.id) },
-                            enabled = event.rsvpDeadline == null || LocalDateTime.now().isBefore(event.rsvpDeadline)
-                        ) {
-                            Text(t(R.string.confirm_presence))
-                        }
-                        OutlinedButton(
-                            onClick = { onDeclinePresence(event.id) },
-                            enabled = event.rsvpDeadline == null || LocalDateTime.now().isBefore(event.rsvpDeadline)
-                        ) {
-                            Text(t(R.string.decline_presence))
-                        }
-                    }
-                    event.rsvpDeadline?.let {
-                        SpacerS()
+                        Icon(
+                            imageVector = Icons.Default.FolderOff,
+                            contentDescription = "No attachments",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "${t(R.string.rsvp_by)} ${it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.CenterHorizontally),
-                            //textAlign = Alignment.CenterHorizontally
+                            text = "No attachments available",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
                 }
             }
+
         }
-
-        // Attachments (if any)
-        if (event.attachments.isNotEmpty()) {
-            SpacerM()
-            AppSubHeader("Attachments")
-            SpacerS()
-            event.attachments.forEach { attachment ->
-                TextButton(onClick = { /* TODO: Handle attachment download/view */ }) {
-                    Text(text = attachment)
-                }
-            }
+    }
+}
+@Composable
+fun StatusCard(icon: ImageVector, color: Color, text: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = color)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Icon(icon, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(text = text, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
