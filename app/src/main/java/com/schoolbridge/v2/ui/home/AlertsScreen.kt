@@ -19,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.schoolbridge.v2.ui.Alert.AlertRepository
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,22 +30,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
+import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import java.time.format.DateTimeFormatter
-import androidx.compose.material3.OutlinedTextFieldDefaults
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertsScreen(
-    alertRepository: AlertRepository = remember { AlertRepository() },
+    viewModel: AlertsViewModel = viewModel(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val alerts = remember { alertRepository.getAlerts() }
+    val alerts by viewModel.alerts.collectAsState()
+
     var searchQuery by remember { mutableStateOf("") }
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -55,6 +55,11 @@ fun AlertsScreen(
         if (searchQuery.isBlank()) alerts
         else alerts.filter { it.message.contains(searchQuery, ignoreCase = true) }
     }
+    LaunchedEffect(Unit) {
+        viewModel.markAllAsRead()
+    }
+
+
 
     // Trigger refresh effect when isRefreshing becomes true
     LaunchedEffect(isRefreshing) {
@@ -128,6 +133,7 @@ fun AlertsScreen(
         }
     }
 }
+
 
 
 /**
