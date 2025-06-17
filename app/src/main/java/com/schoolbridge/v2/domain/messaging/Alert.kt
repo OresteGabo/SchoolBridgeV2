@@ -10,7 +10,7 @@ data class Alert(
     val message: String,
     val timestamp: LocalDateTime,
     val isRead: Boolean = false,
-    val type: AlertType = AlertType.INFO,
+    val type: AlertType = getRandomAlertType(),
     val severity: AlertSeverity = getRandomAlertSeverity()
 )
 
@@ -38,5 +38,10 @@ class AlertsViewModel(
     fun markAllAsRead()      = repository.markAllAsRead()
 }
 
+fun getRandomAlertType(): AlertType {
+    val values = AlertType.entries.toTypedArray()
+    return values.random()
+
+}
 
 
