@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.R
@@ -84,9 +83,9 @@ private fun AlertsSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AppSubHeader("💬 " + stringResource(id = R.string.recent_alerts))
+            AppSubHeader("💬 " + t( R.string.recent_alerts))
             TextButton(onClick = onViewAllAlertsClick) {
-                Text(text = stringResource(id = R.string.view_all), style = MaterialTheme.typography.labelLarge)
+                Text(text = t( R.string.view_all), style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -132,7 +131,7 @@ private fun AlertsSection(
 
         alertsToShow.forEachIndexed { index, id ->
             AlertCardCompact(
-                message = stringResource(id = id),
+                message = t( id),
                 index = index
             )
         }
@@ -148,7 +147,7 @@ private fun AlertsSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                    text = if (expanded) t(R.string.show_less) else t(R.string.show_more),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -322,9 +321,9 @@ private fun EventsSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AppSubHeader("📅 " + stringResource(id = R.string.upcoming_events))
+            AppSubHeader("📅 " + t( R.string.upcoming_events))
             TextButton(onClick = onViewAllEventsClick) {
-                Text(text = stringResource(id = R.string.view_all), style = MaterialTheme.typography.labelLarge)
+                Text(text = t(R.string.view_all), style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -363,13 +362,13 @@ private fun EventsSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                        text = if (expanded) t(R.string.show_less) else t(R.string.show_more),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Icon(
                         imageVector = Icons.Filled.ExpandMore,
-                        contentDescription = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                        contentDescription = if (expanded) t(R.string.show_less) else t(R.string.show_more),
                         modifier = Modifier
                             .padding(start = 4.dp)
                             .rotate(rotationState)
