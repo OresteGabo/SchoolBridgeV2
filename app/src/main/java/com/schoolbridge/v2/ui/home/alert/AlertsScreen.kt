@@ -40,6 +40,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
+import com.schoolbridge.v2.ui.home.common.SeverityChip
 import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 
@@ -256,7 +257,7 @@ fun AlertCardDetailed(alert: Alert,
                     Spacer(Modifier.height(6.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        SeverityChip(severity = alert.severity, color = severityColor)
+                        SeverityChip(severity = alert.severity)
 
                         if (!alert.isRead) {
                             Spacer(Modifier.width(6.dp))
@@ -283,7 +284,7 @@ fun AlertCardDetailed(alert: Alert,
 
 
 
-
+/*
 @Composable
 fun SeverityChip(severity: AlertSeverity, color: Color) {
     val label = when (severity) {
@@ -301,3 +302,4 @@ fun SeverityChip(severity: AlertSeverity, color: Color) {
             .padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }
+*/
