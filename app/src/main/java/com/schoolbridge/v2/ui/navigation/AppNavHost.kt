@@ -45,6 +45,8 @@ import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue        // for 'by' delegate on State
 import androidx.compose.runtime.collectAsState  // to convert StateFlow to Compose State
+import com.schoolbridge.v2.ui.home.AlertsScreen
+import com.schoolbridge.v2.ui.home.EventsScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -141,7 +143,23 @@ fun AppNavHost(
                     // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
                 },
-                modifier = modifier
+                modifier = modifier,
+                onViewAllAlertsClick = {navController.navigate(MainAppScreen.Alerts.route)},
+                onViewAllEventsClick = {navController.navigate(MainAppScreen.Events.route)}
+            )
+        }
+
+        composable(MainAppScreen.Alerts.route){
+            AlertsScreen(onBack = { navController.navigateUp() })
+        }
+        composable(MainAppScreen.Events.route){
+            EventsScreen(
+                onBack = { navController.navigateUp() },
+                onEventClick = { eventId ->
+                    // Use the createRoute function for type-safe navigation
+                    navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
+                },
+
             )
         }
 
