@@ -108,7 +108,33 @@
     <string name="recent_alerts">Alertes récentes</string>
     <string name="alert_midterm_exams">Les examens de mi-parcours commencent lundi prochain.</string>
     <string name="alert_uniform_inspection">Inspection de l’uniforme vendredi.</string>
-    <string name="upcoming_events">Événements à venir</string>
+
+    <string name="alert_fee_deadline">La date limite de paiement des frais est ce vendredi.</string>
+    <string name="alert_health_check">Contrôle médical prévu pour tous les élèves la semaine prochaine.</string>
+    <string name="alert_visitor_day">Journée des visites parentales ce dimanche de 9h à 16h.</string>
+    <string name="alert_sanitation_day">Journée de propreté ce samedi. Apporter du matériel de nettoyage.</string>
+    <string name="alert_lost_item">Objet perdu : merci de vérifier auprès du bureau administratif.</string>
+    <string name="alert_results_released">Les résultats du trimestre sont disponibles sur le portail.</string>
+    <string name="alert_meal_schedule_update">Nouvel horaire des repas à partir de la semaine prochaine.</string>
+    <string name="alert_power_cut">Coupure d\'électricité prévue demain après-midi.</string>
+    <string name="alert_student_award">Félicitations aux meilleurs élèves de ce trimestre !</string>
+    <string name="alert_holiday_transport">Organisation du transport pour les vacances annoncée. Vérifiez auprès de l\'administration.</string>
+    <string name="alert_missing_assignments">Certains élèves ont des devoirs en retard. Vérifiez les relevés académiques.</string>
+    <string name="alert_emergency_drill">Exercice d\'évacuation prévu demain matin. Aucune panique nécessaire.</string>
+    <string name="alert_library_books_due">Retour des livres de bibliothèque prévu pour ce vendredi.</string>
+    <string name="alert_homework_reminder">Rappel : les devoirs doivent être remis lundi matin.</string>
+    <string name="alert_sports_tournament">Tournoi sportif inter-écoles ce samedi. Places limitées.</string>
+    <string name="alert_health_precautions">Port du masque conseillé en raison de cas récents de grippe.</string>
+    <string name="alert_weather_warning">Fortes pluies prévues cette semaine. Apporter des vêtements chauds.</string>
+    <string name="alert_room_change">Nouveaux affectations de dortoirs affichées sur le tableau d’affichage.</string>
+    <string name="alert_disciplinary_meeting">Réunion disciplinaire prévue. Les parents concernés ont été contactés.</string>
+    <string name="alert_id_card_collection">Les nouvelles cartes d\'identité sont disponibles à la réception.</string>
+    <string name="alert_special_meal_day">Journée repas spécial ce week-end : journée culinaire culturelle !</string>
+    <string name="alert_community_service">Projet de service communautaire ce dimanche. Participation obligatoire.</string>
+    <string name="alert_club_signup">Semaine d’inscription aux clubs ouverte. Encouragez votre enfant à participer.</string>
+
+
+
     <string name="event_meeting">Réunion parents-professeurs</string>
     <string name="event_sports_day">Journée sportive</string>
 
@@ -161,4 +187,12 @@
     <string name="common_questions">Questions fréquentes</string>
     <string name="search_results_for">Résultats de recherche pour "%1$s"</string>
     <string name="from_online">Résultats depuis internet</string>
+
+    <string name="view_all">Voir tout</string>
+    <string name="show_less">Afficher Moins</string>
+    <string name="show_more">Afficher Plus</string>
+
+    <string name="upcoming_events">Événements à Venir</string>
+    <string name="no_upcoming_events">Aucun événement à venir.</string>
+
 </resources>

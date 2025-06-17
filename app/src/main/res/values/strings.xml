@@ -106,6 +106,32 @@
     <string name="recent_alerts">Recent Alerts</string>
     <string name="alert_midterm_exams">Mid-term exams start next Monday.</string>
     <string name="alert_uniform_inspection">Uniform inspection on Friday.</string>
+
+    <string name="alert_fee_deadline">Tuition fee deadline is this Friday.</string>
+    <string name="alert_health_check">Medical check-up scheduled for all students next week.</string>
+    <string name="alert_visitor_day">Parent visiting day is this Sunday from 9AM to 4PM.</string>
+    <string name="alert_sanitation_day">School sanitation day is this Saturday. Bring cleaning materials.</string>
+    <string name="alert_lost_item">Student lost item alert: check admin office if found.</string>
+    <string name="alert_results_released">Term results have been released on the portal.</string>
+    <string name="alert_meal_schedule_update">New meal schedule effective from next week.</string>
+    <string name="alert_power_cut">Planned electricity cut on campus tomorrow afternoon.</string>
+    <string name="alert_student_award">Congratulations to our top-performing students this term!</string>
+    <string name="alert_holiday_transport">Holiday transport arrangements announced. Check details with the admin.</string>
+    <string name="alert_missing_assignments">Some students have pending assignments. Check academic records.</string>
+    <string name="alert_emergency_drill">Emergency fire drill tomorrow morning. No panic needed.</string>
+    <string name="alert_library_books_due">Library books due for return this Friday.</string>
+    <string name="alert_homework_reminder">Reminder: Weekly homework must be submitted by Monday morning.</string>
+    <string name="alert_sports_tournament">Inter-school sports tournament this Saturday. Limited slots available.</string>
+    <string name="alert_health_precautions">Students are advised to wear masks due to recent flu cases.</string>
+    <string name="alert_weather_warning">Heavy rain expected this week. Pack warm clothing.</string>
+    <string name="alert_room_change">Dormitory room reassignments posted on the notice board.</string>
+    <string name="alert_disciplinary_meeting">Disciplinary hearing scheduled. Parents of involved students contacted.</string>
+    <string name="alert_id_card_collection">New student ID cards available for pickup at reception.</string>
+    <string name="alert_special_meal_day">Special meal day this weekend: cultural food day!</string>
+    <string name="alert_community_service">Community service project this Sunday. Participation required.</string>
+    <string name="alert_club_signup">Club sign-up week is open. Encourage your child to join.</string>
+
+
     <string name="upcoming_events">Upcoming Events</string>
     <string name="event_meeting">Parent-Teacher Meeting</string>
     <string name="event_sports_day">Sports Day</string>
@@ -161,5 +187,12 @@
     <string name="contact">Contact</string>
     <string name="target_audience">Target Audience</string>
     <string name="localized_string">Localized String</string>
+
+    <string name="view_all">View All</string>
+    <string name="show_less">Show Less</string>
+    <string name="show_more">Show More</string>
+
+    <string name="no_upcoming_events">No upcoming events.</string>
+
 </resources>
 

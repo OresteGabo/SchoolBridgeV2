@@ -108,6 +108,32 @@
     <string name="recent_alerts">Amatangazo mashya</string>
     <string name="alert_midterm_exams">Ibizamini byo hagati mu gihembwe bitangira ku wa mbere utaha.</string>
     <string name="alert_uniform_inspection">Isuzuma ry\'imyambaro ku wa gatanu.</string>
+
+    <string name="alert_fee_deadline">Igihe ntarengwa cyo kwishyura amafaranga y’ishuri ni ku wa Gatanu.</string>
+    <string name="alert_health_check">Isuzuma ry’ubuzima riteganyijwe ku banyeshuri bose mu cyumweru gitaha.</string>
+    <string name="alert_visitor_day">Umunsi wo gusura abanyeshuri ni ku Cyumweru kuva saa tatu kugera saa kumi.</string>
+    <string name="alert_sanitation_day">Umunsi wo gukora isuku y’ishuri ni ku wa Gatandatu. Bajyana ibikoresho by’isuku.</string>
+    <string name="alert_lost_item">Habuze igikoresho cy’umunyeshuri: mujye kubaza ku biro by’ubuyobozi.</string>
+    <string name="alert_results_released">Ibyavuye mu bizamini byashyizwe ku rubuga rwa interineti.</string>
+    <string name="alert_meal_schedule_update">Gahunda nshya y’amafunguro izatangira icyumweru gitaha.</string>
+    <string name="alert_power_cut">Hazabaho kubura amashanyarazi ku ishuri ejo ku manywa.</string>
+    <string name="alert_student_award">Turashimira abanyeshuri bitwaye neza cyane muri iki gihembwe!</string>
+    <string name="alert_holiday_transport">Gutegura ingendo z’ikiruhuko byamaze gutangazwa. Mujye kubaza ubuyobozi.</string>
+    <string name="alert_missing_assignments">Hari abanyeshuri batatanze imikoro. Mujye kureba aho bigeze mu myigire yabo.</string>
+    <string name="alert_emergency_drill">Hazaba imyitozo yo guhunga umuriro ejo mu gitondo. Ntihakenewe ubwoba.</string>
+    <string name="alert_library_books_due">Ibitabo bya bibliotheque bigomba kugarurwa ku wa Gatanu.</string>
+    <string name="alert_homework_reminder">Icyibutsa: imikoro ya buri cyumweru igomba gutangwa ku wa Mbere mu gitondo.</string>
+    <string name="alert_sports_tournament">Irushanwa ry’imikino rizaba ku wa Gatandatu. Hari imyanya mike isigaye.</string>
+    <string name="alert_health_precautions">Abanyeshuri barasabwa kwambara agapfukamunwa kubera ibicurane.</string>
+    <string name="alert_weather_warning">Imvura nyinshi irateganyijwe. Bajyana imyenda ibafasha kwirinda imvura.</string>
+    <string name="alert_room_change">Ibyumba by’amacumbi byahinduwe. Reba ku itangazo ryabishyizweho.</string>
+    <string name="alert_disciplinary_meeting">Inama y’imyitwarire irateganyijwe. Ababyeyi babimenyeshejwe.</string>
+    <string name="alert_id_card_collection">Indangamuntu nshya z’abanyeshuri ziraboneka ku biro byakira.</string>
+    <string name="alert_special_meal_day">Hazaba ifunguro ridasanzwe ku mpera z’icyumweru: umunsi w’indyo gakondo!</string>
+    <string name="alert_community_service">Igikorwa cyo gufasha umuryango ni ku Cyumweru. Kugiramo uruhare ni ngombwa.</string>
+    <string name="alert_club_signup">Icyumweru cyo kwiyandikisha mu mashyirahamwe cyatangiye. Shishikariza umwana wawe kwifatanya.</string>
+
+
     <string name="upcoming_events">Ibizaba vuba</string>
     <string name="event_meeting">Inama y\'ababyeyi n\'abarezi</string>
     <string name="event_sports_day">Umunsi w\'imikino</string>
@@ -161,4 +187,10 @@
     <string name="common_questions">Ibibazo bikunze kubazwa</string>
     <string name="search_results_for">Ibisubizo by’ubushakashatsi kuri "%1$s"</string>
     <string name="from_online">Ibisubizo byavuye kuri internet</string>
+
+    <string name="view_all">Reba byose</string>
+    <string name="show_less">Ntukomeze</string>
+    <string name="show_more">Komeza</string>
+    <string name="no_upcoming_events">Nta gahunda zisigaye.</string>
+
 </resources>
