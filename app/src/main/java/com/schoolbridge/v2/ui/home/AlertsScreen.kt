@@ -1,5 +1,11 @@
 package com.schoolbridge.v2.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,13 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -36,6 +46,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
+import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +75,7 @@ fun AlertsScreen(
     // Trigger refresh effect when isRefreshing becomes true
     LaunchedEffect(isRefreshing) {
         if (isRefreshing) {
-            kotlinx.coroutines.delay(1000)  // Simulate refresh delay
+            delay(1000)  // Simulate refresh delay
             isRefreshing = false
         }
     }
@@ -124,8 +135,13 @@ fun AlertsScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredAlerts) { alert ->
-                            AlertCardDetailed(alert = alert)
+                        items(filteredAlerts.size) { alertIndex ->
+                            AlertCardDetailed(
+                                alert = filteredAlerts[alertIndex],
+                                index = alertIndex,
+                                onClick = {},
+                                modifier = Modifier
+                            )
                         }
                     }
                 }
@@ -140,43 +156,154 @@ fun AlertsScreen(
  * A more detailed alert card that shows title, message, timestamp, severity, etc.
  */
 @Composable
-fun AlertCardDetailed(alert: Alert) {
-    val formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+fun AlertCardDetailed(alert: Alert,
+                      index: Int,
+                      onClick: (Alert) -> Unit,
+                      modifier: Modifier = Modifier) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { visible = true }
+
+    val accentColor = when (alert.severity) {
+        AlertSeverity.HIGH -> MaterialTheme.colorScheme.error
+        AlertSeverity.MEDIUM -> MaterialTheme.colorScheme.tertiary
+        AlertSeverity.LOW -> MaterialTheme.colorScheme.secondary
+    }.copy(alpha = if (alert.isRead) 0.4f else 1f)
+
+    val textColor = if (alert.isRead)
+        MaterialTheme.colorScheme.onSurfaceVariant
+    else
+        MaterialTheme.colorScheme.onSecondaryContainer
+
+    val timestamp = remember(alert.timestamp) {
+        DateTimeFormatter.ofPattern("MMM d, h:mm a").format(alert.timestamp)
+    }
+
+    val severityColor = when (alert.severity) {
+        AlertSeverity.HIGH -> MaterialTheme.colorScheme.error
+        AlertSeverity.MEDIUM -> MaterialTheme.colorScheme.tertiary
+        AlertSeverity.LOW -> MaterialTheme.colorScheme.secondary
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(1000)) + slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(1000, delayMillis = index * 100)
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = alert.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = alert.message,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(8.dp))
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(vertical = 4.dp)
+                .clickable { onClick(alert) },
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
             Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Severity: ${alert.severity.name}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (alert.severity) {
-                        AlertSeverity.HIGH -> MaterialTheme.colorScheme.error
-                        AlertSeverity.MEDIUM -> MaterialTheme.colorScheme.secondary
-                        AlertSeverity.LOW -> MaterialTheme.colorScheme.tertiary
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .fillMaxHeight()
+                        .background(
+                            accentColor,
+                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                        )
+                )
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "Alert",
+                            tint = textColor,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(end = 6.dp)
+                        )
+
+                        Text(
+                            text = alert.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Spacer(Modifier.width(4.dp))
+
+                        Text(
+                            text = timestamp,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
                     }
-                )
-                Text(
-                    text = alert.timestamp.format(formatter),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        text = alert.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textColor,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SeverityChip(severity = alert.severity, color = severityColor)
+
+                        if (!alert.isRead) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "NEW",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+
+
+
+
+
+@Composable
+fun SeverityChip(severity: AlertSeverity, color: Color) {
+    val label = when (severity) {
+        AlertSeverity.LOW -> "Low"
+        AlertSeverity.MEDIUM -> "Medium"
+        AlertSeverity.HIGH -> "High"
+    }
+
+    Text(
+        text = label,
+        color = color,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier
+            .background(color.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    )
 }
