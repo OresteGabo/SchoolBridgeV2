@@ -230,6 +230,8 @@ private fun HomeTopBar(
 fun HomeRoute(
     userSessionManager: UserSessionManager,
     onSettingsClick: () -> Unit,
+    onViewAllAlertsClick: () -> Unit,
+    onViewAllEventsClick: () -> Unit,
     onEventClick: (String) -> Unit, // New callback for event clicks
     modifier: Modifier = Modifier
 ) {
@@ -241,8 +243,8 @@ fun HomeRoute(
     ) { paddingValues ->
         HomeUI(
             currentUser = currentUser,
-            onViewAllAlertsClick = { /* TODO: Navigate to all alerts */ },
-            onViewAllEventsClick = { /* TODO: Navigate to all events */ },
+            onViewAllAlertsClick =onViewAllAlertsClick,
+            onViewAllEventsClick = onViewAllEventsClick,
             onEventClick = onEventClick, // Pass the new callback down
             modifier = Modifier
                 .padding(paddingValues)
