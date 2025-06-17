@@ -187,4 +187,10 @@ dependencies {
 
     // Also ensure you have the Compose UI Google Fonts dependency
     implementation("androidx.compose.ui:ui-text-google-fonts:1.6.8")
+
+    implementation ("com.google.accompanist:accompanist-swiperefresh:<latest-version>")
+    implementation("androidx.compose.material3:material3:1.1.0")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
+
 }
