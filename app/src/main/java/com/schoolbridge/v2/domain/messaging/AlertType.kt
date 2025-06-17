@@ -1,4 +1,8 @@
 package com.schoolbridge.v2.domain.messaging
 
-class AlertType {
+enum class AlertType {
+    INFO,
+    WARNING,
+    ERROR,
+    SUCCESS
 }
