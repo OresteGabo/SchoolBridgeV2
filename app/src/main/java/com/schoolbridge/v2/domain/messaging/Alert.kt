@@ -1,5 +1,7 @@
 package com.schoolbridge.v2.domain.messaging
 
+import androidx.lifecycle.ViewModel
+import com.schoolbridge.v2.ui.AlertRepository
 import java.time.LocalDateTime
 
 data class Alert(
@@ -7,7 +9,7 @@ data class Alert(
     val title: String,
     val message: String,
     val timestamp: LocalDateTime,
-    val isRead: Boolean = getRandomBoolean(),
+    val isRead: Boolean = false,
     val type: AlertType = AlertType.INFO,
     val severity: AlertSeverity = getRandomAlertSeverity()
 )
@@ -23,6 +25,18 @@ fun getRandomAlertSeverity(): AlertSeverity {
     val values = AlertSeverity.entries.toTypedArray()
     return values.random()
 }
-fun getRandomBoolean(): Boolean {
-    return (0..1).random() == 1
+
+class AlertsViewModel(
+    private val repository: AlertRepository
+) : ViewModel() {
+
+    // secondary no‑arg ctor that delegates to the main one
+    constructor() : this(AlertRepository())
+
+    val alerts = repository.alerts            // StateFlow<List<Alert>>
+    fun markAsRead(id: String) = repository.markAsRead(id)
+    fun markAllAsRead()      = repository.markAllAsRead()
 }
+
+
+
