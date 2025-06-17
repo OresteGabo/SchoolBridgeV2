@@ -140,6 +140,7 @@ fun AppNavHost(
                 userSessionManager = userSessionManager,
                 onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
                 onEventClick = { eventId ->
+
                     // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
                 },
