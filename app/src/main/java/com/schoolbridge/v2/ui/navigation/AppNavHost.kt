@@ -2,11 +2,9 @@
 package com.schoolbridge.v2.ui.navigation
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,7 +30,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
-import com.schoolbridge.v2.domain.user.Gender
 import com.schoolbridge.v2.ui.event.EventDetailsRoute
 import com.schoolbridge.v2.ui.event.EventRepository
 import com.schoolbridge.v2.ui.onboarding.auth.CredentialsSetupScreen
@@ -44,9 +41,8 @@ import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue        // for 'by' delegate on State
-import androidx.compose.runtime.collectAsState  // to convert StateFlow to Compose State
-import com.schoolbridge.v2.ui.home.AlertsScreen
-import com.schoolbridge.v2.ui.home.EventsScreen
+import com.schoolbridge.v2.ui.home.alert.AlertsScreen
+import com.schoolbridge.v2.ui.home.alert.EventsScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
