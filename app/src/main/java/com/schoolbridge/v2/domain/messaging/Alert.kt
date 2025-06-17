@@ -65,6 +65,7 @@ class AlertsViewModel(
 
     val alerts = repository.alerts            // StateFlow<List<Alert>>
     fun markAsRead(id: String) = repository.markAsRead(id)
+    fun markAsUnread(id: String) = repository.markAsUnread(id)
     fun markAllAsRead()      = repository.markAllAsRead()
 }
 
