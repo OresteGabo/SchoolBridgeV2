@@ -147,4 +147,18 @@
     <string name="contact">Contact</string>
     <string name="target_audience">Public Cible</string>
     <string name="localized_string">Chaîne Localisée</string>
+
+    <string name="search">Rechercher</string>
+    <string name="no_results">Aucun résultat trouvé.</string>
+
+    <string name="search_online">Rechercher en ligne</string>
+    <string name="online_results">Résultats supplémentaires</string>
+    <string name="get_started">Commencer</string>
+    <string name="sign_up">S\'inscrire</string>
+
+    <string name="help_and_faq">Aide &amp; FAQ</string>
+    <string name="search_faqs">Rechercher dans les FAQ</string>
+    <string name="common_questions">Questions fréquentes</string>
+    <string name="search_results_for">Résultats de recherche pour "%1$s"</string>
+    <string name="from_online">Résultats depuis internet</string>
 </resources>

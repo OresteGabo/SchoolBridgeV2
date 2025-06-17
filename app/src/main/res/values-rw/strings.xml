@@ -147,4 +147,18 @@
     <string name="contact">Uko Wababona</string>
     <string name="target_audience">Abagenerwa</string>
     <string name="localized_string">Inyandiko Yahinduwe</string>
+
+    <string name="search">Shakisha</string>
+    <string name="no_results">Nta bisubizo bibonetse.</string>
+
+    <string name="search_online">Shakisha kuri internet</string>
+    <string name="online_results">Ibindi bisubizo</string>
+    <string name="get_started">Tangira</string>
+    <string name="sign_up">Iyandikishe</string>
+
+    <string name="help_and_faq">Ubufasha &amp; Ibibazo bikunze kubazwa</string>
+    <string name="search_faqs">Shakisha mu bibazo</string>
+    <string name="common_questions">Ibibazo bikunze kubazwa</string>
+    <string name="search_results_for">Ibisubizo by’ubushakashatsi kuri "%1$s"</string>
+    <string name="from_online">Ibisubizo byavuye kuri internet</string>
 </resources>
