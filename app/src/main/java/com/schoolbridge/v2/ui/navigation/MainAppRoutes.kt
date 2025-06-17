@@ -65,6 +65,8 @@ sealed class MainAppScreen(
     // **Updated Settings-related screens to use data object for consistency**
     data object Settings : MainAppScreen("settings_screen") // The main settings list screen
     data object Language : MainAppScreen("language_setting_screen")
+    data object Alerts : MainAppScreen("alerts_screen")
+    data object Events : MainAppScreen("events_screen")
     data object Theme : MainAppScreen("theme_setting_screen")
     data object HelpFAQ : MainAppScreen("help_faq_screen")
     data object About : MainAppScreen("about_screen")
