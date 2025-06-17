@@ -2,6 +2,8 @@ package com.schoolbridge.v2.ui.home // Adjust package as needed
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
@@ -16,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
@@ -26,7 +29,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.R
@@ -50,35 +55,6 @@ data class UserEventStatus(
     val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
 )
 
-/*
-// Dummy R.string for the example to compile. In a real project, this would be auto-generated.
-object R {
-    object string {
-        const val your_children = 0
-        const val recent_alerts = 1
-        const val upcoming_events = 2
-        const val alert_midterm_exams = 3
-        const val alert_uniform_inspection = 4
-        const val event_meeting = 5
-        const val event_sports_day = 6
-        const val event_science_fair = 7
-        const val confirm_presence = 8
-        const val decline_presence = 9
-        const val your_presence_confirmed = 10
-        const val attendance_mandatory = 11
-        const val optional_event = 12
-        const val absence_sanctioned = 13
-        const val rsvp_by = 14
-        const val event_details = 15
-        const val date_time = 16
-        const val location = 17
-        const val organizer = 18
-        const val contact = 19
-        const val target_audience = 20
-    }
-}
-*/
-
 /**
  * Section for recent alerts.
  *
@@ -90,22 +66,101 @@ private fun AlertsSection(
     onViewAllAlertsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    var expanded by remember { mutableStateOf(false) }
+    val maxInitialAlerts = 3 // Define how many alerts to show initially
+
+    val rotationState by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 300), label = "rotationAnimation"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = tween(durationMillis = 300))
     ) {
-        AppSubHeader("💬 " + t(R.string.recent_alerts))
-        TextButton(onClick = onViewAllAlertsClick) {
-            Text(text = "View All", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AppSubHeader("💬 " + stringResource(id = R.string.recent_alerts))
+            TextButton(onClick = onViewAllAlertsClick) {
+                Text(text = stringResource(id = R.string.view_all), style = MaterialTheme.typography.labelLarge)
+            }
         }
-    }
 
-    SpacerS()
+        SpacerS()
 
-    val alerts = listOf(t(R.string.alert_midterm_exams), t(R.string.alert_uniform_inspection))
-    alerts.forEachIndexed { index, alert ->
-        AlertCardCompact(message = alert, index = index)
+        // List of all alert resource IDs
+        val alertIds = remember {
+            listOf(
+                R.string.alert_midterm_exams,
+                R.string.alert_uniform_inspection,
+                R.string.alert_fee_deadline,
+                R.string.alert_health_check,
+                R.string.alert_visitor_day,
+                R.string.alert_sanitation_day,
+                R.string.alert_lost_item,
+                R.string.alert_results_released,
+                R.string.alert_meal_schedule_update,
+                R.string.alert_power_cut,
+                R.string.alert_student_award,
+                R.string.alert_holiday_transport,
+                R.string.alert_missing_assignments,
+                R.string.alert_emergency_drill,
+                R.string.alert_library_books_due,
+                R.string.alert_homework_reminder,
+                R.string.alert_sports_tournament,
+                R.string.alert_health_precautions,
+                R.string.alert_weather_warning,
+                R.string.alert_room_change,
+                R.string.alert_disciplinary_meeting,
+                R.string.alert_id_card_collection,
+                R.string.alert_special_meal_day,
+                R.string.alert_community_service,
+                R.string.alert_club_signup
+            )
+        }
+
+        // Determine which alerts to show based on the expanded state
+        val alertsToShow = if (expanded) {
+            alertIds
+        } else {
+            alertIds.take(maxInitialAlerts)
+        }
+
+        alertsToShow.forEachIndexed { index, id ->
+            AlertCardCompact(
+                message = stringResource(id = id),
+                index = index
+            )
+        }
+
+        // Show "Show More" button only if there are more alerts to display
+        if (alertIds.size > maxInitialAlerts) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    imageVector = Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Show less alerts" else "Show more alerts",
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .rotate(rotationState)
+                )
+            }
+        }
     }
 }
 
@@ -246,35 +301,81 @@ private fun HomeUI(
 @Composable
 private fun EventsSection(
     onViewAllEventsClick: () -> Unit,
-    onEventClick: (String) -> Unit, // New callback
+    onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    var expanded by remember { mutableStateOf(false) }
+    val maxInitialEvents = 3 // Define how many events to show initially
+
+    val rotationState by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 300), label = "rotationAnimation"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = tween(durationMillis = 300))
     ) {
-        AppSubHeader("📅 " + t(R.string.upcoming_events))
-        TextButton(onClick = onViewAllEventsClick) {
-            Text(text = "View All", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AppSubHeader("📅 " + stringResource(id = R.string.upcoming_events))
+            TextButton(onClick = onViewAllEventsClick) {
+                Text(text = stringResource(id = R.string.view_all), style = MaterialTheme.typography.labelLarge)
+            }
         }
-    }
 
-    SpacerS()
+        SpacerS()
 
-    // Use the actual EventRepository to get events
-    val eventRepository = remember { EventRepository() } // Or inject via Hilt/DI
-    val events = remember { eventRepository.getUpcomingEvents() } // Get the list of Event objects
+        // Use the actual EventRepository to get events
+        val eventRepository = remember { EventRepository() } // Or inject via Hilt/DI
+        val events = remember { eventRepository.getUpcomingEvents() } // Get the list of Event objects
 
-    if (events.isEmpty()) {
-        Text("No upcoming events.", style = MaterialTheme.typography.bodyMedium)
-    } else {
-        events.forEachIndexed { index, event ->
-            EventCardCompact(
-                event = event, // Pass the whole Event object
-                index = index,
-                onEventClick = onEventClick // Pass the onEventClick callback
-            )
+        if (events.isEmpty()) {
+            Text(t(R.string.no_upcoming_events), style = MaterialTheme.typography.bodyMedium)
+        } else {
+            // Determine which events to show based on the expanded state
+            val eventsToShow = if (expanded) {
+                events
+            } else {
+                events.take(maxInitialEvents)
+            }
+
+            eventsToShow.forEachIndexed { index, event ->
+                EventCardCompact(
+                    event = event,
+                    index = index,
+                    onEventClick = onEventClick
+                )
+            }
+
+            // Show "Show More" button only if there are more events to display
+            if (events.size > maxInitialEvents) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) stringResource(R.string.show_less) else stringResource(R.string.show_more),
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .rotate(rotationState)
+                    )
+                }
+            }
         }
     }
 }
