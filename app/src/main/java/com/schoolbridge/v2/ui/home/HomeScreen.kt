@@ -29,8 +29,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.CurrentUser
+import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.common.components.AppSubHeader
+import com.schoolbridge.v2.ui.common.components.SpacerL
+import com.schoolbridge.v2.ui.common.components.SpacerS
 import com.schoolbridge.v2.ui.event.Event
 import com.schoolbridge.v2.ui.event.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,58 +50,7 @@ data class UserEventStatus(
     val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
 )
 
-
 /*
-data class CurrentUser(val linkedStudents: List<LinkedStudent>?) {
-    data class LinkedStudent(val firstName: String, val lastName: String)
-}*/
-
-// Dummy t function for string resources (replace with your actual R.string in a real app)
-fun t(resourceId: Int): String {
-    return when (resourceId) {
-        // These should ideally come from your actual R.string resources
-        // For demonstration, we'll keep them simple.
-        R.string.your_children -> "Your Children"
-        R.string.recent_alerts -> "Recent Alerts"
-        R.string.upcoming_events -> "Upcoming Events"
-        R.string.alert_midterm_exams -> "Midterm Exams Alert"
-        R.string.alert_uniform_inspection -> "Uniform Inspection Alert"
-        R.string.event_meeting -> "Parent-Teacher Meeting"
-        R.string.event_sports_day -> "Annual Sports Day"
-        R.string.event_science_fair -> "School Science Fair"
-        R.string.confirm_presence -> "Confirm Presence"
-        R.string.decline_presence -> "Decline Presence"
-        R.string.your_presence_confirmed -> "Your Presence Confirmed"
-        R.string.attendance_mandatory -> "Attendance is Mandatory"
-        R.string.optional_event -> "Optional Event"
-        R.string.absence_sanctioned -> "Unexcused absence may lead to sanctions."
-        R.string.rsvp_by -> "RSVP by:"
-        R.string.event_details -> "Event Details"
-        R.string.date_time -> "Date & Time"
-        R.string.location -> "Location"
-        R.string.organizer -> "Organizer"
-        R.string.contact -> "Contact"
-        R.string.target_audience -> "Target Audience"
-        else -> "Localized String"
-    }
-}
-
-// Dummy Spacer composables
-@Composable fun SpacerS() { Spacer(Modifier.height(8.dp)) }
-@Composable fun SpacerM() { Spacer(Modifier.height(16.dp)) }
-@Composable fun SpacerL() { Spacer(Modifier.height(24.dp)) }
-
-// Assuming AppSubHeader is defined elsewhere
-@Composable
-fun AppSubHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier
-    )
-}
-
 // Dummy R.string for the example to compile. In a real project, this would be auto-generated.
 object R {
     object string {
@@ -123,7 +77,7 @@ object R {
         const val target_audience = 20
     }
 }
-
+*/
 
 /**
  * Section for recent alerts.
