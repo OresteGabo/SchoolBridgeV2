@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -61,6 +62,7 @@ import com.schoolbridge.v2.domain.messaging.AlertSourceType
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.AlertRepository
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.common.components.SpacerS
@@ -121,9 +123,15 @@ fun AlertsSection(
             AlertCardCompact(
                 alert = alert,
                 index = index,
-                onClick = {
+                /*onClick = {
                     viewModel.markAsRead(alert.id)
                     onAlertClick(alert)  // trigger the bottom sheet
+                }*/
+                onClick = {
+                    viewModel.markAsRead(alert.id)
+                    // Wait until recomposition happens
+                    val updatedAlert = viewModel.alerts.value.find { it.id == alert.id } ?: alert
+                    onAlertClick(updatedAlert)
                 }
             )
         }
@@ -268,10 +276,9 @@ fun HomeRoute(
                     }
                 },
                 sheetState = sheetState,
-                //modifier = Modifier.fillMaxWidth()
             ) {
                 selectedAlert?.let { alert ->
-                    AlertDetailsBottomSheetContent(alert = alert)
+                    AlertDetailsBottomSheetContent(alertId = alert.id)
                 }
             }
         }
@@ -696,10 +703,13 @@ fun AlertCardCompact(
 
 
 /* ------------ MAIN BOTTOM‑SHEET CONTENT ------------ */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertDetailsBottomSheetContent(alert: Alert) {
-
+fun AlertDetailsBottomSheetContent(
+    alertId: String,
+    viewModel: AlertsViewModel = viewModel(),
+){
+    val alerts by viewModel.alerts.collectAsState()
+    val alert = alerts.find { it.id == alertId } ?: return
     val dateText = remember(alert.timestamp) {
         alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d • yyyy"))
     }
@@ -710,105 +720,129 @@ fun AlertDetailsBottomSheetContent(alert: Alert) {
             .padding(horizontal = 24.dp, vertical = 20.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        /* ---------- HEADER ---------- */
+        // -- Header with sender & severity
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ‑‑ Sender / publisher
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = null,
-                tint         = MaterialTheme.colorScheme.primary,
-                modifier     = Modifier.size(28.dp)
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(32.dp)
+                    .padding(end = 8.dp)
             )
-            Spacer(Modifier.width(8.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text  = alert.publisherName,
+                    text = alert.publisherName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text  = dateText,
+                    text = dateText,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // ‑‑ Severity chip
             SeverityChip(alert.severity)
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        /* ---------- TITLE ---------- */
+        // -- Title
+        Row{
+            Text(
+                text = alert.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            // "NEW" badge
+            if (!alert.isRead) {
+                Text(
+                    text = "NEW",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+
+        Spacer(Modifier.height(10.dp))
+
+        // -- Message body
         Text(
-            text       = alert.title,
-            style      = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color      = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        /* ---------- MESSAGE (max prominence) ---------- */
-        Text(
-            text  = alert.message,
+            text = alert.message,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
-        /* ---------- EXTRA DETAILS CARD (sub‑prominence) ---------- */
+        // -- Detail info card
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
-            colors   = CardDefaults.elevatedCardColors(
+            colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-
-                // Source organisation OR “No organisation”
                 InfoRowWithIcon(
-                    icon  = Icons.Default.AccountBalance,
+                    icon = Icons.Default.AccountBalance,
                     label = "Source",
                     value = alert.sourceOrganization ?: "—"
                 )
-
-                // Student (if any)
                 InfoRowWithIcon(
-                    icon  = Icons.Default.School,
+                    icon = Icons.Default.School,
                     label = "Student",
                     value = alert.studentName ?: "Not linked to a student"
                 )
-
-                // Alert type
                 InfoRowWithIcon(
-                    icon  = Icons.Default.Notifications,
+                    icon = Icons.Default.Notifications,
                     label = "Type",
                     value = alert.type.name.replaceFirstChar { it.uppercase() }
                 )
-
-                // Publisher type
                 InfoRowWithIcon(
-                    icon  = Icons.Default.People,
-                    label = "Publisher type",
+                    icon = Icons.Default.People,
+                    label = "Publisher Type",
                     value = alert.publisherType.name.lowercase().replaceFirstChar { it.uppercase() }
                 )
+            }
+        }
 
-                // Read status
-                InfoRowWithIcon(
-                    icon  = Icons.Default.MarkEmailRead,
-                    label = "Status",
-                    value = if (alert.isRead) "Read" else "Unread"
-                )
+        // Optional mark as unread
+        if (alert.isRead) {
+            Spacer(Modifier.height(20.dp))
+            OutlinedButton(
+                onClick = {
+                    //onMarkAsUnread(alert)
+
+                        viewModel.markAsUnread(alert.id)
+                        // Wait until recomposition happens
+                        val updatedAlert = viewModel.alerts.value.find { it.id == alert.id } ?: alert
+
+                    //alert = updatedAlert
+
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Icon(Icons.Default.MarkEmailUnread, contentDescription = "Mark as Unread")
+                Spacer(Modifier.width(8.dp))
+                Text("Mark as Unread")
             }
         }
     }
 }
+
 
 /* ------------ SEVERITY CHIP ------------ */
 @Composable
@@ -845,39 +879,34 @@ fun InfoRowWithIcon(
     tint: Color = MaterialTheme.colorScheme.primary
 ) {
     Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.Top
+            .padding(vertical = 8.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint  = tint,
+            tint = tint,
             modifier = Modifier
-                .size(18.dp)
-                .padding(end = 10.dp, top = 2.dp)
+                .size(24.dp) // Increased from 18dp to 24dp
+                .padding(end = 12.dp)
         )
         Column {
             Text(
-                text  = label,
+                text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text  = value,
-                style = MaterialTheme.typography.bodySmall,
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
 }
-
-
-
-
-
-
 
 
 /**
