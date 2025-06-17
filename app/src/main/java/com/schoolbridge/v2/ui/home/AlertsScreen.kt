@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -13,23 +14,54 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.schoolbridge.v2.ui.Alert.AlertRepository
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.schoolbridge.v2.domain.messaging.Alert
+import com.schoolbridge.v2.domain.messaging.AlertSeverity
+import java.time.format.DateTimeFormatter
+import androidx.compose.material3.OutlinedTextFieldDefaults
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertsScreen(
+    alertRepository: AlertRepository = remember { AlertRepository() },
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Sample data for alerts
-    val alertMessages = remember {
-        listOf(
-            "Midterm exams are scheduled for next week.",
-            "Uniform inspection will be conducted tomorrow.",
-            "Fee deadline for this semester is approaching.",
-            // Add more alert messages as needed
-        )
+    val alerts = remember { alertRepository.getAlerts() }
+    var searchQuery by remember { mutableStateOf("") }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Filter alerts based on search query (case-insensitive)
+    val filteredAlerts = remember(searchQuery, alerts) {
+        if (searchQuery.isBlank()) alerts
+        else alerts.filter { it.message.contains(searchQuery, ignoreCase = true) }
+    }
+
+    // Trigger refresh effect when isRefreshing becomes true
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            kotlinx.coroutines.delay(1000)  // Simulate refresh delay
+            isRefreshing = false
+        }
     }
 
     Scaffold(
@@ -43,17 +75,100 @@ fun AlertsScreen(
                 }
             )
         },
-        modifier = modifier
+        modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
-            itemsIndexed(alertMessages) { index, message ->
-                AlertCardCompact(
-                    message = message,
-                    index = index
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                placeholder = { Text("Search alerts...") },
+                singleLine = true,
+                keyboardActions = KeyboardActions(onSearch = { /* optionally hide keyboard */ }),
+                colors = TextFieldDefaults.colors()
+            )
+
+            SwipeRefresh(
+                state = rememberSwipeRefreshState(isRefreshing),
+                onRefresh = {
+                    isRefreshing = true
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (filteredAlerts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No alerts found matching your search.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredAlerts) { alert ->
+                            AlertCardDetailed(alert = alert)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/**
+ * A more detailed alert card that shows title, message, timestamp, severity, etc.
+ */
+@Composable
+fun AlertCardDetailed(alert: Alert) {
+    val formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = alert.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = alert.message,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Severity: ${alert.severity.name}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (alert.severity) {
+                        AlertSeverity.HIGH -> MaterialTheme.colorScheme.error
+                        AlertSeverity.MEDIUM -> MaterialTheme.colorScheme.secondary
+                        AlertSeverity.LOW -> MaterialTheme.colorScheme.tertiary
+                    }
+                )
+                Text(
+                    text = alert.timestamp.format(formatter),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
