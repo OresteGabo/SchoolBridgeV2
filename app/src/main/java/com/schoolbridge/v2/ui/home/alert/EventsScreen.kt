@@ -38,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.ui.event.EventRepository
-import com.schoolbridge.v2.ui.home.EventCardCompact
+import com.schoolbridge.v2.ui.home.event.EventCardCompact
 
 import java.time.LocalDateTime
 
