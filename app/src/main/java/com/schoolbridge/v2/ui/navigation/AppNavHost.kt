@@ -39,10 +39,10 @@ import com.schoolbridge.v2.ui.settings.dataprivacy.DataPrivacySettingsScreen
 import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
-import androidx.compose.runtime.getValue        // for 'by' delegate on State
-import com.schoolbridge.v2.ui.finance.MessageScreen
+import androidx.compose.runtime.getValue
 import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
+import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
 
 /**
