@@ -55,6 +55,8 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +84,14 @@ fun MessageScreen(
         else threads.filter {
             it.subject.contains(search, ignoreCase = true) ||
                     it.participants.any { name -> name.contains(search, ignoreCase = true) }
+        }
+    }
+
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(searchMode) {
+        if (searchMode) {
+            focusRequester.requestFocus()
         }
     }
 
@@ -139,7 +149,9 @@ fun MessageScreen(
                         placeholder = { Text("Search threads…") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
                     )
                     IconButton(onClick = {
                         searchMode = false
