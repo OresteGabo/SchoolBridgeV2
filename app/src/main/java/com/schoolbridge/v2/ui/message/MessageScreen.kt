@@ -1,53 +1,35 @@
 package com.schoolbridge.v2.ui.message
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
-import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
-import com.schoolbridge.v2.ui.theme.onBackgroundDark
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,15 +40,18 @@ fun MessageScreen(
     onTabSelected: (MainAppScreen) -> Unit,
     onBack: () -> Unit,
     onMessageThreadClick: (String) -> Unit,
+    onInvitesClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Simulate repository load — replace with ViewModel later
-    val threads by remember {
-        mutableStateOf(MessageThreadRepository().threads.value) // For real app: collectAsState()
-    }
-
+    /* ---------- Data ---------- */
+    val repo = remember { MessageThreadRepository() }
+    val threads by repo.threads.collectAsState()
+    val invitations by repo.invites.collectAsState()
+    var inviteCount by remember {mutableIntStateOf( invitations.size)}
     var search by remember { mutableStateOf("") }
 
+
+    /* ---------- UI ---------- */
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,6 +62,20 @@ fun MessageScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onInvitesClick) {
+                        BadgedBox(
+                            badge = {
+                                if (inviteCount > 0) {
+                                    Badge {
+                                        Text(inviteCount.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.MailOutline, contentDescription = "Invites")
+                        }
+                    }
+
                     IconButton(onClick = { /* TODO: Compose new message */ }) {
                         Icon(Icons.Default.Add, contentDescription = "New")
                     }
@@ -102,7 +101,7 @@ fun MessageScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // --- Search bar ---
+            /* --- Search --- */
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
@@ -114,80 +113,102 @@ fun MessageScreen(
                     .padding(16.dp)
             )
 
-            // --- Filtered threads ---
+            /* --- Threads --- */
             val filteredThreads = remember(search, threads) {
                 if (search.isBlank()) threads
-                else threads.filter { thread ->
-                    thread.subject.contains(search, ignoreCase = true) ||
-                            thread.participants.any { it.contains(search, ignoreCase = true) }
+                else threads.filter { t ->
+                    t.subject.contains(search, ignoreCase = true) ||
+                            t.participants.any { it.contains(search, ignoreCase = true) }
                 }
             }
 
             if (filteredThreads.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(64.dp)
-                        )
-
-                        Text(
-                            text = "No messages yet 📭",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        ) {
-                            Text("💬 Each topic starts a new message box.", style = MaterialTheme.typography.bodyMedium)
-                            Text("✏️ Tap the Compose button to begin.", style = MaterialTheme.typography.bodyMedium)
-                            Text("📁 Old conversations may be removed over time.", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = "👥 New participants will only see replies sent *after* they joined.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                        }
-
-                        Text(
-                            text = "You're all caught up!",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 12.dp)
-                        )
-                    }
-                }
-            }
-
-            else {
+                EmptyState()
+            } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    threads.forEach { thread ->
-                        item(key = thread.id) {
-                            ThreadCard(thread, onClick = {
-                                    onMessageThreadClick(thread.id)
-                            })
+                    item("invite-header") {
+                        AnimatedVisibility(
+                            visible = inviteCount > 0,
+                            enter = fadeIn() + slideInVertically(),
+                            exit = fadeOut() + slideOutVertically()
+                        ) {
+                            ElevatedCard(
+                                onClick = onInvitesClick,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "You have $inviteCount thread invitation${if (inviteCount > 1) "s" else ""}",
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Text(
+                                            text = "Tap to view and accept or decline",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                                }
+                            }
                         }
                     }
+
+
+                    items(
+                        items = filteredThreads,
+                        key = { it.id }
+                    ) { thread ->
+                        ThreadCard(
+                            thread = thread,
+                            onClick = { onMessageThreadClick(it.id) }
+                        )
+                    }
+
+
                 }
             }
         }
     }
 }
 
+/* ---------- Optional Empty State UI ---------- */
+@Composable
+fun EmptyState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChatBubbleOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(64.dp)
+            )
+            Text(
+                text = "No messages yet 📭",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Start by tapping the Compose button.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
