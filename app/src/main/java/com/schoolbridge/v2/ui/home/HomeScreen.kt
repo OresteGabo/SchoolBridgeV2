@@ -23,6 +23,8 @@ import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
+import com.schoolbridge.v2.ui.navigation.MainAppScreen
+import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
 import kotlinx.coroutines.launch
 
 
@@ -72,6 +74,8 @@ private fun HomeTopBar(
 @Composable
 fun HomeRoute(
     userSessionManager: UserSessionManager,
+    currentScreen: MainAppScreen,
+    onTabSelected: (MainAppScreen) -> Unit,
     onSettingsClick: () -> Unit,
     onViewAllAlertsClick: () -> Unit,
     onViewAllEventsClick: () -> Unit,
@@ -86,7 +90,10 @@ fun HomeRoute(
     // Main Scaffold outside of ModalBottomSheet to avoid gesture blocking
     Scaffold(
         topBar = { HomeTopBar(onSettingsClick = onSettingsClick) },
-        bottomBar = { CustomBottomNavBar() },
+        bottomBar = { CustomBottomNavBar(
+            currentScreen = currentScreen,
+            onTabSelected = onTabSelected
+        ) },
         modifier = modifier
     ) { paddingValues ->
 
