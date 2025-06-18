@@ -98,16 +98,6 @@ fun EventCardCompact(
         }
     }
 
-    val timeRemainingText = getTimeRemaining()
-    val timeRemainingColor = when (timeRemainingText) {
-        "Ongoing", "Soon", "Today" -> MaterialTheme.colorScheme.error // Or a vibrant accent
-        else -> MaterialTheme.colorScheme.tertiary
-    }
-    val timeRemainingStyle = when (timeRemainingText) {
-        "Ongoing", "Soon" -> MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.ExtraBold) // Slightly larger, bolder
-        else -> MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-    }
-
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(1000)) + slideInVertically(
@@ -260,17 +250,5 @@ fun EventCardCompact(
                 }
             }
         }
-    }
-}
-
-fun formatDuration(duration: Duration): String {
-    val days = duration.toDays()
-    val hours = duration.toHours() % 24
-    return when {
-        days > 1 -> "$days days"
-        days == 1L -> "1 day"
-        hours > 1 -> "$hours hrs"
-        hours == 1L -> "1 hr"
-        else -> "less than 1 hr"
     }
 }
