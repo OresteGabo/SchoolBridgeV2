@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
@@ -32,6 +33,7 @@ sealed class MainAppScreen(
     val selectedIcon: ImageVector? = null,
     val unselectedIcon: ImageVector? = null,
     val hasNews: Boolean = false,
+
 ) {
     // --- Main Bottom Navigation / Top-Level Items ---
     // These typically have associated icons and titles for primary navigation elements.
@@ -124,4 +126,10 @@ sealed class MainAppScreen(
     data object TeacherAssignedCourses : MainAppScreen("teacher_assigned_courses_screen") // Changed to data object
 
     // TODO: Add more specific routes as your application's features are implemented.
+}
+
+enum class MainNavRouteType(val label: String) {
+    Message("Message"),
+    Home("Home"),
+    Finance("Finance"),
 }
