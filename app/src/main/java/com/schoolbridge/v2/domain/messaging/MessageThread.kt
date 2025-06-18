@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.domain.messaging
 
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDateTime
@@ -29,15 +30,22 @@ data class MessageThread(
 
 /* ---------- IN‑MEMORY REPOSITORY ---------------------------------------- */
 
-class ThreadRepository {
+class MessageThreadRepository {
 
-    /* single source of truth */
+    /* Single source of truth */
     private val _threads = MutableStateFlow(generateSampleThreads())
     val threads: StateFlow<List<MessageThread>> = _threads  // expose read‑only
 
-    /* --------------------------------------------------------------------- */
-    fun getThread(id: String): MessageThread? =
-        _threads.value.firstOrNull { it.id == id }
+    suspend fun getThreadById(id: String): MessageThread? {
+        for (thread in _threads.value) {
+            if (thread.id == id) {
+                return thread
+            } else {
+                Log.d("MESSAGE_THREAD", "${thread.id} is different from $id")
+            }
+        }
+        return null
+    }
 
     fun markThreadAsRead(id: String) {
         _threads.value = _threads.value.map { thread ->
@@ -46,7 +54,6 @@ class ThreadRepository {
         }
     }
 
-    /* --------------------------------------------------------------------- */
     private fun generateSampleThreads(): List<MessageThread> {
         val now = LocalDateTime.now()
 
@@ -64,6 +71,7 @@ class ThreadRepository {
             isRead = read
         )
 
+        // Define message lists
         val t1Msgs = listOf(
             msg("Mr Bukuru (Math)", "Hello parents, find attached the marks for your children.",
                 27, attachments = listOf("Term2_Marks.pdf")),
@@ -80,13 +88,7 @@ class ThreadRepository {
             msg("Nurse’s Office", "Will do. He seems fine now.", 1)
         )
 
-        /* NEW sample threads ------------------------------------------------ */
-
         val t4Msgs = listOf(
-            msg("Librarian", "Two of your books are due tomorrow.", 20, read = true),
-            msg("You", "I’ll remind my child, thanks.", 18, read = true),
-            msg("Librarian", "Two of your books are due tomorrow.", 20, read = true),
-            msg("You", "I’ll remind my child, thanks.", 18, read = true),
             msg("Librarian", "Two of your books are due tomorrow.", 20, read = true),
             msg("You", "I’ll remind my child, thanks.", 18, read = true)
         )
@@ -97,12 +99,14 @@ class ThreadRepository {
             msg("Coach M.", "Please ensure students have proper gear.", 8)
         )
 
+        // Helper to construct threads with hardcoded IDs
         fun thread(
+            id: String,
             subject: String,
             participants: List<String>,
             msgs: List<Message>
         ) = MessageThread(
-            id = UUID.randomUUID().toString(),
+            id = id,
             subject = subject,
             participants = participants,
             messages = msgs,
@@ -111,11 +115,11 @@ class ThreadRepository {
         )
 
         return listOf(
-            thread("Term 2 Marks", listOf("Mr Bukuru", "Parents of S4 MCB"), t1Msgs),
-            thread("School Closure – Umuganda", listOf("Headmaster", "All Parents"), t2Msgs),
-            thread("Infirmary Visit", listOf("Nurse’s Office", "You"), t3Msgs),
-            thread("Library Due Date", listOf("Librarian", "You"), t4Msgs),
-            thread("Inter‑school Sports Day", listOf("PE Dept.", "Coach M.", "You"), t5Msgs)
+            thread("thread1", "Term 2 Marks", listOf("Mr Bukuru", "Parents of S4 MCB"), t1Msgs),
+            thread("thread2", "School Closure – Umuganda", listOf("Headmaster", "All Parents"), t2Msgs),
+            thread("thread3", "Infirmary Visit", listOf("Nurse’s Office", "You"), t3Msgs),
+            thread("thread4", "Library Due Date", listOf("Librarian", "You"), t4Msgs),
+            thread("thread5", "Inter‑school Sports Day", listOf("PE Dept.", "Coach M.", "You"), t5Msgs)
         )
     }
 }
