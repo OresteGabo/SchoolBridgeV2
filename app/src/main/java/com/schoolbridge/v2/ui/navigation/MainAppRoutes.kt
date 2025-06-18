@@ -119,6 +119,18 @@ sealed class MainAppScreen(
         }
     }
 
+    /**
+     * Route for displaying details of a specific event, identified by its ID.
+     * Example usage: `navController.navigate(MainAppScreen.EventDetails.createRoute("messagethread_xyz"))`
+     */
+    data class MessageThreadDetails(val messageThreadId: String) : MainAppScreen(MessageThreadDetails.ROUTE_PATTERN) {
+        companion object {
+            const val ROUTE_PATTERN = "message_screen/{messageThreadId}"
+            const val MESSAGETHREAD_ID_ARG = "messageThreadId"
+            fun createRoute(messageThreadId: String) = "message_screen/$messageThreadId"
+        }
+    }
+
 
     // --- User-specific dashboards/lists (for different roles) ---
     data object StudentDashboard : MainAppScreen("student_dashboard_screen") // Changed to data object
