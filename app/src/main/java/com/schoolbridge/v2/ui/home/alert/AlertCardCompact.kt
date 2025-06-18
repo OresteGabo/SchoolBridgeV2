@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -96,112 +98,121 @@ fun AlertCardCompact(
                 .padding(vertical = 4.dp)
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // Vertical accent bar (matches EventCardCompact)
+
+                // Vertical accent bar
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
                             accentColor,
-                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                            shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
 
-                Box(
+                Spacer(Modifier.width(10.dp))
+
+                Column(
                     modifier = Modifier
-                        .padding(12.dp)
-                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(end = 8.dp, top = 10.dp, bottom = 10.dp)
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = textColor,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .padding(end = 6.dp)
-                            )
-
-                            Text(
-                                text = alert.title,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = textColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            if (!alert.isRead) {
-                                Text(
-                                    text = "NEW",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                            RoundedCornerShape(4.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
+                    // Title + NEW badge row
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = alert.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = textColor.copy(alpha = 0.9f),
+                            text = alert.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = textColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.weight(1f))
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                        if (!alert.isRead) {
+                            Text(
+                                text = "NEW",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountBalance,
-                                    contentDescription = "Source",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = alert.source,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier.width(110.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Text(
-                                    text = alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d")),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
-                            }
+                                    .background(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Sender name row (full width for long names)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalance,
+                            contentDescription = "Source",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = alert.source,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Bottom row: alert type, severity icon, timestamp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = alert.type.name.uppercase(),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Icon(
+                            imageVector = when (alert.severity) {
+                                AlertSeverity.HIGH -> Icons.Default.Warning
+                                AlertSeverity.MEDIUM -> Icons.Default.Notifications
+                                AlertSeverity.LOW -> Icons.Default.Info
+                            },
+                            contentDescription = "Severity",
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Text(
+                            text = alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d")),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
                     }
                 }
             }
         }
     }
 }
+
+
