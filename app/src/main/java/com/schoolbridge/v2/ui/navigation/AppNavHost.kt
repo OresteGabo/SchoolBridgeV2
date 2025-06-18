@@ -2,6 +2,7 @@
 package com.schoolbridge.v2.ui.navigation
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,9 +41,11 @@ import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue
+import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
+import com.schoolbridge.v2.ui.message.MessageThreadScreen
 import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
 
 /**
@@ -218,8 +221,34 @@ fun AppNavHost(
                     }
                 },
                 onBack = navController::navigateUp,
+                onMessageThreadClick = { messageThreadId ->
+                    navController.navigate(MainAppScreen.MessageThreadDetails.createRoute(messageThreadId))
+                }
             )
             println("Navigated to Message Screen") // Placeholder for MessageScreen
+        }
+
+        composable(
+            route = MainAppScreen.MessageThreadDetails.ROUTE_PATTERN, // Use the pattern from the sealed class
+            arguments = listOf(navArgument(MainAppScreen.MessageThreadDetails.MESSAGETHREAD_ID_ARG) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val messageThreadId = backStackEntry.arguments?.getString(MainAppScreen.MessageThreadDetails.MESSAGETHREAD_ID_ARG)
+            if (messageThreadId != null) {
+                Log.d("MessageThreadID", messageThreadId)
+                MessageThreadScreen(
+                    messageThreadId = messageThreadId,
+                    onBack = { navController.popBackStack() },
+                    messageThreadRepository = remember { MessageThreadRepository() },
+                    onSendMessage = { message ->},
+                )
+            } else {
+                // Handle case where eventId is null, e.g., show an error screen or navigate back
+                // For now, let's just log and pop back
+                Log.d("ERROR__","Error: Message ID is missing for ")
+                navController.popBackStack()
+            }
         }
 
         composable(MainAppScreen.Finance.route) {
