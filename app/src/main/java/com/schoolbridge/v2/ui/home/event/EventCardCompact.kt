@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -21,12 +22,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,11 +40,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.event.Event
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.Duration
+
 
 /**
  * Compact card for a single event.
@@ -59,15 +68,44 @@ fun EventCardCompact(
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        visible = true
-    }
+    LaunchedEffect(Unit) { visible = true }
 
     val accentColor = if (event.isMandatory) {
         MaterialTheme.colorScheme.error
     } else {
         MaterialTheme.colorScheme.primary
+    }
+
+
+
+    // Helper to compute human-readable time remaining
+    fun getTimeRemaining(): String {
+        val now = LocalDateTime.now()
+        return when {
+            event.startTime.isBefore(now) && event.endTime.isAfter(now) -> "Ongoing"
+            event.startTime.isBefore(now) -> "Started"
+            else -> {
+                val duration = Duration.between(now, event.startTime)
+                val days = duration.toDays()
+                when (days) {
+                    0L -> "Today"
+                    1L -> "In 1 day"
+                    in 2..6 -> "In $days days"
+                    in 7..13 -> "Next week"
+                    else -> "In ${days / 7} weeks"
+                }
+            }
+        }
+    }
+
+    val timeRemainingText = getTimeRemaining()
+    val timeRemainingColor = when (timeRemainingText) {
+        "Ongoing", "Soon", "Today" -> MaterialTheme.colorScheme.error // Or a vibrant accent
+        else -> MaterialTheme.colorScheme.tertiary
+    }
+    val timeRemainingStyle = when (timeRemainingText) {
+        "Ongoing", "Soon" -> MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.ExtraBold) // Slightly larger, bolder
+        else -> MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
     }
 
     AnimatedVisibility(
@@ -85,68 +123,154 @@ fun EventCardCompact(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
             onClick = {
-                Log.d("EventCardCompact", "Event clicked: ${event.title}")
                 event.isRead = true
-                onEventClick(event.id) }
+                onEventClick(event.id)
+            }
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
+
+                // Vertical accent bar
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
                             accentColor,
-                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                            shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
-                Box(
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
                     modifier = Modifier
-                        .padding(12.dp)
-                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = 12.dp, horizontal = 0.dp)
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (event.isMandatory) {
-                                Icon(
-                                    imageVector = Icons.Filled.Lock,
-                                    contentDescription = t(R.string.attendance_mandatory),
-                                    tint = accentColor,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .padding(end = 4.dp)
-                                )
-                            }
-                            Text(
-                                text = event.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                    // Title row with optional lock icon and NEW badge
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (event.isMandatory) {
+                            Icon(
+                                imageVector = Icons.Filled.Lock,
+                                contentDescription = "Mandatory event",
+                                tint = accentColor,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .padding(end = 6.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = event.startTime.format(DateTimeFormatter.ofPattern("MMM dd")),
+                            text = event.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        if (!event.isRead) {
+                            Text(
+                                text = "NEW",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Organizer row (second row)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalance,
+                            contentDescription = "Organizer",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = event.organizer,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
-                    // "NEW" badge
-                    if (!event.isRead) {
-                        Text(
-                            text = "NEW",
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelSmall,
+
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(modifier= Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween){
+                        // Badge for event type
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
                                 .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    RoundedCornerShape(6.dp)
+                                    accentColor.copy(alpha = 0.12f),
+                                    RoundedCornerShape(8.dp)
                                 )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (event.isMandatory) Icons.Filled.Lock else Icons.Filled.Event,
+                                    contentDescription = if (event.isMandatory) "Mandatory" else "Optional",
+                                    tint = accentColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (event.isMandatory) "MANDATORY" else "OPTIONAL",
+                                    color = accentColor,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Time remaining row
+                        Surface(
+                            modifier = Modifier.padding(4.dp),
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), // A subtle background
+                            shape = RoundedCornerShape(8.dp) // Rounded corners for the badge effect
+                        ) {
+                            Text(
+                                text = getTimeRemaining(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp) // Add padding inside the surface
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+fun formatDuration(duration: Duration): String {
+    val days = duration.toDays()
+    val hours = duration.toHours() % 24
+    return when {
+        days > 1 -> "$days days"
+        days == 1L -> "1 day"
+        hours > 1 -> "$hours hrs"
+        hours == 1L -> "1 hr"
+        else -> "less than 1 hr"
     }
 }
