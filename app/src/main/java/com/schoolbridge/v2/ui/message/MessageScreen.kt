@@ -55,9 +55,11 @@ fun MessageScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val threads by remember { mutableStateOf(ThreadRepository.getThreads()) }
+    // Simulate repository load — replace with ViewModel later
+    val threads by remember {
+        mutableStateOf(ThreadRepository().threads.value) // For real app: collectAsState()
+    }
 
-    /* you can lift this up into your ViewModel later */
     var search by remember { mutableStateOf("") }
 
     Scaffold(
@@ -70,7 +72,7 @@ fun MessageScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: compose new thread */ }) {
+                    IconButton(onClick = { /* TODO: Compose new message */ }) {
                         Icon(Icons.Default.Add, contentDescription = "New")
                     }
                 }
@@ -83,41 +85,46 @@ fun MessageScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* new thread */ }) {
+            FloatingActionButton(onClick = { /* TODO: Compose new thread */ }) {
                 Icon(Icons.Default.Edit, contentDescription = "Compose")
             }
         },
         modifier = modifier
     ) { innerPadding ->
+
         Column(
-            Modifier
+            modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // --- Search box -------------------------------------------------
+            // --- Search bar ---
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
                 placeholder = { Text("Search threads…") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             )
 
-            // --- Thread list ------------------------------------------------
-            val filtered = remember(search, threads) {
+            // --- Filtered threads ---
+            val filteredThreads = remember(search, threads) {
                 if (search.isBlank()) threads
-                else threads.filter {
-                    it.subject.contains(search, true) ||
-                            it.participants.any { p -> p.contains(search, true) }
+                else threads.filter { thread ->
+                    thread.subject.contains(search, ignoreCase = true) ||
+                            thread.participants.any { it.contains(search, ignoreCase = true) }
                 }
             }
 
-            if (filtered.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No conversations.",
+            if (filteredThreads.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No conversations found.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -135,8 +142,8 @@ fun MessageScreen(
                         }
                     }
                 }
-
             }
         }
     }
 }
+
