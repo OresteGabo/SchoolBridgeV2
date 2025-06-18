@@ -96,6 +96,18 @@ class MessageThreadRepository {
         val t5Msgs = listOf(
             msg("PE Dept.", "Inter‑school sports day schedule attached.",
                 10, attachments = listOf("SportsDay_Schedule.pdf")),
+            msg("Coach M.", "Please ensure students have proper gear.", 8),
+            msg("PE Dept.", "Inter‑school sports day schedule attached.",
+                10, attachments = listOf("SportsDay_Schedule.pdf")),
+            msg("Coach M.", "Please ensure students have proper gear.", 8),
+            msg("PE Dept.", "Inter‑school sports day schedule attached.",
+                10, attachments = listOf("SportsDay_Schedule.pdf")),
+            msg("Coach M.", "Please ensure students have proper gear.", 8),
+            msg("PE Dept.", "Inter‑school sports day schedule attached.",
+                10, attachments = listOf("SportsDay_Schedule.pdf")),
+            msg("Coach M.", "Please ensure students have proper gear.", 8),
+            msg("PE Dept.", "Inter‑school sports day schedule attached.",
+                10, attachments = listOf("SportsDay_Schedule.pdf")),
             msg("Coach M.", "Please ensure students have proper gear.", 8)
         )
 
