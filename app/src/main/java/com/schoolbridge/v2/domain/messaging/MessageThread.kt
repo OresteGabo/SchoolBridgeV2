@@ -16,7 +16,8 @@ data class MessageThread(
     val participants: List<String>, // names or emails
     val messages: List<Message>,
     val lastSnippet: String,
-    val lastDate: LocalDateTime
+    val lastDate: LocalDateTime,
+    val isSystem: Boolean? = false
 ) {
     val unreadCount: Int
         get() = messages.count { !it.isRead }
@@ -56,82 +57,66 @@ class MessageThreadRepository {
 
     private fun generateSampleThreads(): List<MessageThread> {
         val now = LocalDateTime.now()
+        fun msg(sender: String, text: String, hoursAgo: Long,
+                atts: List<String> = emptyList(), read: Boolean = false) =
+            Message(sender = sender, content = text, timestamp = now.minusHours(hoursAgo),
+                attachments = atts, isRead = read)
 
-        fun msg(
-            sender: String,
-            text: String,
-            hoursAgo: Long,
-            attachments: List<String> = emptyList(),
-            read: Boolean = false
-        ) = Message(
-            sender = sender,
-            content = text,
-            timestamp = now.minusHours(hoursAgo),
-            attachments = attachments,
-            isRead = read
+        /* regular threads ---------------------------------------------------- */
+        val term2  = listOf(
+            msg("Mr Bukuru (Math)", "Hello parents, find attached the marks for your children.", 27,
+                atts = listOf("Term2_Marks.pdf")),
+            msg("Laura N.", "Thank you for the update, Mr Bukuru.", 25, read = true)
         )
-
-        // Define message lists
-        val t1Msgs = listOf(
-            msg("Mr Bukuru (Math)", "Hello parents, find attached the marks for your children.",
-                27, attachments = listOf("Term2_Marks.pdf")),
-            msg("Laura N.", "Thank you for the update, Mr Bukuru.", 25, read = true)
-        )
-
-        val t2Msgs = listOf(
-            msg("Headmaster", "Reminder: School closed next Friday for Umuganda.", 55)
-        )
-
-        val t3Msgs = listOf(
-            msg("Nurse’s Office", "Your child visited the infirmary today with a mild headache.", 4),
+        val umuganda  = listOf(msg("Headmaster",
+            "Reminder: School closes next Friday for Umuganda.", 55))
+        val infirmary = listOf(
+            msg("Nurse’s Office",
+                "Your child visited the infirmary today with a mild headache.", 4),
             msg("You", "Thanks. Please keep me posted if anything changes.", 2, read = true),
             msg("Nurse’s Office", "Will do. He seems fine now.", 1)
         )
-
-        val t4Msgs = listOf(
+        val library   = listOf(
             msg("Librarian", "Two of your books are due tomorrow.", 20, read = true),
-            msg("You", "I’ll remind my child, thanks.", 18, read = true)
+            msg("You", "I'll remind my child, thanks.", 18, read = true)
         )
 
-        val t5Msgs = listOf(
-            msg("PE Dept.", "Inter‑school sports day schedule attached.",
-                10, attachments = listOf("SportsDay_Schedule.pdf")),
-            msg("Coach M.", "Please ensure students have proper gear.", 8),
-            msg("PE Dept.", "Inter‑school sports day schedule attached.",
-                10, attachments = listOf("SportsDay_Schedule.pdf")),
-            msg("Coach M.", "Please ensure students have proper gear.", 8),
-            msg("PE Dept.", "Inter‑school sports day schedule attached.",
-                10, attachments = listOf("SportsDay_Schedule.pdf")),
-            msg("Coach M.", "Please ensure students have proper gear.", 8),
-            msg("PE Dept.", "Inter‑school sports day schedule attached.",
-                10, attachments = listOf("SportsDay_Schedule.pdf")),
-            msg("Coach M.", "Please ensure students have proper gear.", 8),
-            msg("PE Dept.", "Inter‑school sports day schedule attached.",
-                10, attachments = listOf("SportsDay_Schedule.pdf")),
-            msg("Coach M.", "Please ensure students have proper gear.", 8)
+        /* system‑only thread -------------------------------------------------- */
+        val maintenance = listOf(
+            Message(
+                id       = "sys‑msg‑1",
+                sender   = "System",
+                content  = "⚙️  The platform will be down for maintenance tonight "
+                        + "from 22:00 to 01:00.",
+                timestamp = now.minusHours(6),
+                attachments = emptyList(),
+                isRead = false
+            )
         )
 
-        // Helper to construct threads with hardcoded IDs
-        fun thread(
-            id: String,
-            subject: String,
-            participants: List<String>,
-            msgs: List<Message>
-        ) = MessageThread(
+        /* helper */
+        fun thread(id: String, subject: String, who: List<String>, msgs: List<Message>,
+                   system: Boolean = false) = MessageThread(
             id = id,
             subject = subject,
-            participants = participants,
+            participants = who,
             messages = msgs,
             lastSnippet = msgs.last().content.take(60),
-            lastDate = msgs.last().timestamp
+            lastDate    = msgs.last().timestamp,
+            isSystem    = system
         )
 
         return listOf(
-            thread("thread1", "Term 2 Marks", listOf("Mr Bukuru", "Parents of S4 MCB"), t1Msgs),
-            thread("thread2", "School Closure – Umuganda", listOf("Headmaster", "All Parents"), t2Msgs),
-            thread("thread3", "Infirmary Visit", listOf("Nurse’s Office", "You"), t3Msgs),
-            thread("thread4", "Library Due Date", listOf("Librarian", "You"), t4Msgs),
-            thread("thread5", "Inter‑school Sports Day", listOf("PE Dept.", "Coach M.", "You"), t5Msgs)
+            thread("thread1", "Term 2 Marks",        listOf("Mr Bukuru", "Parents S4 MCB"), term2),
+            thread("thread2", "School Closure – Umuganda", listOf("Headmaster", "All Parents"), umuganda),
+            thread("thread3", "Infirmary Visit",     listOf("Nurse’s Office", "You"), infirmary),
+            thread("thread4", "Library Due Date",    listOf("Librarian", "You"), library),
+            thread("sys1",   "System Maintenance",   listOf("System"), maintenance, system = true)
         )
     }
+
+}
+
+fun randomBool(): Boolean {
+    return (0..1).random() == 1
 }
