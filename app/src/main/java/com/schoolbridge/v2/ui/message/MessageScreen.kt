@@ -10,11 +10,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ContactMail
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,7 +29,29 @@ import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
+
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AddComment
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ContactMail
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
+import com.schoolbridge.v2.components.CustomBottomNavBar
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,17 +62,25 @@ fun MessageScreen(
     onBack: () -> Unit,
     onMessageThreadClick: (String) -> Unit,
     onInvitesClick: () -> Unit = {},
+    onContactsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // --- Data ---
     val repo = remember { MessageThreadRepository() }
     val threads by repo.threads.collectAsState()
     val invitations by repo.invites.collectAsState()
-    var inviteCount by remember { mutableIntStateOf(invitations.size) }
+    val inviteCount = invitations.size
 
     var search by remember { mutableStateOf("") }
+    var searchMode by remember { mutableStateOf(false) }
 
-    // --- UI ---
+    val filteredThreads = remember(search, threads) {
+        if (search.isBlank()) threads
+        else threads.filter {
+            it.subject.contains(search, ignoreCase = true) ||
+                    it.participants.any { name -> name.contains(search, ignoreCase = true) }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,16 +94,19 @@ fun MessageScreen(
                     IconButton(onClick = onInvitesClick) {
                         BadgedBox(
                             badge = {
-                                if (inviteCount > 0) {
-                                    Badge { Text(inviteCount.toString()) }
-                                }
+                                if (inviteCount > 0) Badge { Text(inviteCount.toString()) }
                             }
                         ) {
                             Icon(Icons.Default.MailOutline, contentDescription = "Invites")
                         }
                     }
-                    IconButton(onClick = { /* TODO: Compose new message */ }) {
-                        Icon(Icons.Default.Add, contentDescription = "New")
+                    IconButton(onClick = onContactsClick) {
+                        Icon(Icons.Default.ContactMail, contentDescription = "Contacts")
+                    }
+                    if (!searchMode) {
+                        IconButton(onClick = { searchMode = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
                     }
                 }
             )
@@ -82,40 +119,45 @@ fun MessageScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { /* TODO: Compose new thread */ }) {
-                Icon(Icons.Default.Edit, contentDescription = "Compose")
+                Icon(Icons.Default.AddComment, contentDescription = "Compose")
             }
         },
         modifier = modifier
     ) { innerPadding ->
-
-        val filteredThreads = remember(search, threads) {
-            if (search.isBlank()) threads
-            else threads.filter {
-                it.subject.contains(search, ignoreCase = true) ||
-                        it.participants.any { name -> name.contains(search, ignoreCase = true) }
-            }
-        }
 
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // --- Search Box ---
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = { Text("Search threads…") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            )
+            // --- Animated Search ---
+            AnimatedVisibility(visible = searchMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        placeholder = { Text("Search threads…") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        searchMode = false
+                        search = ""
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel Search")
+                    }
+                }
+            }
 
             // --- Animated Invite Card ---
             AnimatedVisibility(
-                visible = inviteCount > 0,
+                visible = inviteCount > 0 && !searchMode,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -143,7 +185,7 @@ fun MessageScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Icon(Icons.Default.ArrowForward, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                     }
                 }
             }
@@ -194,10 +236,14 @@ fun EmptyState() {
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Start by tapping the Compose button.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "💡 Tip: Use the search bar to find threads by subject, message content, or participant names.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
+
+
+
