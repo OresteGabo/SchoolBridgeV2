@@ -43,7 +43,7 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
-import com.schoolbridge.v2.domain.messaging.ThreadRepository
+import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
@@ -57,11 +57,12 @@ fun MessageScreen(
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
     onBack: () -> Unit,
+    onMessageThreadClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Simulate repository load — replace with ViewModel later
     val threads by remember {
-        mutableStateOf(ThreadRepository().threads.value) // For real app: collectAsState()
+        mutableStateOf(MessageThreadRepository().threads.value) // For real app: collectAsState()
     }
 
     var search by remember { mutableStateOf("") }
@@ -180,7 +181,7 @@ fun MessageScreen(
                     threads.forEach { thread ->
                         item(key = thread.id) {
                             ThreadCard(thread, onClick = {
-                                // TODO: handle click
+                                    onMessageThreadClick(thread.id)
                             })
                         }
                     }
