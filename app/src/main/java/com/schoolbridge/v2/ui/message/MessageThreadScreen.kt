@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.ui.message
 
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -106,27 +107,43 @@ fun MessageThreadScreen(
         },
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            if (thread != null) {
+            thread?.let { t ->
+                // One shared Surface so it still gets system‑bar / keyboard padding
                 Surface(
                     tonalElevation = 4.dp,
-                    shadowElevation = 4.dp
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .imePadding()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            // navigationBarsPadding handles system navigation bar area
-                            .navigationBarsPadding()
-                            // imePadding handles the keyboard's height, pushing this composable up.
-                            // This is crucial for preventing the TextField from being covered.
-                            .imePadding()
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
+                    if (t.isSystem == true) {
+                        /* 🔒 System thread – show banner              */
                         Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "System notification · replies are disabled",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        /* 💬 Regular thread – show input row          */
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             TextField(
                                 value = replyText,
                                 onValueChange = { replyText = it },
-                                placeholder = { Text("Type your reply...") },
+                                placeholder = { Text("Type your reply…") },
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(24.dp)),
@@ -137,20 +154,18 @@ fun MessageThreadScreen(
                                     if (replyText.isNotBlank()) {
                                         onSendMessage(replyText.trim())
                                         replyText = ""
-                                        keyboardController?.hide() // Hide keyboard after sending
+                                        keyboardController?.hide()
                                     }
                                 })
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(
+                                enabled = replyText.isNotBlank(),
                                 onClick = {
-                                    if (replyText.isNotBlank()) {
-                                        onSendMessage(replyText.trim())
-                                        replyText = ""
-                                        keyboardController?.hide() // Hide keyboard after sending
-                                    }
-                                },
-                                enabled = replyText.isNotBlank()
+                                    onSendMessage(replyText.trim())
+                                    replyText = ""
+                                    keyboardController?.hide()
+                                }
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                             }
@@ -159,6 +174,7 @@ fun MessageThreadScreen(
                 }
             }
         }
+
     ) { innerPadding ->
         // The `innerPadding` provided by Scaffold now correctly includes space for:
         // - TopAppBar
@@ -204,13 +220,14 @@ fun MessageThreadScreen(
 
 @Composable
 fun MessageItem(message: Message) {
-    val isSystem = message.isSystem == true
+    //val isSystem = message.isSystem == true
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
+        /*
         if (isSystem) {
             // System messages with subtle style
             Text(
@@ -221,6 +238,7 @@ fun MessageItem(message: Message) {
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
+            */
             // Determine if the message is from the current user for alignment and styling.
             // Replace "You" with actual logic to identify the current user (e.g., comparing sender ID).
             val isCurrentUser = message.sender == "You" // Placeholder: Implement your actual user check
@@ -272,6 +290,6 @@ fun MessageItem(message: Message) {
                     }
                 }
             }
-        }
+       // }
     }
 }
