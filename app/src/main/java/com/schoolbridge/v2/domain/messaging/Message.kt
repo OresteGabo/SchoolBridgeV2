@@ -13,5 +13,4 @@ data class Message(
     val timestamp: LocalDateTime,
     val isRead: Boolean = false,
     val attachments: List<String> = emptyList(),
-    val isSystem: Boolean? = null
 )
