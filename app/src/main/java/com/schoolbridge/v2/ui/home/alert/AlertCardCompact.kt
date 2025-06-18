@@ -8,9 +8,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -90,117 +92,112 @@ fun AlertCardCompact(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
             modifier = modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .padding(vertical = 4.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Vertical accent bar
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Vertical accent bar (matches EventCardCompact)
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
                         .background(
                             accentColor,
-                            shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
                         )
                 )
 
-                Spacer(Modifier.width(10.dp))
-
-                Column(
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
+                        .padding(12.dp)
+                        .fillMaxWidth()
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = textColor,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .padding(end = 6.dp)
-                        )
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .padding(end = 6.dp)
+                            )
+
+                            Text(
+                                text = alert.title,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = textColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (!alert.isRead) {
+                                Text(
+                                    text = "NEW",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
 
                         Text(
-                            text = alert.title,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = textColor,
+                            text = alert.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textColor.copy(alpha = 0.9f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                        if (!alert.isRead) {
-                            Text(
-                                text = "NEW",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier
-                                    .background(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Text(
-                        text = alert.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = textColor.copy(alpha = 0.9f),
-                        maxLines = 1,  // changed from 2 to 1 line as per your need
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 8.dp) // spacing between source and timestamp
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.AccountBalance,
-                                contentDescription = "Source",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = alert.source,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Source",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = alert.source,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
 
-                        // Fixed width container for timestamp so it stays stable
-                        Box(
-                            modifier = Modifier.width(110.dp), // adjust as needed
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Text(
-                                text = alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d")),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
+                            Box(
+                                modifier = Modifier.width(110.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Text(
+                                    text = alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d")),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
