@@ -15,7 +15,6 @@ import androidx.navigation.compose.rememberNavController
 import com.schoolbridge.v2.data.remote.AuthApiService
 import com.schoolbridge.v2.data.session.UserSessionManager
 
-import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.finance.FinanceScreen
 import com.schoolbridge.v2.ui.home.HomeRoute
 import com.schoolbridge.v2.ui.onboarding.auth.LoginScreen
@@ -41,8 +40,10 @@ import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue        // for 'by' delegate on State
+import com.schoolbridge.v2.ui.finance.MessageScreen
 import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
+import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -134,17 +135,33 @@ fun AppNavHost(
         composable(MainAppScreen.Home.route) {
             HomeRoute(
                 userSessionManager = userSessionManager,
-                onSettingsClick = { navController.navigate(MainAppScreen.Settings.route) },
+                onSettingsClick = {
+                    navController.navigate(MainAppScreen.Settings.route)
+                },
                 onEventClick = { eventId ->
-
                     // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
                 },
                 modifier = modifier,
-                onViewAllAlertsClick = {navController.navigate(MainAppScreen.Alerts.route)},
-                onViewAllEventsClick = {navController.navigate(MainAppScreen.Events.route)}
+                onViewAllAlertsClick = {
+                    navController.navigate(MainAppScreen.Alerts.route)
+                },
+                onViewAllEventsClick = {
+                    navController.navigate(MainAppScreen.Events.route)
+                },
+                currentScreen = MainAppScreen.Home, // ✅ This is the current tab
+                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
+                    navController.navigate(screen.route) {
+                        launchSingleTop = true      // Prevent multiple copies
+                        restoreState = true         // Restore scroll position, etc.
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true       // Keep previous screen state
+                        }
+                    }
+                }
             )
         }
+
 
         composable(MainAppScreen.Alerts.route){
             AlertsScreen(onBack = { navController.navigateUp() })
@@ -188,12 +205,38 @@ fun AppNavHost(
 
 
         composable(MainAppScreen.Message.route) {
-            MessageScreen()
+            MessageScreen(
+                userSessionManager = userSessionManager,
+                currentScreen = MainAppScreen.Message, // ✅ This is the current tab
+                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
+                    navController.navigate(screen.route) {
+                        launchSingleTop = true      // Prevent multiple copies
+                        restoreState = true         // Restore scroll position, etc.
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true       // Keep previous screen state
+                        }
+                    }
+                },
+                //modifier = TODO()
+            )
             println("Navigated to Message Screen") // Placeholder for MessageScreen
         }
 
         composable(MainAppScreen.Finance.route) {
-            FinanceScreen()
+            FinanceScreen(
+                userSessionManager = userSessionManager,
+                currentScreen = MainAppScreen.Finance, // ✅ This is the current tab
+                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
+                    navController.navigate(screen.route) {
+                        launchSingleTop = true      // Prevent multiple copies
+                        restoreState = true         // Restore scroll position, etc.
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true       // Keep previous screen state
+                        }
+                    }
+                },
+                //modifier = TODO()
+            )
             println("Navigated to Finance Screen") // Placeholder for FinanceScreen
         }
 
