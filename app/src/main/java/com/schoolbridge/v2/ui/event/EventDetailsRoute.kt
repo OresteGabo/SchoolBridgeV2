@@ -1,14 +1,9 @@
 package com.schoolbridge.v2.ui.event
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.core.tween
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,21 +28,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource // Assuming you have string resources
 import androidx.compose.ui.tooling.preview.Preview
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.common.components.SpacerM
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
-import com.schoolbridge.v2.ui.common.components.SpacerS
-import kotlinx.coroutines.flow.filter
 
-// Dummy data classes for demonstration
 data class Event(
     val id: String,
     val title: String,
@@ -63,8 +52,8 @@ data class Event(
     val attachments: List<String> = emptyList(),
     val targetAudience: String,
     var isRead: Boolean = false
-
 )
+
 
 
 data class UserEventStatus(
