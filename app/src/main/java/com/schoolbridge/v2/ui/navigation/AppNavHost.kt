@@ -217,7 +217,7 @@ fun AppNavHost(
                         }
                     }
                 },
-                //modifier = TODO()
+                onBack = navController::navigateUp,
             )
             println("Navigated to Message Screen") // Placeholder for MessageScreen
         }
