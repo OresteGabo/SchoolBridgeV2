@@ -135,23 +135,14 @@ fun EventCardCompact(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(vertical = 12.dp, horizontal = 0.dp)
+                        //.padding(vertical = 12.dp, horizontal = 0.dp)
+                        .padding(end = 8.dp, top = 10.dp, bottom = 10.dp)
                 ) {
                     // Title row with optional lock icon and NEW badge
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (event.isMandatory) {
-                            Icon(
-                                imageVector = Icons.Filled.Lock,
-                                contentDescription = "Mandatory event",
-                                tint = accentColor,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(end = 6.dp)
-                            )
-                        }
                         Text(
                             text = event.title,
                             style = MaterialTheme.typography.bodyMedium,
@@ -172,6 +163,8 @@ fun EventCardCompact(
                                         RoundedCornerShape(6.dp)
                                     )
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
+
+
                             )
                         }
                     }
