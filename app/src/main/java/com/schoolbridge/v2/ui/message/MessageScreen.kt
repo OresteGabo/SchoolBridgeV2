@@ -1,11 +1,10 @@
 package com.schoolbridge.v2.ui.message
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,18 +18,14 @@ import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
-import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,15 +38,15 @@ fun MessageScreen(
     onInvitesClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    /* ---------- Data ---------- */
+    // --- Data ---
     val repo = remember { MessageThreadRepository() }
     val threads by repo.threads.collectAsState()
     val invitations by repo.invites.collectAsState()
-    var inviteCount by remember {mutableIntStateOf( invitations.size)}
+    var inviteCount by remember { mutableIntStateOf(invitations.size) }
+
     var search by remember { mutableStateOf("") }
 
-
-    /* ---------- UI ---------- */
+    // --- UI ---
     Scaffold(
         topBar = {
             TopAppBar(
@@ -66,16 +61,13 @@ fun MessageScreen(
                         BadgedBox(
                             badge = {
                                 if (inviteCount > 0) {
-                                    Badge {
-                                        Text(inviteCount.toString())
-                                    }
+                                    Badge { Text(inviteCount.toString()) }
                                 }
                             }
                         ) {
                             Icon(Icons.Default.MailOutline, contentDescription = "Invites")
                         }
                     }
-
                     IconButton(onClick = { /* TODO: Compose new message */ }) {
                         Icon(Icons.Default.Add, contentDescription = "New")
                     }
@@ -96,12 +88,20 @@ fun MessageScreen(
         modifier = modifier
     ) { innerPadding ->
 
+        val filteredThreads = remember(search, threads) {
+            if (search.isBlank()) threads
+            else threads.filter {
+                it.subject.contains(search, ignoreCase = true) ||
+                        it.participants.any { name -> name.contains(search, ignoreCase = true) }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            /* --- Search --- */
+            // --- Search Box ---
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
@@ -113,15 +113,42 @@ fun MessageScreen(
                     .padding(16.dp)
             )
 
-            /* --- Threads --- */
-            val filteredThreads = remember(search, threads) {
-                if (search.isBlank()) threads
-                else threads.filter { t ->
-                    t.subject.contains(search, ignoreCase = true) ||
-                            t.participants.any { it.contains(search, ignoreCase = true) }
+            // --- Animated Invite Card ---
+            AnimatedVisibility(
+                visible = inviteCount > 0,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                ElevatedCard(
+                    onClick = onInvitesClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "You have $inviteCount thread invitation${if (inviteCount > 1) "s" else ""}",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Tap to view and accept or decline",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.Default.ArrowForward, contentDescription = null)
+                    }
                 }
             }
 
+            // --- Threads List ---
             if (filteredThreads.isEmpty()) {
                 EmptyState()
             } else {
@@ -129,41 +156,6 @@ fun MessageScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item("invite-header") {
-                        AnimatedVisibility(
-                            visible = inviteCount > 0,
-                            enter = fadeIn() + slideInVertically(),
-                            exit = fadeOut() + slideOutVertically()
-                        ) {
-                            ElevatedCard(
-                                onClick = onInvitesClick,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "You have $inviteCount thread invitation${if (inviteCount > 1) "s" else ""}",
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        Text(
-                                            text = "Tap to view and accept or decline",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Icon(Icons.Default.ArrowForward, contentDescription = null)
-                                }
-                            }
-                        }
-                    }
-
-
                     items(
                         items = filteredThreads,
                         key = { it.id }
@@ -173,15 +165,12 @@ fun MessageScreen(
                             onClick = { onMessageThreadClick(it.id) }
                         )
                     }
-
-
                 }
             }
         }
     }
 }
 
-/* ---------- Optional Empty State UI ---------- */
 @Composable
 fun EmptyState() {
     Box(
