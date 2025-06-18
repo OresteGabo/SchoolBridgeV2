@@ -175,33 +175,37 @@ fun AlertCardCompact(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = alert.type.name.uppercase(),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelSmall,
+                        // Grouped "type + icon" badge
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    RoundedCornerShape(6.dp)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    RoundedCornerShape(8.dp)
                                 )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Icon(
-                            imageVector = when (alert.severity) {
-                                AlertSeverity.HIGH -> Icons.Default.Warning
-                                AlertSeverity.MEDIUM -> Icons.Default.Notifications
-                                AlertSeverity.LOW -> Icons.Default.Info
-                            },
-                            contentDescription = "Severity",
-                            tint = accentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = alert.type.name.uppercase(),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = when (alert.severity) {
+                                    AlertSeverity.HIGH -> Icons.Default.Warning
+                                    AlertSeverity.MEDIUM -> Icons.Default.Notifications
+                                    AlertSeverity.LOW -> Icons.Default.Info
+                                },
+                                contentDescription = "Severity",
+                                tint = accentColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
 
                         Spacer(modifier = Modifier.weight(1f))
 
+                        // Timestamp aligned right
                         Text(
                             text = alert.timestamp.format(DateTimeFormatter.ofPattern("HH:mm, MMM d")),
                             style = MaterialTheme.typography.labelSmall,
@@ -209,6 +213,7 @@ fun AlertCardCompact(
                             maxLines = 1
                         )
                     }
+
                 }
             }
         }
