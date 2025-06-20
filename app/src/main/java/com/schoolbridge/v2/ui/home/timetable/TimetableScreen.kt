@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,6 +32,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.academic.DayHeaders
 import com.schoolbridge.v2.domain.academic.HourRange
@@ -140,9 +144,8 @@ fun TimetableScreen(
                                 Modifier
                                     .size(dayWidth, slotHeight)
                                     .border(0.5.dp, MaterialTheme.colorScheme.outline)
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.04f)
-                                    )
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+
                             )
                         }
                     }
@@ -180,31 +183,10 @@ fun TimetableScreen(
                         .clickable { onEventClick(entry) }
                         .zIndex(1f)          // above grid, below headers
                 ) {
-                    Card(
-                        colors = CardDefaults.cardColors(timetableEntryColor(entry.type)),
-                        shape  = RoundedCornerShape(8.dp),
-                        elevation = CardDefaults.cardElevation(3.dp),
+                    TimetableEventCard(
+                        entry  = entry,
                         modifier = Modifier.fillMaxSize()
-                    ) {
-                        Column(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(4.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                entry.title,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text(entry.room, style = MaterialTheme.typography.labelSmall)
-                                Text("${entry.start}‑${entry.end}",
-                                    style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
+                    )
                 }
             }
         }
@@ -212,14 +194,111 @@ fun TimetableScreen(
 }
 
 
+/* ──────────────────────────────────────────────────────────────
+   TimetableEventCard – mini version styled like TodayScheduleCard
+   ────────────────────────────────────────────────────────────── */
+@Composable
+private fun TimetableEventCard(
+    entry: TimetableEntry,
+    modifier: Modifier = Modifier
+) {
+    // Colour strip on the left re‑uses your helper for entry‑type colouring
+    val stripColor = timetableEntryColor(entry.type)
 
+    Card(
+        modifier = modifier
+            .fillMaxSize(),
+        shape  = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor   = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            /* type / attendance strip (similar idea to TodayScheduleCard’s dot+line) */
+            Box(
+                Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(stripColor)
+            )
 
+            Spacer(Modifier.width(8.dp))
 
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                /* title */
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
 
+                Spacer(Modifier.height(4.dp))
 
+                /* time row */
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${entry.start} – ${entry.end}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
+                /* teacher row (optional) */
+                if (entry.teacher.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            entry.teacher,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
 
-
+                /* room row */
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        entry.room,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
 
 
 /* ───────────────────────────────────────────────────────────── */
