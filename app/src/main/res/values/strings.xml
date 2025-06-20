@@ -193,6 +193,8 @@
     <string name="show_more">Show More</string>
 
     <string name="no_upcoming_events">No upcoming events.</string>
+    <string name="weekly_view">Weekly View</string>
+
 
 </resources>
 
