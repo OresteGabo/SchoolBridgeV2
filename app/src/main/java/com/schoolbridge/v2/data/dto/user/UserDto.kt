@@ -2,6 +2,7 @@ package com.schoolbridge.v2.data.dto.user
 
 import com.google.gson.annotations.SerializedName
 import com.schoolbridge.v2.data.dto.common.ContentAttachmentDto
+import com.schoolbridge.v2.data.dto.user.student.StudentDetailsDto
 import com.schoolbridge.v2.data.enums.UserVerificationStatus
 import com.schoolbridge.v2.data.enums.VerificationMethod
 
