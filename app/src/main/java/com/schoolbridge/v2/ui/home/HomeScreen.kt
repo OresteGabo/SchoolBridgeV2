@@ -18,7 +18,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -26,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -576,38 +580,130 @@ data class TodayCourse(
     val location: String
 )
 
+
 @Composable
-fun TodayScheduleCard(course: TodayCourse, modifier: Modifier = Modifier) {
+fun TodayScheduleCard(
+    course: TodayCourse,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier
-            .width(220.dp)
-            .height(140.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .fillMaxWidth()
+            .height(120.dp)
+            .padding(horizontal = 8.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(6.dp)
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(6.dp)
-                    .background(MaterialTheme.colorScheme.primary)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            // Timeline marker: dot + line
             Column(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.SpaceBetween
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(end = 12.dp)
             ) {
-                Text(course.subject, style = MaterialTheme.typography.titleSmall)
-                Text("${course.startTime} - ${course.endTime}", style = MaterialTheme.typography.labelMedium)
-                Text(course.teacher, style = MaterialTheme.typography.bodySmall)
-                Text(course.location, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(40.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                )
+            }
+
+            // Main Info Column
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                Text(
+                    text = course.subject,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${course.startTime} - ${course.endTime}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = course.teacher,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = course.location,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
 }
+//
+//@Preview(showBackground = true)
+//@Composable
+//fun TodayScheduleTimelineCardPreview() {
+//    TodayScheduleCard(
+//        course = TodayCourse(
+//            subject = "Physics",
+//            startTime = "10:00",
+//            endTime = "11:30",
+//            teacher = "Ms. Uwase",
+//            location = "Lab 2"
+//        )
+//    )
+//}
+
+
 
 @Composable
 fun GradesSummarySection(modifier: Modifier = Modifier) {
