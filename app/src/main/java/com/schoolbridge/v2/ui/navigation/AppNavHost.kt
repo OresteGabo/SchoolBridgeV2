@@ -161,7 +161,8 @@ fun AppNavHost(
                             saveState = true       // Keep previous screen state
                         }
                     }
-                }
+                },
+                onWeeklyViewClick = {}
             )
         }
 
