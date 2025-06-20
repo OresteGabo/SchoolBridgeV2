@@ -1,13 +1,10 @@
 package com.schoolbridge.v2.ui.home.timetable
 
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
@@ -17,16 +14,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.*
+import androidx.compose.ui.unit.*
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
-import java.time.Duration
 import java.time.LocalTime
 import java.time.format.TextStyle
 import java.util.Locale
@@ -34,11 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
 import com.schoolbridge.v2.R
-import com.schoolbridge.v2.domain.academic.DayHeaders
-import com.schoolbridge.v2.domain.academic.HourRange
-import com.schoolbridge.v2.domain.academic.TimetableEntry
-import com.schoolbridge.v2.domain.academic.TimetableEntryType
-import com.schoolbridge.v2.domain.academic.timetableEntryColor
+import com.schoolbridge.v2.domain.academic.*
 import com.schoolbridge.v2.localization.t
 import kotlin.collections.count
 import kotlin.collections.forEach
@@ -383,6 +373,8 @@ fun ZoomableTimetableWithButtons(
             FloatingZoomControls(
                 onZoomIn = { scale = (scale * 1.12f).coerceIn(minScale, maxScale) },
                 onZoomOut = { scale = (scale / 1.12f).coerceIn(minScale, maxScale) },
+                onAddPersonalEvent = { /* TODO: Implement logic to open Add Event screen/dialog */ },
+                onNavigateToday = { /* TODO: Implement logic to scroll to current day/time */ },
                 modifier = Modifier.align(Alignment.BottomEnd)
             )
         }
