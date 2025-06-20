@@ -5,6 +5,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -195,24 +196,43 @@ private fun HomeUI(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (currentUser?.isStudent() == true) {
-            // Show courses list instead of students
             CourseListSection()
+
+            SpacerL()
+
+            TodayScheduleSection() // 🆕 Suggested: compact daily schedule preview
+
+            SpacerL()
+
+            AlertsSection(
+                onViewAllAlertsClick = onViewAllAlertsClick,
+                onAlertClick = onAlertClick
+            )
+
+            SpacerL()
+
+            GradesSummarySection() // 🆕 Suggested: show recent marks released (see below)
+
         } else {
             StudentListSection(students = currentUser?.linkedStudents)
-        }
 
-        SpacerL()
-        AlertsSection(
-            onViewAllAlertsClick = onViewAllAlertsClick,
-            onAlertClick = onAlertClick
-        )
-        SpacerL()
-        EventsSection(
-            onViewAllEventsClick = onViewAllEventsClick,
-            onEventClick = onEventClick
-        )
+            SpacerL()
+
+            AlertsSection(
+                onViewAllAlertsClick = onViewAllAlertsClick,
+                onAlertClick = onAlertClick
+            )
+
+            SpacerL()
+
+            EventsSection(
+                onViewAllEventsClick = onViewAllEventsClick,
+                onEventClick = onEventClick
+            )
+        }
     }
 }
+
 
 
 
@@ -523,5 +543,161 @@ fun CourseStatusBadge(status: CourseStatus) {
             tint = color,
             modifier = Modifier.size(16.dp)
         )
+    }
+}
+
+
+@Composable
+fun TodayScheduleSection(modifier: Modifier = Modifier) {
+    val dummySchedules = listOf(
+        TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
+        TodayCourse("Chemistry", "10:00", "11:40", "Ms. Uwase", "Lab 3"),
+        TodayCourse("History", "13:00", "14:40", "Mr. Habimana", "Room B2")
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        AppSubHeader("📅 Today’s Schedule")
+        SpacerS()
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            dummySchedules.forEach { dummySchedule ->
+                item{
+                    TodayScheduleCard(dummySchedule)
+                }
+            }
+        }
+    }
+}
+
+data class TodayCourse(
+    val subject: String,
+    val startTime: String,
+    val endTime: String,
+    val teacher: String,
+    val location: String
+)
+
+@Composable
+fun TodayScheduleCard(course: TodayCourse, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .width(220.dp)
+            .height(140.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(6.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(course.subject, style = MaterialTheme.typography.titleSmall)
+                Text("${course.startTime} - ${course.endTime}", style = MaterialTheme.typography.labelMedium)
+                Text(course.teacher, style = MaterialTheme.typography.bodySmall)
+                Text(course.location, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+@Composable
+fun GradesSummarySection(modifier: Modifier = Modifier) {
+    val dummyGrades = listOf(
+        GradeSummary("Mathematics", 87, "Mr. Kamali"),
+        GradeSummary("Biology", 61, "Ms. Uwase"),
+        GradeSummary("English", 45, "Mrs. Mukeshimana")
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        AppSubHeader("📊 Recent Grades")
+        SpacerS()
+        dummyGrades.forEachIndexed { index, grade ->
+            GradeCardCompact(grade, index)
+        }
+    }
+}
+
+data class GradeSummary(
+    val subject: String,
+    val score: Int,
+    val teacher: String
+)
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun GradeCardCompact(
+    grade: GradeSummary,
+    index: Int,
+    modifier: Modifier = Modifier
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    val (color, icon) = when {
+        grade.score >= 75 -> MaterialTheme.colorScheme.primary to Icons.Default.CheckCircle
+        grade.score >= 50 -> MaterialTheme.colorScheme.secondary to Icons.Default.Info
+        else -> MaterialTheme.colorScheme.error to Icons.Default.Warning
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(400)) + slideInVertically(tween(400, delayMillis = index * 60))
+    ) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .fillMaxHeight()
+                        .background(color, shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(12.dp)
+                ) {
+                    Text(text = grade.subject, style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Score: ${grade.score}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Teacher: ${grade.teacher}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .align(Alignment.CenterVertically)
+                        .size(24.dp)
+                )
+            }
+        }
     }
 }
