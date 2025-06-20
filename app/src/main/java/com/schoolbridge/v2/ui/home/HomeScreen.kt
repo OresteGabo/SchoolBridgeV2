@@ -16,7 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -271,7 +274,7 @@ fun CourseListSection(
                 endDate = LocalDate.of(2025, 5, 30),
                 isActive = false
             ),
-            isFinishedAndValidated = true
+            status = CourseStatus.VALIDATED
         ),
         CourseWithStatus(
             course = Course(
@@ -286,7 +289,7 @@ fun CourseListSection(
                 endDate = LocalDate.of(2025, 5, 30),
                 isActive = true
             ),
-            isFinishedAndValidated = false
+            status = CourseStatus.IN_PROGRESS
         ),
         CourseWithStatus(
             course = Course(
@@ -301,9 +304,40 @@ fun CourseListSection(
                 endDate = LocalDate.of(2025, 5, 30),
                 isActive = false
             ),
-            isFinishedAndValidated = true
+            status = CourseStatus.RETAKE_REQUIRED
+        ),
+        CourseWithStatus(
+            course = Course(
+                id = "c4",
+                name = "History Grade 10",
+                description = "A survey of world history with focus on Africa.",
+                subjectId = "subj-hist",
+                academicYearId = "AY2024-2025",
+                schoolLevelOfferingId = "slo-g10-art",
+                teacherUserIds = listOf("teacher4"),
+                startDate = LocalDate.of(2024, 9, 1),
+                endDate = LocalDate.of(2025, 5, 30),
+                isActive = false
+            ),
+            status = CourseStatus.NOT_VALIDATED
+        ),
+        CourseWithStatus(
+            course = Course(
+                id = "c5",
+                name = "Physics S5",
+                description = "Advanced mechanics, electricity, and waves.",
+                subjectId = "subj-phys",
+                academicYearId = "AY2024-2025",
+                schoolLevelOfferingId = "slo-s5-sci",
+                teacherUserIds = listOf("teacher2"),
+                startDate = LocalDate.of(2024, 9, 1),
+                endDate = LocalDate.of(2025, 5, 30),
+                isActive = false
+            ),
+            status = CourseStatus.AWAITING_RESULTS
         )
     )
+
 
     Row(modifier = modifier.fillMaxWidth()) {
         AppSubHeader("📚 " + "Courses")
@@ -403,16 +437,7 @@ fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier
                         )
                     }
 
-                    if (courseWithStatus.isFinishedAndValidated) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Finished and validated",
-                            tint = Color(0xFF4CAF50), // Green 500
-                            modifier = Modifier.size(36.dp)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.size(36.dp))
-                    }
+                    CourseStatusBadge(courseWithStatus.status)
                 }
             }
         }
@@ -438,7 +463,7 @@ fun CourseCardPreview() {
                     endDate = LocalDate.of(2025, 5, 30),
                     isActive = false
                 ),
-                isFinishedAndValidated = true
+                status = CourseStatus.VALIDATED,
             ),
             modifier = Modifier.padding(16.dp)
         )
@@ -459,5 +484,44 @@ val dummyTeacherNames = mapOf(
 // Extend your Course with a dummy flag for finished + validated (since not in your class)
 data class CourseWithStatus(
     val course: Course,
-    val isFinishedAndValidated: Boolean
+    val status: CourseStatus
 )
+
+enum class CourseStatus {
+    VALIDATED,           // Student completed and passed
+    NOT_VALIDATED,       // Student failed
+    IN_PROGRESS,         // Ongoing
+    RETAKE_REQUIRED,     // Failed and required to retake
+    AWAITING_RESULTS     // Finished but not yet validated
+}
+
+@Composable
+fun CourseStatusBadge(status: CourseStatus) {
+    val (label, color, icon) = when (status) {
+        CourseStatus.VALIDATED -> Triple("VALIDATED", Color(0xFF4CAF50), Icons.Default.CheckCircle)
+        CourseStatus.NOT_VALIDATED -> Triple("FAILED", Color(0xFFFF5722), Icons.Default.Warning)
+        CourseStatus.RETAKE_REQUIRED -> Triple("RETAKE", Color(0xFFF44336), Icons.Default.Warning)
+        CourseStatus.IN_PROGRESS -> Triple("IN PROGRESS", MaterialTheme.colorScheme.primary, Icons.Default.Notifications)
+        CourseStatus.AWAITING_RESULTS -> Triple("PENDING", Color(0xFF03A9F4), Icons.Default.Info)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(color.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = label,
+            color = color,
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = "Course Status",
+            tint = color,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
