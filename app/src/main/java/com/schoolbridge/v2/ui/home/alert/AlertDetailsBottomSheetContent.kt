@@ -40,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
-import com.schoolbridge.v2.ui.home.InfoRowWithIcon
+import com.schoolbridge.v2.ui.common.components.InfoRowWithIcon
 import java.time.format.DateTimeFormatter
 import com.schoolbridge.v2.ui.home.common.NewBadge
 import com.schoolbridge.v2.ui.home.common.SeverityChip
