@@ -74,6 +74,7 @@ sealed class MainAppScreen(
     data object About : MainAppScreen("about_screen")
     data object DataPrivacy : MainAppScreen("data_privacy_screen") // Distinct from onboarding's PrivacyPolicy
 
+    data object WeeklySchedule : MainAppScreen("weekly_schedule_screen")
     data object Terms : MainAppScreen("terms_screen")
     data object PrivacyPolicy : MainAppScreen("privacy_policy_screen")
 
