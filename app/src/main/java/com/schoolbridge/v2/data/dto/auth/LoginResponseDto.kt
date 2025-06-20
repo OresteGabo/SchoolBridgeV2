@@ -1,7 +1,7 @@
 package com.schoolbridge.v2.data.dto.auth
 
-import kotlinx.serialization.Serializable
 import com.schoolbridge.v2.domain.user.CurrentUser
+import kotlinx.serialization.Serializable
 import com.schoolbridge.v2.domain.user.Gender
 
 
