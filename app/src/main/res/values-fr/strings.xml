@@ -194,5 +194,6 @@
 
     <string name="upcoming_events">Événements à Venir</string>
     <string name="no_upcoming_events">Aucun événement à venir.</string>
+    <string name="weekly_view">Vue hebdomadaire</string>
 
 </resources>
