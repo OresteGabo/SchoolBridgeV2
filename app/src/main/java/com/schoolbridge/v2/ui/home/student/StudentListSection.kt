@@ -27,7 +27,7 @@ fun StudentListSection(
 ) {
     if (!students.isNullOrEmpty()) {
         Row(modifier = modifier.fillMaxWidth()) {
-            AppSubHeader("📚 " + t(R.string.your_children))
+            AppSubHeader("🧑‍🤝‍🧑 " + t(R.string.your_children))
         }
         SpacerS()
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
