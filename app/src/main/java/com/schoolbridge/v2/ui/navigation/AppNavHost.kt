@@ -171,7 +171,7 @@ fun AppNavHost(
 
         composable(MainAppScreen.WeeklySchedule.route){
             TimetableTabsScreen(
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
             )
         }
 
