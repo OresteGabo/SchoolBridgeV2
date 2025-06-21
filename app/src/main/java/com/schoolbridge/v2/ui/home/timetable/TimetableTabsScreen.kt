@@ -18,10 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.academic.TimetableEntry
 import com.schoolbridge.v2.domain.academic.timetableEntryColor
@@ -162,7 +160,7 @@ fun DailyTimetableTab() {
             Box(
                 modifier = Modifier
                     .width(IntrinsicSize.Min) // Allows content to dictate width
-                    .padding(start = 8.dp, end = 4.dp)
+                    .padding(start = 8.dp, end = 4.dp) // Overall padding for this entire timeline section
                     .height(timelineHeightInDp + HOUR_HEIGHT_DP / 2) // Total height to accommodate dots at top/bottom edges
             ) {
                 // Vertical Line (behind time labels)
@@ -189,7 +187,7 @@ fun DailyTimetableTab() {
                     modifier = Modifier
                         .fillMaxHeight() // Fill the height of the parent Box
                         .align(Alignment.CenterEnd) // Align to the right, on top of the line
-                        .padding(end = 4.dp) // Padding for the labels
+                        .offset(x = 4.dp) // SHIFT ENTIRE COLUMN 4DP TO THE RIGHT FOR ALIGNMENT
                 ) {
                     // Spacer to align the first hour label's center with the top of the timeline
                     // This shifts the labels down so 07:00 is centered at the first dot.
@@ -200,26 +198,29 @@ fun DailyTimetableTab() {
                             modifier = Modifier
                                 .fillMaxWidth() // Take full width of the column
                                 .height(HOUR_HEIGHT_DP), // Height of each hour slot
-                            contentAlignment = Alignment.CenterEnd // Align text to the end
+                            contentAlignment = Alignment.CenterEnd // Aligns the Row inside to the end of this Box
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                horizontalArrangement = Arrangement.End, // Align content to the end of the Row
+                                modifier = Modifier.fillMaxWidth() // Fill the width of the parent Box (for Text/Dot)
                             ) {
                                 Text(
                                     text = "%02d:00".format(hour),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f) // Push text to left
+                                    // Removed Modifier.weight(1f) to control spacing
                                 )
 
-                                // The dot exactly centered on the vertical line
+                                Spacer(modifier = Modifier.width(4.dp)) // Defines the space between text and dot
+
+                                // The dot
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .clip(RoundedCornerShape(5.dp))
                                         .background(MaterialTheme.colorScheme.primary)
-                                        .padding(horizontal = 4.dp) // Add some padding to push it right of the text
+                                    // Removed padding(start = 4.dp) as offset on Column handles alignment
                                 )
                             }
                         }
@@ -380,13 +381,3 @@ fun DailyCourseCard(
         }
     }
 }
-
-/*
-// Placeholder for WeeklyTimetableTab - you'd have your actual implementation here
-@Composable
-fun WeeklyTimetableTab(events: List<TimetableEntry>, onBack: () -> Unit) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Weekly Timetable Content Goes Here")
-    }
-}
-*/
