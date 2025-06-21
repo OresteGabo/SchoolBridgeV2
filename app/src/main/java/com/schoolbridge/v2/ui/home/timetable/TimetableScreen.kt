@@ -294,9 +294,9 @@ private fun TimetableEventCard(
 /* ───────────────────────────────────────────────────────────── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZoomableTimetableWithButtons(
+fun WeeklyTimetableTab(
     events: List<TimetableEntry> = sampleEvents,
-    onBack: () -> Unit
+    onBack: () -> Unit // kept for your usage if needed inside, but Scaffold removed
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -311,73 +311,55 @@ fun ZoomableTimetableWithButtons(
     val minScale = 0.3f
     val maxScale = 3f
 
-    Scaffold(
-        topBar = { TopAppBar(
-            title = { Text("Zoomable Timetable") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = t(R.string.back))
-                }
-            }
-        ) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val constraints = this.constraints
+            val density = LocalDensity.current
 
-    ) { innerPadding ->
+            val totalHours = HourRange.count()
+            val totalDays = DayHeaders.size
 
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-                val constraints = this.constraints
-                val density = LocalDensity.current
-
-                val totalHours = HourRange.count()
-                val totalDays = DayHeaders.size
-
-                // Calculate min scale to fit the timetable inside constraints
-                val minScaleFit = run {
-                    val totalWidthPx = with(density) { (baseTimeW + baseDayW * totalDays).toPx() }
-                    val totalHeightPx = with(density) { (baseSlotH * totalHours).toPx() }
-                    val wFit = constraints.maxWidth.toFloat() / totalWidthPx
-                    val hFit = constraints.maxHeight.toFloat() / totalHeightPx
-                    kotlin.comparisons.minOf(wFit, hFit).coerceAtMost(maxScale)
-                }
-
-                // Coerce scale within bounds
-                scale = scale.coerceIn(minScaleFit, maxScale)
-
-                // Compute scaled sizes as Dp
-                val dayW = baseDayW * scale
-                val timeW = baseTimeW * scale
-
-                // Calculate minimum slot height to fit all hours inside maxHeight
-                val minSlotHeight = with(density) {
-                    (constraints.maxHeight.toFloat() / totalHours).toDp()
-                }
-                val slotH = (baseSlotH * scale).coerceAtLeast(minSlotHeight)
-
-                TimetableScreen(
-                    events = events,
-                    slotHeight = slotH,
-                    dayWidth = dayW,
-                    timeColWidth = timeW,
-                    onEventClick = {
-                        selected = it
-                        scope.launch { sheetState.show() }
-                    }
-                )
+            val minScaleFit = run {
+                val totalWidthPx = with(density) { (baseTimeW + baseDayW * totalDays).toPx() }
+                val totalHeightPx = with(density) { (baseSlotH * totalHours).toPx() }
+                val wFit = constraints.maxWidth.toFloat() / totalWidthPx
+                val hFit = constraints.maxHeight.toFloat() / totalHeightPx
+                kotlin.comparisons.minOf(wFit, hFit).coerceAtMost(maxScale)
             }
 
-            FloatingZoomControls(
-                onZoomIn = { scale = (scale * 1.12f).coerceIn(minScale, maxScale) },
-                onZoomOut = { scale = (scale / 1.12f).coerceIn(minScale, maxScale) },
-                onAddPersonalEvent = { /* TODO: Implement logic to open Add Event screen/dialog */ },
-                onNavigateToday = { /* TODO: Implement logic to scroll to current day/time */ },
-                modifier = Modifier.align(Alignment.BottomEnd)
+            scale = scale.coerceIn(minScaleFit, maxScale)
+
+            val dayW = baseDayW * scale
+            val timeW = baseTimeW * scale
+
+            val minSlotHeight = with(density) {
+                (constraints.maxHeight.toFloat() / totalHours).toDp()
+            }
+            val slotH = (baseSlotH * scale).coerceAtLeast(minSlotHeight)
+
+            TimetableScreen(
+                events = events,
+                slotHeight = slotH,
+                dayWidth = dayW,
+                timeColWidth = timeW,
+                onEventClick = {
+                    selected = it
+                    scope.launch { sheetState.show() }
+                }
             )
         }
+
+        FloatingZoomControls(
+            onZoomIn = { scale = (scale * 1.12f).coerceIn(minScale, maxScale) },
+            onZoomOut = { scale = (scale / 1.12f).coerceIn(minScale, maxScale) },
+            onAddPersonalEvent = { /* TODO */ },
+            onNavigateToday = { /* TODO */ },
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
     }
 
     if (selected != null) {
@@ -413,6 +395,7 @@ fun ZoomableTimetableWithButtons(
         }
     }
 }
+
 
 
 
