@@ -44,7 +44,7 @@ import androidx.compose.runtime.getValue
 import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
-import com.schoolbridge.v2.ui.home.timetable.ZoomableTimetableWithButtons
+import com.schoolbridge.v2.ui.home.timetable.TimetableTabsScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.message.MessageThreadScreen
 import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
@@ -170,8 +170,8 @@ fun AppNavHost(
         }
 
         composable(MainAppScreen.WeeklySchedule.route){
-            ZoomableTimetableWithButtons(
-                onBack = { navController.navigateUp() },
+            TimetableTabsScreen(
+                onBack = { navController.navigateUp() }
             )
         }
 
