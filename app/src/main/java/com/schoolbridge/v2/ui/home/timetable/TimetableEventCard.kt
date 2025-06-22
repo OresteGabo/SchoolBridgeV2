@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.ui.home.timetable
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.academic.TimetableEntry
@@ -34,6 +36,7 @@ import com.schoolbridge.v2.domain.academic.timetableEntryColor
 /* ──────────────────────────────────────────────────────────────
    TimetableEventCard – mini version styled like TodayScheduleCard
    ────────────────────────────────────────────────────────────── */
+/*
 @Composable
 fun TimetableEventCard(
     entry: TimetableEntry,
@@ -136,3 +139,44 @@ fun TimetableEventCard(
         }
     }
 }
+*/
+
+
+@Composable
+fun TimetableEventCard(
+    entry: TimetableEntry,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier
+            .border(1.dp, MaterialTheme.colorScheme.outline)
+            .background(timetableEntryColor(entry.type))
+            .padding(6.dp)
+    ) {
+        Column {
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), // smaller font size
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "${entry.start.hour.toString().padStart(2, '0')}:${entry.start.minute.toString().padStart(2, '0')} - " +
+                        "${entry.end.hour.toString().padStart(2, '0')}:${entry.end.minute.toString().padStart(2, '0')}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "${entry.room} | ${entry.teacher}",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+
+
+
