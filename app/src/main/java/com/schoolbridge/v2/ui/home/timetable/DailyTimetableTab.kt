@@ -42,6 +42,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -73,6 +76,14 @@ fun HorizontalDateSelector(
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var selectedDay by remember { mutableStateOf(selectedDate) }
 
+    // Keep in sync with selectedDate
+    LaunchedEffect(selectedDate) {
+        if (selectedDate != selectedDay) {
+            currentMonth = YearMonth.from(selectedDate)
+            selectedDay = selectedDate
+        }
+    }
+
     val daysInMonth = remember(currentMonth) {
         (1..currentMonth.lengthOfMonth()).map { day -> currentMonth.atDay(day) }
     }
@@ -81,7 +92,8 @@ fun HorizontalDateSelector(
     val spacing by animateDpAsState(targetValue = if (compact) 4.dp else 8.dp)
     val padding by animateDpAsState(targetValue = if (compact) 4.dp else 8.dp)
 
-    LaunchedEffect(currentMonth, selectedDay) {
+    // Scroll to selected day
+    LaunchedEffect(selectedDay, daysInMonth) {
         val index = daysInMonth.indexOfFirst { it == selectedDay }
         if (index >= 0) {
             val screenWidthPx = with(density) { screenWidthDp.toPx() }
@@ -92,8 +104,6 @@ fun HorizontalDateSelector(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-
-        /** Month navigation header **/
         AnimatedVisibility(visible = !compact) {
             Row(
                 modifier = Modifier
@@ -112,7 +122,7 @@ fun HorizontalDateSelector(
                 Text(
                     text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
 
                 IconButton(onClick = {
@@ -125,7 +135,6 @@ fun HorizontalDateSelector(
             }
         }
 
-        /** Day items **/
         LazyRow(
             state = listState,
             horizontalArrangement = Arrangement.spacedBy(spacing),
@@ -143,12 +152,6 @@ fun HorizontalDateSelector(
                         .clickable {
                             selectedDay = date
                             onDateSelected(date)
-                            coroutineScope.launch {
-                                val screenWidthPx = with(density) { screenWidthDp.toPx() }
-                                val itemWidthPx = with(density) { itemWidth.toPx() }
-                                val offset = (screenWidthPx / 2 - itemWidthPx / 2).toInt()
-                                listState.animateScrollToItem(index, scrollOffset = -offset)
-                            }
                         }
                         .background(
                             if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -180,6 +183,7 @@ fun HorizontalDateSelector(
     }
 }
 
+
 private fun centerLazyRowItem(
     listState: LazyListState,
     index: Int,
@@ -210,60 +214,93 @@ fun DailyTimetableTab(
     selectedDate: LocalDate,
     onDateChange: (LocalDate) -> Unit
 ) {
-    /* Show 30 days back and 30 days forward relative to *today*      */
-    val visibleDates = remember(selectedDate) {
-        (-30..30).map { LocalDate.now().plusDays(it.toLong()) }
-    }
-
     val verticalScrollState = rememberScrollState()
 
-    Column(Modifier.fillMaxSize()) {
+    // Filter events for the selected date
+    val dailyEvents = remember(selectedDate) {
+        sampleEvents.filter { it.start.toLocalDate() == selectedDate }
+            .sortedBy { it.start }
+    }
 
-        /*  Calendar strip  */
+    // Find the next date with events after selectedDate
+    val nextDateWithEvent = remember(selectedDate) {
+        (1..30).map { selectedDate.plusDays(it.toLong()) }
+            .firstOrNull { date ->
+                sampleEvents.any { it.start.toLocalDate() == date }
+            }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        // Calendar strip
         HorizontalDateSelector(
-            selectedDate  = selectedDate,
-            //visibleDates  = visibleDates,
+            selectedDate = selectedDate,
             onDateSelected = onDateChange
         )
 
         Spacer(Modifier.height(16.dp))
 
-        /* Filter events for this day (replace `sampleEvents` with your own) */
-        val dailyEvents = remember(selectedDate) {
-            sampleEvents
-                .filter { it.day == selectedDate.dayOfWeek }
-                .sortedBy { it.start }
-        }
-
-        /* Time-line + events */
-        Row(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(verticalScrollState)
-        ) {
-            val totalHours       = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) + 1
+        if (dailyEvents.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.EventBusy,
+                        contentDescription = "No events",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "No events for this day.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    if (nextDateWithEvent != null) {
+                        Button(onClick = { onDateChange(nextDateWithEvent) }) {
+                            Text("Go to next event day")
+                        }
+                    } else {
+                        Text(
+                            "No upcoming events.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        } else {
+            val totalHours = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) + 1
             val timelineHeightDp = HOUR_HEIGHT_DP * totalHours
 
-            /* --- Timeline labels + vertical line --- */
-            TimeAxis(timelineHeightDp)
-
-            /* Divider */
-            HorizontalDivider(
+            Row(
                 Modifier
-                    .fillMaxHeight()
-                    .width(1.dp)
-                    .padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+                    .fillMaxSize()
+                    .verticalScroll(verticalScrollState)
+            ) {
+                TimeAxis(timelineHeightDp)
 
-            /* Events area */
-            EventsColumn(
-                dailyEvents        = dailyEvents,
-                timelineHeightDp   = timelineHeightDp
-            )
+                HorizontalDivider(
+                    Modifier
+                        .fillMaxHeight()
+                        .width(1.dp)
+                        .padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+
+                EventsColumn(
+                    dailyEvents = dailyEvents,
+                    timelineHeightDp = timelineHeightDp,
+                    onJumpToNext = { nextDateWithEvent?.let(onDateChange) ?: Unit },
+                    hasNext = nextDateWithEvent != null,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
+
+
+
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* Helper: draw timeline hours / dots                                        */
@@ -340,50 +377,70 @@ private fun TimeAxis(timelineHeightDp: Dp) {
 private fun EventsColumn(
     dailyEvents: List<TimetableEntry>,
     timelineHeightDp: Dp,
+    onJumpToNext: () -> Unit,
+    hasNext: Boolean,
     modifier: Modifier = Modifier
 ) {
     val minTime = LocalTime.of(TIMELINE_START_HOUR, 0)
     val maxTime = LocalTime.of(TIMELINE_END_HOUR + 1, 0)
     val totalMinutes = Duration.between(minTime, maxTime).toMinutes().toFloat()
-
     val totalHeight = timelineHeightDp + (HOUR_HEIGHT_DP / 2)
-    val dpPerMinute = if (totalMinutes > 0) {
-        totalHeight / totalMinutes
-    } else {
-        0.dp
+    val dpPerMinute = if (totalMinutes > 0) totalHeight / totalMinutes else 0.dp
+
+    /* If there are NO events, show friendly empty-state */
+    if (dailyEvents.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.EventAvailable,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "No events for this day",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (hasNext) {
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onJumpToNext) {
+                        Text("Jump to next event day")
+                    }
+                }
+            }
+        }
+        return      // ⬅  nothing else to draw
     }
 
+    /* Otherwise draw normal timeline + cards */
     Box(
         modifier = modifier
             .padding(horizontal = 12.dp)
             .height(totalHeight)
     ) {
-        if (dailyEvents.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No events for this day.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        } else {
-            dailyEvents.forEach { entry ->
-                val startMinutes = Duration.between(minTime, entry.start).toMinutes().toInt()
-                val durationMinutes = Duration.between(entry.start, entry.end).toMinutes().toInt()
+        dailyEvents.forEach { entry ->
+            val startMin = Duration.between(minTime, entry.start).toMinutes().toInt()
+            val durMin   = Duration.between(entry.start, entry.end).toMinutes().toInt()
+            val offsetY  = dpPerMinute * startMin
+            val height   = dpPerMinute * durMin
 
-                val offsetY = dpPerMinute * startMinutes
-                val height = dpPerMinute * durationMinutes
-
-                DailyCourseCard(
-                    entry = entry,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = offsetY + (HOUR_HEIGHT_DP / 2))
-                        .height(height)
-                )
-            }
+            DailyCourseCard(
+                entry = entry,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = offsetY + (HOUR_HEIGHT_DP / 2))
+                    .height(height)
+            )
         }
     }
 }
+
 
 
 /* ────────────────────────────────────────────────────────────────────────── */
