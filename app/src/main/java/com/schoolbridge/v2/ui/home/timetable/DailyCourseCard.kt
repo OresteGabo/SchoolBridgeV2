@@ -43,16 +43,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PersonPinCircle
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-
 
 @Composable
 fun DailyCourseCard(
     entry: TimetableEntry,
     modifier: Modifier = Modifier,
-    participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ"), // Add this parameter
-    onParticipantsClick: () -> Unit = {} // Callback for when user taps "+N"
+    participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ", "KL"), // Example participants
+    onParticipantsClick: () -> Unit = {}
 ) {
     val accent = timetableEntryColor(entry.type)
     val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
@@ -122,21 +123,20 @@ fun DailyCourseCard(
                 }
             }
 
-            // Participants cluster at bottom right
             if (participants.isNotEmpty()) {
                 ParticipantAvatars(
                     participants = participants,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(12.dp),
-                    avatarSize = 32.dp,
-                    onClickMore = {onParticipantsClick}
+                    avatarSize = 32.dp, // Reverted to original size for consistency, but you can adjust
+                    onClickMore = onParticipantsClick
                 )
-
             }
         }
     }
 }
+
 
 
 @Composable
@@ -204,7 +204,7 @@ private fun TeacherAndRoomLine(teacher: String, room: String) {
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (teacher.isNotBlank() && room.isNotBlank()) Spacer(Modifier.width(12.dp))
@@ -219,12 +219,11 @@ private fun TeacherAndRoomLine(teacher: String, room: String) {
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
     }
-
 }
 
 
@@ -235,14 +234,9 @@ private fun timetableEntryColor(type: TimetableEntryType): Color {
         TimetableEntryType.LECTURE -> MaterialTheme.colorScheme.primary
         TimetableEntryType.PRACTICAL -> MaterialTheme.colorScheme.secondary
         TimetableEntryType.GROUP_WORK -> MaterialTheme.colorScheme.tertiary
-        TimetableEntryType.REMEDIAL -> MaterialTheme.colorScheme.inversePrimary // Assuming you have a warning color, or use a derivative like primary.light/dark
-        // Option 1: Use 'error' for a strong, attention-grabbing red for tests
+        TimetableEntryType.REMEDIAL -> MaterialTheme.colorScheme.inversePrimary
         TimetableEntryType.TEST -> MaterialTheme.colorScheme.error
-
-        // Option 2: Use 'secondaryContainer' for tests if 'error' is too strong and you want a softer look
-        // TimetableEntryType.TEST -> MaterialTheme.colorScheme.secondaryContainer
-
-        TimetableEntryType.ASSEMBLY -> MaterialTheme.colorScheme.surfaceTint // SurfaceTint often provides a good contrasting color for general events.
+        TimetableEntryType.ASSEMBLY -> MaterialTheme.colorScheme.surfaceTint
     }
 }
 
@@ -253,12 +247,18 @@ fun ParticipantAvatars(
     participants: List<String>,
     modifier: Modifier = Modifier,
     avatarSize: Dp = 28.dp,
+    maxVisibleAvatars: Int = 5,
     onClickMore: () -> Unit = {}
 ) {
-    val visibleParticipants = participants.take(5)
     val density = LocalDensity.current
 
-    // Predefined overlap per avatar index
+    val avatarBgColor = MaterialTheme.colorScheme.surfaceVariant
+    val avatarTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val actualVisibleParticipants = participants.take(maxVisibleAvatars)
+    val remainingParticipants = participants.size - actualVisibleParticipants.size
+    val showMoreAvatar = remainingParticipants > 0
+
     fun overlapFractionFor(index: Int): Float = when (index) {
         0 -> 0.9f
         1 -> 0.88f
@@ -267,15 +267,16 @@ fun ParticipantAvatars(
         else -> 0.7f
     }
 
-    // Compute total width based on cumulative offset
     val totalWidth = with(density) {
         var widthPx = avatarSize.toPx()
-        for (i in 1 until visibleParticipants.size) {
+        val currentAvatarsToDraw = actualVisibleParticipants.size + (if(showMoreAvatar) 1 else 0)
+        for (i in 1 until currentAvatarsToDraw) {
             val prevOverlap = overlapFractionFor(i - 1)
             widthPx += (avatarSize.toPx() - (avatarSize.toPx() * prevOverlap))
         }
         widthPx.dp
     }
+
 
     Box(
         modifier = modifier
@@ -283,7 +284,7 @@ fun ParticipantAvatars(
             .height(avatarSize),
         contentAlignment = Alignment.CenterEnd
     ) {
-        visibleParticipants.forEachIndexed { index, participant ->
+        actualVisibleParticipants.forEachIndexed { index, participant ->
             val offsetX = with(density) {
                 var offset = 0f
                 for (i in 0 until index) {
@@ -295,26 +296,72 @@ fun ParticipantAvatars(
             Box(
                 modifier = Modifier
                     .size(avatarSize)
-                    .offset(x = -offsetX) // stack from right to left, leftmost avatar is on top
+                    .offset(x = -offsetX)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                    .background(avatarBgColor)
                     .border(
-                        1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                        1.5.dp,
+                        MaterialTheme.colorScheme.surface,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = participant.take(2).uppercase(),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = avatarTextColor,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
-    }
-}
+
+        if (showMoreAvatar) {
+            val lastAvatarIndex = actualVisibleParticipants.size
+            val offsetX = with(density) {
+                var offset = 0f
+                for (i in 0 until lastAvatarIndex) {
+                    offset += (avatarSize.toPx() - (avatarSize.toPx() * overlapFractionFor(i)))
+                }
+                offset.toDp()
+            }
+
+            // Calculate the diluted primary color using Color.lerp
+            val dilutedPrimaryColor = lerp( // Use lerp directly
+                start = MaterialTheme.colorScheme.primary,
+                stop = MaterialTheme.colorScheme.surface, // Blend with your surface color
+                fraction = 0.4f // Adjust this fraction (e.g., 0.3f, 0.4f, 0.5f) for desired dilution
+                // 0.0 = full primary, 1.0 = full surface
+            )
+
+            // The 'onPrimary' color is designed to contrast with 'primary'.
+            // For a slightly diluted primary, it often still works well.
+            // If it doesn't, consider 'onSurface' or a custom 'on' color that
+            // specifically contrasts with your chosen 'dilutedPrimaryColor'.
+            val iconTint = MaterialTheme.colorScheme.onPrimary // Typically onPrimary will still work for slightly diluted primary
+
+            Box(
+                modifier = Modifier
+                    .size(avatarSize)
+                    .offset(x = -offsetX)
+                    .clip(CircleShape)
+                    .background(dilutedPrimaryColor) // Use the diluted primary
+                    .border(
+                        1.5.dp,
+                        MaterialTheme.colorScheme.surface,
+                        CircleShape
+                    )
+                    .clickable { onClickMore() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PersonPinCircle,
+                    contentDescription = "More participants",
+                    tint = iconTint, // Use MaterialTheme.colorScheme.onPrimary
+                    modifier = Modifier.size(avatarSize * 0.7f)
+                )
+            }
+        }}}
+
 
 
 
