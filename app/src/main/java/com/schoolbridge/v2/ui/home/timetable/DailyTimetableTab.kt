@@ -1,65 +1,223 @@
 package com.schoolbridge.v2.ui.home.timetable
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import com.schoolbridge.v2.domain.academic.TimetableEntry
-import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Density
-import kotlinx.coroutines.CoroutineScope
-import androidx.compose.ui.unit.IntSize
+import kotlin.math.roundToInt
 
+@Composable
+fun DailyTimetableTab(
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit
+) {
+    val dailyEvents = remember(selectedDate) {
+        sampleEvents
+            .filter { it.start.toLocalDate() == selectedDate }
+            .sortedBy { it.start }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        HorizontalDateSelector(
+            selectedDate = selectedDate,
+            onDateSelected = onDateChange
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        if (dailyEvents.isEmpty()) {
+            NoEventsPlaceholder(
+                selectedDate = selectedDate,
+                onDateChange = onDateChange
+            )
+        } else {
+            TimetableContent(dailyEvents, selectedDate)
+        }
+    }
+}
+
+@Composable
+private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: LocalDate) {
+    val listState = rememberLazyListState()
+    val hourHeight = 72.dp
+    val density = LocalDensity.current
+
+    // Use the earliest event time as the vertical origin
+    val startTimeBaseline = dailyEvents.minOf { it.start.toLocalTime() }
+
+    // Auto-scroll to current time if today
+    LaunchedEffect(selectedDate) {
+        if (selectedDate == LocalDate.now()) {
+            val now = LocalTime.now()
+            val minutesFromStart = Duration.between(startTimeBaseline, now).toMinutes().toInt()
+            val scrollOffset = (minutesFromStart / 60f) * with(density) { hourHeight.toPx() }
+            listState.scrollToItem(0, scrollOffset.roundToInt())
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(dailyEvents) { entry ->
+
+            DailyCourseCard(
+                entry = entry,
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+        }
+    }
+}
+
+/*
+@Composable
+fun NoEventsPlaceholder(modifier: Modifier = Modifier, selectedDate: LocalDate, onDateChange: (LocalDate) -> Unit) {
+    // Find the next date with events after selectedDate
+    val nextDateWithEvent = remember(selectedDate) {
+        (1..30).map { selectedDate.plusDays(it.toLong()) }
+            .firstOrNull { date ->
+                sampleEvents.any { it.start.toLocalDate() == date }
+            }
+    }
+
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.EventBusy,
+                contentDescription = "No events",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.size(80.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "No events for this day.",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            if (nextDateWithEvent != null) {
+                Button(onClick = { onDateChange(nextDateWithEvent) }) {
+                    Text("Go to next event day")
+                }
+            } else {
+                Text(
+                    "No upcoming events.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+*/
+
+@Composable
+fun NoEventsPlaceholder(
+    modifier: Modifier = Modifier,
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit
+) {
+    val nextDateWithEvent = remember(selectedDate) {
+        (1..30).map { selectedDate.plusDays(it.toLong()) }
+            .firstOrNull { date ->
+                sampleEvents.any { it.start.toLocalDate() == date }
+            }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.widthIn(max = 320.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.EventBusy,
+                contentDescription = "No events icon",
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .size(96.dp)
+                    .padding(bottom = 8.dp)
+            )
+
+            Text(
+                "No events for this day",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp),
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                "Looks like you're free today.",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            if (nextDateWithEvent != null) {
+                OutlinedButton(onClick = { onDateChange(nextDateWithEvent) }) {
+                    Icon(Icons.Default.Schedule, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Go to next event")
+                }
+            } else {
+                Text(
+                    "No upcoming events found.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun HorizontalDateSelector(
@@ -182,270 +340,3 @@ fun HorizontalDateSelector(
         }
     }
 }
-
-
-private fun centerLazyRowItem(
-    listState: LazyListState,
-    index: Int,
-    scope: CoroutineScope,
-    density: Density,
-    screenWidth: IntSize,
-    itemWidth: Dp
-) {
-    scope.launch {
-        val itemPx = with(density) { itemWidth.toPx() }
-        val centerOffset = (screenWidth.width / 2f - itemPx / 2f).toInt()
-        listState.animateScrollToItem(index, scrollOffset = -centerOffset)
-    }
-}
-
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* 2.  Daily timetable screen                                                */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-val MINUTE_HEIGHT_DP = 1.2.dp
-const val TIMELINE_START_HOUR = 7
-const val TIMELINE_END_HOUR   = 18          // inclusive
-val HOUR_HEIGHT_DP = MINUTE_HEIGHT_DP * 60f // 1 hour → 72 dp with default
-
-@Composable
-fun DailyTimetableTab(
-    selectedDate: LocalDate,
-    onDateChange: (LocalDate) -> Unit
-) {
-    val verticalScrollState = rememberScrollState()
-
-    // Filter events for the selected date
-    val dailyEvents = remember(selectedDate) {
-        sampleEvents.filter { it.start.toLocalDate() == selectedDate }
-            .sortedBy { it.start }
-    }
-
-    // Find the next date with events after selectedDate
-    val nextDateWithEvent = remember(selectedDate) {
-        (1..30).map { selectedDate.plusDays(it.toLong()) }
-            .firstOrNull { date ->
-                sampleEvents.any { it.start.toLocalDate() == date }
-            }
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        // Calendar strip
-        HorizontalDateSelector(
-            selectedDate = selectedDate,
-            onDateSelected = onDateChange
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        if (dailyEvents.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.EventBusy,
-                        contentDescription = "No events",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "No events for this day.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    if (nextDateWithEvent != null) {
-                        Button(onClick = { onDateChange(nextDateWithEvent) }) {
-                            Text("Go to next event day")
-                        }
-                    } else {
-                        Text(
-                            "No upcoming events.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        } else {
-            val totalHours = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) + 1
-            val timelineHeightDp = HOUR_HEIGHT_DP * totalHours
-
-            Row(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(verticalScrollState)
-            ) {
-                TimeAxis(timelineHeightDp)
-
-                HorizontalDivider(
-                    Modifier
-                        .fillMaxHeight()
-                        .width(1.dp)
-                        .padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-
-                EventsColumn(
-                    dailyEvents = dailyEvents,
-                    timelineHeightDp = timelineHeightDp,
-                    onJumpToNext = { nextDateWithEvent?.let(onDateChange) ?: Unit },
-                    hasNext = nextDateWithEvent != null,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-
-
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Helper: draw timeline hours / dots                                        */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-@Composable
-private fun TimeAxis(timelineHeightDp: Dp) {
-    Box(
-        modifier = Modifier
-            .width(IntrinsicSize.Min)
-            .padding(start = 8.dp, end = 4.dp)
-            .height(timelineHeightDp + HOUR_HEIGHT_DP / 2)
-    ) {
-        val lineColor = MaterialTheme.colorScheme.outlineVariant
-        Canvas(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(2.dp)
-                .align(Alignment.CenterEnd)
-        ) {
-            val centerX = size.width / 2f
-            drawLine(
-                color       = lineColor,
-                start       = Offset(centerX, 0f),
-                end         = Offset(centerX, size.height),
-                strokeWidth = 4f,
-                cap         = StrokeCap.Round
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .align(Alignment.CenterEnd)
-                .offset(x = 4.dp)
-        ) {
-            Spacer(Modifier.height(HOUR_HEIGHT_DP / 2))
-            (TIMELINE_START_HOUR..TIMELINE_END_HOUR).forEach { hour ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(HOUR_HEIGHT_DP),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "%02d:00".format(hour),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Helper: column that positions each event card                             */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-@Composable
-private fun EventsColumn(
-    dailyEvents: List<TimetableEntry>,
-    timelineHeightDp: Dp,
-    onJumpToNext: () -> Unit,
-    hasNext: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val minTime = LocalTime.of(TIMELINE_START_HOUR, 0)
-    val maxTime = LocalTime.of(TIMELINE_END_HOUR + 1, 0)
-    val totalMinutes = Duration.between(minTime, maxTime).toMinutes().toFloat()
-    val totalHeight = timelineHeightDp + (HOUR_HEIGHT_DP / 2)
-    val dpPerMinute = if (totalMinutes > 0) totalHeight / totalMinutes else 0.dp
-
-    /* If there are NO events, show friendly empty-state */
-    if (dailyEvents.isEmpty()) {
-        Box(
-            modifier = modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.EventAvailable,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "No events for this day",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (hasNext) {
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = onJumpToNext) {
-                        Text("Jump to next event day")
-                    }
-                }
-            }
-        }
-        return      // ⬅  nothing else to draw
-    }
-
-    /* Otherwise draw normal timeline + cards */
-    Box(
-        modifier = modifier
-            .padding(horizontal = 12.dp)
-            .height(totalHeight)
-    ) {
-        dailyEvents.forEach { entry ->
-            val startMin = Duration.between(minTime, entry.start).toMinutes().toInt()
-            val durMin   = Duration.between(entry.start, entry.end).toMinutes().toInt()
-            val offsetY  = dpPerMinute * startMin
-            val height   = dpPerMinute * durMin
-
-            DailyCourseCard(
-                entry = entry,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = offsetY + (HOUR_HEIGHT_DP / 2))
-                    .height(height)
-            )
-        }
-    }
-}
-
-
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/*  Dummy data + DailyCourseCard declaration   (keep existing in your code)  */
-/* ────────────────────────────────────────────────────────────────────────── */
-
-// Replace `TimetableEntry`, `sampleEvents`, and `DailyCourseCard`
-// with the ones you already have in your project.
