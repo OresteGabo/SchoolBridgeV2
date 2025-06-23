@@ -130,7 +130,7 @@ fun DailyCourseCard(
                         .align(Alignment.BottomEnd)
                         .padding(12.dp),
                     avatarSize = 32.dp,
-                    onClickMore = onParticipantsClick
+                    onClickMore = {onParticipantsClick}
                 )
 
             }
@@ -253,78 +253,71 @@ fun ParticipantAvatars(
     participants: List<String>,
     modifier: Modifier = Modifier,
     avatarSize: Dp = 28.dp,
-    maxVisible: Int = 3,
-    overlapAmount: Float = 0.7f,
-    onClickMore: () -> Unit
+    onClickMore: () -> Unit = {}
 ) {
-    val visibleParticipants = participants.take(maxVisible)
-    val remainingCount = participants.size - visibleParticipants.size
-    val totalCount = visibleParticipants.size + if (remainingCount > 0) 1 else 0
+    val visibleParticipants = participants.take(5)
+    val density = LocalDensity.current
 
-    val overlapPx = with(LocalDensity.current) {
-        (avatarSize.toPx() * overlapAmount)
+    // Predefined overlap per avatar index
+    fun overlapFractionFor(index: Int): Float = when (index) {
+        0 -> 0.9f
+        1 -> 0.88f
+        2 -> 0.85f
+        3 -> 0.8f
+        else -> 0.7f
     }
 
-    val totalWidth = with(LocalDensity.current) {
-        (avatarSize.toPx() + (totalCount - 1) * (avatarSize.toPx() - overlapPx)).dp
+    // Compute total width based on cumulative offset
+    val totalWidth = with(density) {
+        var widthPx = avatarSize.toPx()
+        for (i in 1 until visibleParticipants.size) {
+            val prevOverlap = overlapFractionFor(i - 1)
+            widthPx += (avatarSize.toPx() - (avatarSize.toPx() * prevOverlap))
+        }
+        widthPx.dp
     }
 
     Box(
         modifier = modifier
             .width(totalWidth)
             .height(avatarSize),
-        contentAlignment = Alignment.CenterEnd // ✅ THIS makes everything push right
+        contentAlignment = Alignment.CenterEnd
     ) {
-        (visibleParticipants + if (remainingCount > 0) "+$remainingCount" else null)
-            .filterNotNull()
-            .reversed() // ✅ Reverse for right-to-left stacking
-            .forEachIndexed { index, participant ->
-                val offsetX = with(LocalDensity.current) {
-                    (index * (avatarSize.toPx() - overlapPx)).toDp()
+        visibleParticipants.forEachIndexed { index, participant ->
+            val offsetX = with(density) {
+                var offset = 0f
+                for (i in 0 until index) {
+                    offset += (avatarSize.toPx() - (avatarSize.toPx() * overlapFractionFor(i)))
                 }
-
-                Box(
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .offset(x = -offsetX) // ✅ negative offset to move left from right edge
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
-                        .clickable(enabled = participant.startsWith("+")) { onClickMore() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (participant.startsWith("+")) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        ) {
-                            Text(
-                                text = participant,
-                                color = MaterialTheme.colorScheme.secondary,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Icon(
-                                imageVector = Icons.Default.MoreHoriz,
-                                contentDescription = "View all participants",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = participant.take(2).uppercase(),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                offset.toDp()
             }
+
+            Box(
+                modifier = Modifier
+                    .size(avatarSize)
+                    .offset(x = -offsetX) // stack from right to left, leftmost avatar is on top
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = participant.take(2).uppercase(),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
+
+
+
 
 
 
