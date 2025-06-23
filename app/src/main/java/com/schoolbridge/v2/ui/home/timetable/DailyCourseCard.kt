@@ -43,16 +43,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.zIndex
 
 
 @Composable
 fun DailyCourseCard(
     entry: TimetableEntry,
     modifier: Modifier = Modifier,
-    participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ"), // Add this parameter
+    participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ","AB", "CD", "EF", "GH", "IJ"), // Add this parameter
     onParticipantsClick: () -> Unit = {} // Callback for when user taps "+N"
 ) {
     val accent = timetableEntryColor(entry.type)
@@ -253,83 +252,81 @@ private fun timetableEntryColor(type: TimetableEntryType): Color {
 fun ParticipantAvatars(
     participants: List<String>,
     modifier: Modifier = Modifier,
-    avatarSize: Dp = 28.dp, // Slightly smaller avatars for a less dominant look
+    avatarSize: Dp = 28.dp,
     maxVisible: Int = 3,
-    overlapAmount: Float = 0.7f, // 30% overlap
+    overlapAmount: Float = 0.7f,
     onClickMore: () -> Unit
 ) {
     val visibleParticipants = participants.take(maxVisible)
     val remainingCount = participants.size - visibleParticipants.size
-    val overlapOffset = (-avatarSize.value * overlapAmount).dp
+    val totalCount = visibleParticipants.size + if (remainingCount > 0) 1 else 0
 
-    Row(
-        modifier = modifier.height(avatarSize)
+    val overlapPx = with(LocalDensity.current) {
+        (avatarSize.toPx() * overlapAmount)
+    }
 
-        ,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End
+    val totalWidth = with(LocalDensity.current) {
+        (avatarSize.toPx() + (totalCount - 1) * (avatarSize.toPx() - overlapPx)).dp
+    }
+
+    Box(
+        modifier = modifier
+            .width(totalWidth)
+            .height(avatarSize),
+        contentAlignment = Alignment.CenterEnd // ✅ THIS makes everything push right
     ) {
+        (visibleParticipants + if (remainingCount > 0) "+$remainingCount" else null)
+            .filterNotNull()
+            .reversed() // ✅ Reverse for right-to-left stacking
+            .forEachIndexed { index, participant ->
+                val offsetX = with(LocalDensity.current) {
+                    (index * (avatarSize.toPx() - overlapPx)).toDp()
+                }
 
-        visibleParticipants.forEachIndexed{index, participant ->
-            val currentOffset = if (index > 0) overlapOffset * index else 0.dp
-            Box(
-                modifier = Modifier
-                    .offset(x = currentOffset)
-                    .size(avatarSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)) // Lighter background
-                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape), // Subtle border
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = participant.take(2).uppercase(),
-                    color = MaterialTheme.colorScheme.primary, // Text matches primary accent
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // // Small space between avatars
-            if(index == visibleParticipants.size-1){
-                if (remainingCount > 0) {
-                    Box(modifier = Modifier
-                        .offset(x = currentOffset)
+                Box(
+                    modifier = Modifier
                         .size(avatarSize)
+                        .offset(x = -offsetX) // ✅ negative offset to move left from right edge
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)) // Lighter background
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape), // Subtle border
-                        contentAlignment = Alignment.Center){
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(avatarSize / 2))
-                            .clickable { onClickMore() }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
+                        .clickable(enabled = participant.startsWith("+")) { onClickMore() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (participant.startsWith("+")) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = participant,
+                                color = MaterialTheme.colorScheme.secondary,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Icon(
+                                imageVector = Icons.Default.MoreHoriz,
+                                contentDescription = "View all participants",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    } else {
                         Text(
-                            text = "+$remainingCount",
-                            color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.labelSmall,
+                            text = participant.take(2).uppercase(),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.MoreHoriz, // Or ArrowForward
-                            contentDescription = "View all participants",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                     }
                 }
-            }else{
-                Spacer(modifier = Modifier.width(4.dp))
             }
-        }
-
-
     }
 }
+
+
+
 
 
