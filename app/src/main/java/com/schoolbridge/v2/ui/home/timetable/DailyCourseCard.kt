@@ -73,10 +73,12 @@ fun DailyCourseCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .height(120.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
+        elevation = CardDefaults.cardElevation(1.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) // Use a higher surface tone
+
     ) {
         Box(
             modifier = Modifier.wrapContentSize()
