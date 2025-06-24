@@ -27,7 +27,8 @@ fun TimetableScreen(
     timeColWidth: Dp,
     onEventClick: (TimetableEntry) -> Unit,
     days: List<DayOfWeek> = DayHeaders,
-    hourRange: IntRange = HourRange            // e.g. 7..18
+    hourRange: IntRange = HourRange,
+    startOfWeek: LocalDate // NEW PARAMETER
 ) {
     val headerHeight = 40.dp
     val hScroll = rememberScrollState()
@@ -36,11 +37,12 @@ fun TimetableScreen(
     Box(Modifier.fillMaxSize()) {
         // 1. Day headers
         DayHeaderRow(
-            days,
-            dayWidth,
-            timeColWidth,
-            headerHeight,
-            hScroll,
+            days = days,
+            dayWidth = dayWidth,
+            timeColWidth = timeColWidth,
+            headerHeight = headerHeight,
+            hScroll = hScroll,
+            startOfWeek = startOfWeek, // PASS THE NEW PARAMETER
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = timeColWidth)
@@ -74,6 +76,49 @@ fun TimetableScreen(
                 .align(Alignment.TopStart)
                 .padding(start = timeColWidth, top = headerHeight)
         )
+    }
+}
+
+@Composable
+private fun DayHeaderRow(
+    days: List<DayOfWeek>,
+    dayWidth: Dp,
+    timeColWidth: Dp,
+    headerHeight: Dp,
+    hScroll: ScrollState,
+    startOfWeek: LocalDate, // NEW PARAMETER
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier
+            .horizontalScroll(hScroll)
+            .height(headerHeight)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .zIndex(2f)
+    ) {
+        days.forEachIndexed { index, dayOfWeek -> // Use indexed to get position
+            val date = startOfWeek.plusDays(index.toLong()) // Calculate date for this column
+            Box(
+                Modifier
+                    .width(dayWidth)
+                    .fillMaxHeight()
+                    .border(0.5.dp, MaterialTheme.colorScheme.outline),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        date.dayOfMonth.toString(), // Display day of month
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), // More prominent day number
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
     }
 }
 
