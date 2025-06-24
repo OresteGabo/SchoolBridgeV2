@@ -31,13 +31,14 @@ import com.schoolbridge.v2.domain.academic.DayHeaders
 import com.schoolbridge.v2.domain.academic.HourRange
 import com.schoolbridge.v2.domain.academic.TimetableEntry
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
-/* ───────────────────────────────────────────────────────────── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyTimetableTab(
     events: List<TimetableEntry> = sampleEvents,
-    //onBack: () -> Unit // kept for your usage if needed inside, but Scaffold removed
+    startOfWeek: LocalDate // NEW: Receive the start of the week
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -55,6 +56,7 @@ fun WeeklyTimetableTab(
     Box(
         Modifier
             .fillMaxSize()
+            // Removed .padding(paddingValues) as it's now handled by the parent Scaffold
             .background(MaterialTheme.colorScheme.background)
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -90,7 +92,8 @@ fun WeeklyTimetableTab(
                 onEventClick = {
                     selected = it
                     scope.launch { sheetState.show() }
-                }
+                },
+                startOfWeek = startOfWeek // Pass the received startOfWeek down
             )
         }
 
@@ -112,9 +115,7 @@ fun WeeklyTimetableTab(
             }
         ) {
             val e = selected!!
-            Column(Modifier.padding(
-                16.dp
-            )) {
+            Column(Modifier.padding(16.dp)) {
                 Text(
                     e.title,
                     style = MaterialTheme.typography.headlineSmall,
@@ -123,7 +124,8 @@ fun WeeklyTimetableTab(
                 Spacer(Modifier.height(8.dp))
                 Text("Teacher: ${e.teacher.ifBlank { "N/A" }}")
                 Text("Room: ${e.room}")
-                Text("Time: ${e.start} – ${e.end}")
+                Text("Date: ${e.start.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))}")
+                Text("Time: ${e.start.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${e.end.format(DateTimeFormatter.ofPattern("HH:mm"))}")
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
