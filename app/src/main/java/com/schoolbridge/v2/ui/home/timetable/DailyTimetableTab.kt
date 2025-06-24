@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -227,30 +228,43 @@ fun HorizontalDateSelector(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {
-                    currentMonth = currentMonth.minusMonths(1)
-                    selectedDay = currentMonth.atDay(1)
-                    onDateSelected(selectedDay)
+
+                TextButton(onClick = {
+                    val today = LocalDate.now()
+                    currentMonth = YearMonth.from(today)
+                    selectedDay = today
+                    onDateSelected(today)
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+                    Text("Today")
                 }
 
-                Text(
-                    text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
 
-                IconButton(onClick = {
-                    currentMonth = currentMonth.plusMonths(1)
-                    selectedDay = currentMonth.atDay(1)
-                    onDateSelected(selectedDay)
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        currentMonth = currentMonth.minusMonths(1)
+                        selectedDay = currentMonth.atDay(1)
+                        onDateSelected(selectedDay)
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+                    }
+                    Text(
+                        text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+
+                    IconButton(onClick = {
+                        currentMonth = currentMonth.plusMonths(1)
+                        selectedDay = currentMonth.atDay(1)
+                        onDateSelected(selectedDay)
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month")
+                    }
                 }
             }
+
         }
 
         LazyRow(
