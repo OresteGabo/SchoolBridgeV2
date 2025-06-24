@@ -94,6 +94,7 @@ private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: Lo
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize()
+            .padding(horizontal = 12.dp),
     ) {
         items(dailyEvents) { entry ->
 
@@ -108,47 +109,6 @@ private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: Lo
     }
 }
 
-/*
-@Composable
-fun NoEventsPlaceholder(modifier: Modifier = Modifier, selectedDate: LocalDate, onDateChange: (LocalDate) -> Unit) {
-    // Find the next date with events after selectedDate
-    val nextDateWithEvent = remember(selectedDate) {
-        (1..30).map { selectedDate.plusDays(it.toLong()) }
-            .firstOrNull { date ->
-                sampleEvents.any { it.start.toLocalDate() == date }
-            }
-    }
-
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.EventBusy,
-                contentDescription = "No events",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "No events for this day.",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            if (nextDateWithEvent != null) {
-                Button(onClick = { onDateChange(nextDateWithEvent) }) {
-                    Text("Go to next event day")
-                }
-            } else {
-                Text(
-                    "No upcoming events.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-*/
 
 @Composable
 fun NoEventsPlaceholder(
