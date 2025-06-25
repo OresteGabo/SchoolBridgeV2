@@ -17,9 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Construction
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,8 +43,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.common.components.FeatureBullet
-import com.schoolbridge.v2.ui.common.components.SectionHeader
+import com.schoolbridge.v2.ui.components.FeatureBullet
+import com.schoolbridge.v2.ui.components.SectionHeader
 import kotlinx.coroutines.delay
 
 

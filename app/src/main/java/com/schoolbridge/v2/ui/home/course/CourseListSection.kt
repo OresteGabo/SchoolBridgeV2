@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.academic.Course
 import com.schoolbridge.v2.domain.academic.CourseStatus
 import com.schoolbridge.v2.domain.academic.CourseWithStatus
-import com.schoolbridge.v2.ui.common.components.AppSubHeader
-import com.schoolbridge.v2.ui.common.components.SpacerS
+import com.schoolbridge.v2.ui.components.AppSubHeader
+import com.schoolbridge.v2.ui.components.SpacerS
 import java.time.LocalDate
 
 @Composable

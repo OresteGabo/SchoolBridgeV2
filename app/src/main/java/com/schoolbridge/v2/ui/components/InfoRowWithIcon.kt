@@ -1,4 +1,4 @@
-package com.schoolbridge.v2.ui.common.components
+package com.schoolbridge.v2.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

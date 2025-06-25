@@ -45,11 +45,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.common.components.AppParagraph
-import com.schoolbridge.v2.ui.common.components.SectionHeader
-import com.schoolbridge.v2.ui.common.components.SpacerL
-import com.schoolbridge.v2.ui.common.components.SpacerS
-import com.schoolbridge.v2.ui.common.components.SpacerXS
+import com.schoolbridge.v2.ui.components.AppParagraph
+import com.schoolbridge.v2.ui.components.SectionHeader
+import com.schoolbridge.v2.ui.components.SpacerL
+import com.schoolbridge.v2.ui.components.SpacerS
+import com.schoolbridge.v2.ui.components.SpacerXS
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

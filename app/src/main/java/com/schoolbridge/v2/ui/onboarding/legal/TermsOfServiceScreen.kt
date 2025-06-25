@@ -21,9 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.schoolbridge.v2.ui.common.components.AppParagraph
-import com.schoolbridge.v2.ui.common.components.FeatureBullet
-import com.schoolbridge.v2.ui.common.components.SectionHeader
+import com.schoolbridge.v2.ui.components.AppParagraph
+import com.schoolbridge.v2.ui.components.FeatureBullet
+import com.schoolbridge.v2.ui.components.SectionHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

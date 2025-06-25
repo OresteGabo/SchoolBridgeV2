@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.schoolbridge.v2.domain.academic.GradeSummary
-import com.schoolbridge.v2.ui.common.components.AppSubHeader
-import com.schoolbridge.v2.ui.common.components.SpacerS
+import com.schoolbridge.v2.ui.components.AppSubHeader
+import com.schoolbridge.v2.ui.components.SpacerS
 
 @Composable
 fun GradesSummarySection(modifier: Modifier = Modifier) {

@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.schoolbridge.v2.R
-import com.schoolbridge.v2.ui.common.components.AppSubHeader
+import com.schoolbridge.v2.ui.components.AppSubHeader
 
 data class Event(
     val id: String,

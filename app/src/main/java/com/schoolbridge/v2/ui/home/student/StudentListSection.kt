@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.common.components.AppSubHeader
-import com.schoolbridge.v2.ui.common.components.SpacerS
+import com.schoolbridge.v2.ui.components.AppSubHeader
+import com.schoolbridge.v2.ui.components.SpacerS
 
 /**
  * Displays horizontally scrollable student cards.

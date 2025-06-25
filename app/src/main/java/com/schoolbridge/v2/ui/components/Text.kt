@@ -1,4 +1,4 @@
-package com.schoolbridge.v2.ui.common.components
+package com.schoolbridge.v2.ui.components
 
 
 import androidx.compose.animation.animateContentSize
@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme

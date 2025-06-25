@@ -74,7 +74,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.createBitmap
@@ -85,12 +84,10 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.schoolbridge.v2.domain.user.Gender // Assuming Gender is defined elsewhere
-import com.schoolbridge.v2.ui.common.components.AppSubHeader
-import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
-import com.schoolbridge.v2.ui.common.components.SpacerL
-import com.schoolbridge.v2.ui.home.humanLabel
+import com.schoolbridge.v2.ui.components.AppSubHeader
+import com.schoolbridge.v2.ui.components.AppSubSectionDivider
+import com.schoolbridge.v2.ui.components.SpacerL
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
-import androidx.compose.ui.graphics.Color as ComposeColor
 import kotlinx.coroutines.delay
 
 @RequiresApi(Build.VERSION_CODES.Q)

@@ -23,7 +23,7 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
-import com.schoolbridge.v2.ui.common.components.SpacerL
+import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.course.CourseListSection
