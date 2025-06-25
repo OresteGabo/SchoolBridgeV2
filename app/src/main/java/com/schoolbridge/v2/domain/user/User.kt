@@ -7,11 +7,9 @@ import com.schoolbridge.v2.domain.user.roles.Student
 import com.schoolbridge.v2.domain.user.roles.Teacher
 import com.schoolbridge.v2.data.enums.UserVerificationStatus
 import com.schoolbridge.v2.data.enums.VerificationMethod
-import com.schoolbridge.v2.domain.academic.Enrollment
 import kotlinx.serialization.Serializable
 
 import java.time.LocalDate
-import kotlin.random.Random
 
 /**
  * Represents the core user profile on the client-side.
@@ -135,54 +133,45 @@ data class User(
     val verifiedByUserId: String?,
     val verifiedByUserMethod: VerificationMethod?,
 
-    // Role-specific data objects (only non-null if applicable)
+    // Role-specific data objects
     val studentDetails: Student? = null,
     val teacherDetails: Teacher? = null,
     val parentDetails: Parent? = null,
-    val schoolAdminDetails: SchoolAdmin? = null
-)
-{
-    /**
-     * Returns true if the user currently has the STUDENT role.
-     */
+    val schoolAdminDetails: SchoolAdmin? = null,
+
+    // New field to determine which role is currently active
+    val currentRole: UserRole = activeRoles.firstOrNull()
+        ?: throw IllegalArgumentException("User must have at least one active role")
+) {
     val isStudent: Boolean get() = activeRoles.contains(UserRole.STUDENT)
-
-    /**
-     * Returns true if the user currently has the TEACHER role.
-     */
     val isTeacher: Boolean get() = activeRoles.contains(UserRole.TEACHER)
-
-    /**
-     * Returns true if the user currently has the PARENT role.
-     */
     val isParent: Boolean get() = activeRoles.contains(UserRole.PARENT)
-
-    /**
-     * Returns true if the user currently has the SCHOOL_ADMIN role.
-     */
     val isAdmin: Boolean get() = activeRoles.contains(UserRole.SCHOOL_ADMIN)
+
+    val isCurrentStudent: Boolean get() = currentRole == UserRole.STUDENT
+    val isCurrentTeacher: Boolean get() = currentRole == UserRole.TEACHER
+    val isCurrentParent: Boolean get() = currentRole == UserRole.PARENT
+    val isCurrentAdmin: Boolean get() = currentRole == UserRole.SCHOOL_ADMIN
 }
 
 
 
-
-
+@Serializable
 data class CurrentUser(
     val userId: String,
     val email: String,
     val firstName: String,
     val lastName: String,
-    val activeRoles: List<String>,
+    val activeRoles: Set<UserRole>, // Better than List<String> for type safety
     val phoneNumber: String?,
     val nationalId: String?,
     val address: Address?, // Nested data class
     val profilePictureUrl: String?,
-    val role: String?, // Assuming a primary role for the user
+    var currentRole: UserRole?, // Replaces ambiguous "role" field
     val joinDate: String?,
     val linkedStudents: List<LinkedStudent>?, // Nested data class
-    val gender: Gender?, // Make sure gender is directly passed and not hardcoded to null
-    val isVerified: Boolean, // existing property
-
+    val gender: Gender?,
+    val isVerified: Boolean
 ) {
     @Serializable
     data class Address(
@@ -199,13 +188,14 @@ data class CurrentUser(
         val lastName: String
     )
 
-    fun isParent(): Boolean {
-        return activeRoles.contains("PARENT")
-    }
+    fun isParent(): Boolean = activeRoles.contains(UserRole.PARENT)
+    fun isStudent(): Boolean = activeRoles.contains(UserRole.STUDENT)
+    fun isTeacher(): Boolean = activeRoles.contains(UserRole.TEACHER)
+    fun isAdmin(): Boolean = activeRoles.contains(UserRole.SCHOOL_ADMIN)
 
-    // This method can be kept or removed since you now have a direct property
-    fun isStudent(): Boolean {
-        return activeRoles.contains("STUDENT")
-    }
+    fun isCurrentParent(): Boolean = currentRole == UserRole.PARENT
+    fun isCurrentStudent(): Boolean = currentRole == UserRole.STUDENT
+    fun isCurrentTeacher(): Boolean = currentRole == UserRole.TEACHER
+    fun isCurrentAdmin(): Boolean = currentRole == UserRole.SCHOOL_ADMIN
 }
 
