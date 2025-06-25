@@ -9,12 +9,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,16 +70,64 @@ private fun HomeTopBar(
                             expanded = menuOpen,
                             onDismissRequest = { menuOpen = false }
                         ) {
+                            // Optional: Title
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Switch Role",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {},
+                                enabled = false, // acts like a header
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            )
+
+                            Divider()
+
+                            // List roles
                             availableRoles.forEach { role ->
                                 DropdownMenuItem(
-                                    text = { Text(role.humanLabel) },
+                                    text = {
+                                        Column {
+                                            Text(
+                                                role.humanLabel,
+                                                style = MaterialTheme.typography.bodyMedium
+                                                    .copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                            // Optional subtitle based on role
+                                            Text(
+                                                text = when (role) {
+                                                    UserRole.PARENT -> "Monitor your children’s progress"
+                                                    UserRole.STUDENT -> "View your courses and schedule"
+                                                    UserRole.TEACHER -> "Manage your classes"
+                                                    UserRole.SCHOOL_ADMIN -> "School administration tools"
+                                                    else -> ""
+                                                },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    trailingIcon = {
+                                        if (role == currentRole) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Current role",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         menuOpen = false
                                         if (role != currentRole) onRoleSelected(role)
-                                    }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
                         }
+
                     }
                 }
             }
