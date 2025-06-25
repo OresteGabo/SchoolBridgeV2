@@ -88,6 +88,7 @@ import com.schoolbridge.v2.domain.user.Gender // Assuming Gender is defined else
 import com.schoolbridge.v2.ui.common.components.AppSubHeader
 import com.schoolbridge.v2.ui.common.components.AppSubSectionDivider
 import com.schoolbridge.v2.ui.common.components.SpacerL
+import com.schoolbridge.v2.ui.home.humanLabel
 import android.graphics.Color as AndroidColor // Alias for Android's Color class
 import androidx.compose.ui.graphics.Color as ComposeColor
 import kotlinx.coroutines.delay
@@ -353,7 +354,8 @@ fun ProfileScreen(
                         AppSubHeader("Account Details")
                         ListItem(
                             headlineContent = { Text("Primary Role") },
-                            supportingContent = { Text(currentUser?.role?.replaceFirstChar(Char::titlecase) ?: "N/A") }
+                            supportingContent = {Text(currentUser?.currentRole?.name ?: "##")}
+                            //supportingContent = { Text(currentUser?.role?.replaceFirstChar(Char::titlecase) ?: "N/A") }
                         )
                         ListItem(
                             headlineContent = { Text("Joined Date") },
