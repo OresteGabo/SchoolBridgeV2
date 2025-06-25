@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.home.timetable
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,11 @@ import androidx.compose.material.icons.filled.PersonPinCircle
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 fun DailyCourseCard(
@@ -129,6 +135,9 @@ fun DailyCourseCard(
                 ParticipantAvatars(
                     participants = participants,
                     modifier = Modifier
+                        .clickable{
+                            Log.d("DailyCourseCard", "Participants clicked__")
+                        }
                         .align(Alignment.BottomEnd)
                         .padding(12.dp),
                     avatarSize = 32.dp, // Reverted to original size for consistency, but you can adjust
@@ -249,11 +258,12 @@ fun ParticipantAvatars(
     participants: List<String>,
     modifier: Modifier = Modifier,
     avatarSize: Dp = 28.dp,
-    maxVisibleAvatars: Int = 5,
-    onClickMore: () -> Unit = {}
+    onClickMore: () -> Unit = {
+        //Log.d("ParticipantAvatars", "More participants clicked")
+    }
 ) {
     val density = LocalDensity.current
-
+     val maxVisibleAvatars = 3
     val avatarBgColor = MaterialTheme.colorScheme.surfaceVariant
     val avatarTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -264,9 +274,7 @@ fun ParticipantAvatars(
     fun overlapFractionFor(index: Int): Float = when (index) {
         0 -> 0.9f
         1 -> 0.88f
-        2 -> 0.85f
-        3 -> 0.8f
-        else -> 0.7f
+        else -> 0.5f
     }
 
     val totalWidth = with(density) {
@@ -279,10 +287,31 @@ fun ParticipantAvatars(
         widthPx.dp
     }
 
+    val wiggleOffset by rememberInfiniteTransition(label = "wiggle").animateFloat(
+        initialValue = -2f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "wiggleOffset"
+    )
+
+    var isTapped by remember { mutableStateOf(false) }
+    val tapScale by animateFloatAsState(
+        targetValue = if (isTapped) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "tapScale",
+        finishedListener = { isTapped = false }
+    )
 
     Box(
         modifier = modifier
             .width(totalWidth)
+            .clickable {
+                isTapped = true
+                onClickMore()
+            }
             .height(avatarSize),
         contentAlignment = Alignment.CenterEnd
     ) {
@@ -344,25 +373,31 @@ fun ParticipantAvatars(
             Box(
                 modifier = Modifier
                     .size(avatarSize)
-                    .offset(x = -offsetX)
+                    .offset(x = -offsetX + wiggleOffset.dp)
+                    .graphicsLayer {
+                        scaleX = tapScale
+                        scaleY = tapScale
+                    }
                     .clip(CircleShape)
-                    .background(dilutedPrimaryColor) // Use the diluted primary
-                    .border(
-                        1.5.dp,
-                        MaterialTheme.colorScheme.surface,
-                        CircleShape
-                    )
-                    .clickable { onClickMore() },
+                    .background(dilutedPrimaryColor)
+                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.PersonPinCircle,
                     contentDescription = "More participants",
-                    tint = iconTint, // Use MaterialTheme.colorScheme.onPrimary
+                    tint = iconTint,
                     modifier = Modifier.size(avatarSize * 0.7f)
                 )
             }
-        }}}
+
+        }
+    }
+
+    if(isTapped) {
+        Log.d("ParticipantAvatars", "Tapped")
+    }
+}
 
 
 
