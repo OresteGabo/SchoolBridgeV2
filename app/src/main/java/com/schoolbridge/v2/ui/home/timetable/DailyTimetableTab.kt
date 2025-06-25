@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.home.timetable
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material3.*
@@ -43,6 +45,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyTimetableTab(
     selectedDate: LocalDate,
@@ -53,6 +56,9 @@ fun DailyTimetableTab(
             .filter { it.start.toLocalDate() == selectedDate }
             .sortedBy { it.start }
     }
+    var showParticipantsSheet by remember { mutableStateOf(false) }
+    var selectedParticipants by remember { mutableStateOf<List<String>>(emptyList()) }
+
 
     Column(Modifier.fillMaxSize()) {
         HorizontalDateSelector(
@@ -69,6 +75,39 @@ fun DailyTimetableTab(
             )
         } else {
             TimetableContent(dailyEvents, selectedDate)
+        }
+    }
+    if (showParticipantsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showParticipantsSheet = false },
+            sheetMaxWidth = 500.dp // optional for large screens
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Participants", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
+                selectedParticipants.forEach { name ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = name.take(2),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
     }
 }
@@ -103,6 +142,9 @@ private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: Lo
                 entry = entry,
                 modifier = Modifier
                     .fillMaxWidth()
+
+                ,
+
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -232,13 +274,18 @@ fun HorizontalDateSelector(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                TextButton(onClick = {
-                    val today = LocalDate.now()
-                    currentMonth = YearMonth.from(today)
-                    selectedDay = today
-                    onDateSelected(today)
-                }) {
-                    Text("Today")
+                OutlinedButton(
+                    onClick = {
+                        val today = LocalDate.now()
+                        currentMonth = YearMonth.from(today)
+                        selectedDay = today
+                        onDateSelected(today)
+                    },
+                ) {
+                    Text(
+                        "Today",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
 
 
