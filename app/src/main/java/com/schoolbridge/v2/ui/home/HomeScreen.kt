@@ -1,24 +1,28 @@
-package com.schoolbridge.v2.ui.home // Adjust package as needed
+package com.schoolbridge.v2.ui.home
 
-
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
+import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.common.components.SpacerL
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
@@ -30,49 +34,66 @@ import com.schoolbridge.v2.ui.home.student.StudentListSection
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.launch
 
-
-data class UserEventStatus(
-    val eventId: String,
-    val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
-)
-
-
-/**
- * Top App Bar for the Home screen.
- *
- * @param onSettingsClick Invoked when the settings icon is tapped.
- * @param modifier Modifier applied to the top bar.
- */
+/* ──────────────────────────────────────────────────────────────────────────────
+ *  1️⃣  Top-bar with a Role “combo-box”
+ * ────────────────────────────────────────────────────────────────────────────── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeTopBar(
+    currentRole: UserRole?,
+    availableRoles: Set<UserRole>,
+    onRoleSelected: (UserRole) -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+
     TopAppBar(
-        title = { Text("SchoolBridge") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("SchoolBridge")
+                Spacer(Modifier.width(8.dp))
+
+                // Show the switcher only if the user owns >1 role
+                AnimatedVisibility(visible = availableRoles.size > 1 && currentRole != null) {
+                    Box {
+                        TextButton(onClick = { menuOpen = true }) {
+                            Text(currentRole?.humanLabel ?: "")
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Change role"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false }
+                        ) {
+                            availableRoles.forEach { role ->
+                                DropdownMenuItem(
+                                    text = { Text(role.humanLabel) },
+                                    onClick = {
+                                        menuOpen = false
+                                        if (role != currentRole) onRoleSelected(role)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
         actions = {
             IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings"
-                )
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
             }
         },
         modifier = modifier
     )
 }
 
-
-/**
- * Entry point for the Home screen.
- * Observes [UserSessionManager] and delegates UI rendering to [HomeUI].
- *
- * @param userSessionManager Manages session and provides user data.
- * @param onSettingsClick Called when the settings icon is tapped.
- * @param onEventClick Called when an event card is tapped, passes the eventId.
- * @param modifier Modifier applied to the screen layout.
- */
+/* ──────────────────────────────────────────────────────────────────────────────
+ *  2️⃣  Main screen “Route” that wires the role switcher
+ * ────────────────────────────────────────────────────────────────────────────── */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeRoute(
@@ -80,7 +101,7 @@ fun HomeRoute(
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
     onSettingsClick: () -> Unit,
-    onWeeklyViewClick: ()->Unit,
+    onWeeklyViewClick: () -> Unit,
     onViewAllAlertsClick: () -> Unit,
     onViewAllEventsClick: () -> Unit,
     onEventClick: (String) -> Unit,
@@ -91,17 +112,27 @@ fun HomeRoute(
     val scope = rememberCoroutineScope()
     var selectedAlert by remember { mutableStateOf<Alert?>(null) }
 
-    // Main Scaffold outside of ModalBottomSheet to avoid gesture blocking
     Scaffold(
-        topBar = { HomeTopBar(onSettingsClick = onSettingsClick) },
-        bottomBar = { CustomBottomNavBar(
-            currentScreen = currentScreen,
-            onTabSelected = onTabSelected
-        ) },
+        topBar = {
+            HomeTopBar(
+                currentRole = currentUser?.currentRole,
+                availableRoles = currentUser?.activeRoles ?: emptySet(),
+                onRoleSelected = { selectedRole ->
+                    scope.launch { userSessionManager.setCurrentRole(selectedRole) }
+                },
+                onSettingsClick = onSettingsClick
+            )
+        },
+        bottomBar = {
+            CustomBottomNavBar(
+                currentScreen = currentScreen,
+                onTabSelected = onTabSelected
+            )
+        },
         modifier = modifier
     ) { paddingValues ->
 
-        // Main content
+        /* Main content */
         HomeUI(
             currentUser = currentUser,
             onViewAllAlertsClick = onViewAllAlertsClick,
@@ -109,17 +140,15 @@ fun HomeRoute(
             onEventClick = onEventClick,
             onAlertClick = { alert ->
                 selectedAlert = alert
-                scope.launch {
-                    sheetState.show()
-                }
+                scope.launch { sheetState.show() }
             },
+            onWeeklyViewClick = onWeeklyViewClick,
             modifier = Modifier
                 .padding(paddingValues)
-                .fillMaxSize(),
-            onWeeklyViewClick = onWeeklyViewClick
+                .fillMaxSize()
         )
 
-        // Render bottom sheet only when alert is selected
+        /* One-off bottom sheet for a tapped alert */
         if (selectedAlert != null) {
             ModalBottomSheet(
                 onDismissRequest = {
@@ -128,7 +157,7 @@ fun HomeRoute(
                         selectedAlert = null
                     }
                 },
-                sheetState = sheetState,
+                sheetState = sheetState
             ) {
                 selectedAlert?.let { alert ->
                     AlertDetailsBottomSheetContent(alertId = alert.id)
@@ -138,63 +167,101 @@ fun HomeRoute(
     }
 }
 
-
+/* ──────────────────────────────────────────────────────────────────────────────
+ *  3️⃣  HomeUI now keys off *currentRole* instead of only “isStudent()”
+ * ────────────────────────────────────────────────────────────────────────────── */
 @Composable
 private fun HomeUI(
     currentUser: CurrentUser?,
     onViewAllAlertsClick: () -> Unit,
     onViewAllEventsClick: () -> Unit,
-    onWeeklyViewClick: ()-> Unit,
+    onWeeklyViewClick: () -> Unit,
     onEventClick: (String) -> Unit,
     onAlertClick: (Alert) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    var activeRole = currentUser?.currentRole
+    Log.d("HomeUI", "Active role: $activeRole")
+    if(activeRole == null) {
+        if(currentUser != null) {
+            if(currentUser.activeRoles.isNotEmpty()){
+                Log.d("HomeUI", "Active roles: ${currentUser.activeRoles}")
+                currentUser.currentRole=currentUser.activeRoles.first()
+                activeRole = currentUser.currentRole
 
+            }
+        }
+    }
+    Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (currentUser?.isStudent() == true) {
-            CourseListSection()
+        when (activeRole) {
+            UserRole.STUDENT -> {
+                CourseListSection()
+                SpacerL()
+                TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                SpacerL()
+                AlertsSection(
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onAlertClick = onAlertClick
+                )
+                SpacerL()
+                GradesSummarySection()
+            }
 
-            SpacerL()
+            UserRole.PARENT -> {
+                StudentListSection(students = currentUser?.linkedStudents)
+                SpacerL()
+                AlertsSection(
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onAlertClick = onAlertClick
+                )
+                SpacerL()
+                EventsSection(
+                    onViewAllEventsClick = onViewAllEventsClick,
+                    onEventClick = onEventClick
+                )
+            }
 
-            TodayScheduleSection(
-                onWeeklyViewClick = onWeeklyViewClick,
-            ) // 🆕 Suggested: compact daily schedule preview
+            UserRole.TEACHER -> {
+                //TeacherDashboardPlaceholder() // implement your teacher widgets
+            }
 
-            SpacerL()
+            UserRole.SCHOOL_ADMIN -> {
+                //AdminDashboardPlaceholder()   // implement your admin widgets
+            }
 
-            AlertsSection(
-                onViewAllAlertsClick = onViewAllAlertsClick,
-                onAlertClick = onAlertClick
-            )
-
-            SpacerL()
-
-            GradesSummarySection() // 🆕 Suggested: show recent marks released (see below)
-
-        } else {
-            StudentListSection(students = currentUser?.linkedStudents)
-
-            SpacerL()
-
-            AlertsSection(
-                onViewAllAlertsClick = onViewAllAlertsClick,
-                onAlertClick = onAlertClick
-            )
-
-            SpacerL()
-
-            EventsSection(
-                onViewAllEventsClick = onViewAllEventsClick,
-                onEventClick = onEventClick
-            )
+            else -> { /* no role yet or still loading */ }
         }
     }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────────
+ *  4️⃣  Small helpers / previews
+ * ────────────────────────────────────────────────────────────────────────────── */
+val UserRole.humanLabel: String
+    get() = when (this) {
+        UserRole.STUDENT       -> "Student"
+        UserRole.PARENT        -> "Parent"
+        UserRole.TEACHER       -> "Teacher"
+        UserRole.SCHOOL_ADMIN  -> "Admin"
+        UserRole.GUEST         -> "Guest"
+    }
+
+@Preview(showBackground = true)
+@Composable
+private fun HomeTopBarPreview() {
+    HomeTopBar(
+        currentRole = UserRole.PARENT,
+        availableRoles = setOf(UserRole.PARENT, UserRole.TEACHER),
+        onRoleSelected = {},
+        onSettingsClick = {}
+    )
+}
+
 
 
 // Dummy data: Map teacherUserIds to names for display (in real app this would come from user repository)
@@ -230,3 +297,7 @@ fun TagChip(icon: ImageVector, text: String) {
         )
     }
 }
+data class UserEventStatus(
+    val eventId: String,
+    val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
+)
