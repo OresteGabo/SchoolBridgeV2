@@ -2,16 +2,24 @@ package com.schoolbridge.v2.ui.settings
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,6 +29,7 @@ import com.schoolbridge.v2.ui.theme.AppPalette
 import com.schoolbridge.v2.ui.theme.Contrast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Preview
 @Composable
@@ -217,80 +226,123 @@ fun SettingsScreen(
             )
         }
 
+        /*  ──────────────────────────────────────────────────────────────── */
+        /*  inside SettingsScreen – replace the old if(showThemeDialog) …   */
+        /*  ──────────────────────────────────────────────────────────────── */
         if (showThemeDialog) {
             AlertDialog(
                 onDismissRequest = { showThemeDialog = false },
                 title = { Text("Customize Theme") },
                 text = {
                     Column {
+
+                        /* ----------  Palette row  ---------- */
                         Text("Color Palette", style = MaterialTheme.typography.titleSmall)
-                        AppPalette.entries.forEach { palette ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onPalettePicked(palette)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            AppPalette.entries.forEach { palette ->
+                                val selected = palette == currentPalette
+
+                                val previewColour = try {
+                                    palette.variants.normal.light.primary
+                                } catch (e: Exception) {
+                                    Color.Gray
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(previewColour)
+                                        .clickable { onPalettePicked(palette) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (selected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected Palette",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
-                                    .padding(vertical = 6.dp)
-                            ) {
-                                RadioButton(
-                                    selected = palette == currentPalette,
-                                    onClick = { onPalettePicked(palette) }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(palette.name.lowercase().replaceFirstChar { it.uppercase() })
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
 
+
+                        Spacer(Modifier.height(12.dp))
+
+                        /* ----------  Contrast slider  ---------- */
                         Text("Contrast Level", style = MaterialTheme.typography.titleSmall)
-                        Contrast.entries.forEach { contrast ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onContrastPicked(contrast)
-                                    }
-                                    .padding(vertical = 6.dp)
-                            ) {
-                                RadioButton(
-                                    selected = contrast == currentContrast,
-                                    onClick = { onContrastPicked(contrast) }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Contrast.entries.forEach { contrast ->
+                                AssistChip(
+                                    onClick = { onContrastPicked(contrast) },
+                                    label = { Text(contrast.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = if (contrast == currentContrast)
+                                            MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = if (contrast == currentContrast)
+                                            MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                    border = null
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(contrast.name.lowercase().replaceFirstChar { it.uppercase() })
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
 
+                        Spacer(Modifier.height(12.dp))
+
+                        /* ----------  Theme mode row  ---------- */
                         Text("Theme Mode", style = MaterialTheme.typography.titleSmall)
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleTheme(false) }
-                                .padding(vertical = 6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            RadioButton(selected = !isDarkTheme, onClick = { onToggleTheme(false) })
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Light")
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable { onToggleTheme(false) }
+                            ) {
+                                RadioButton(
+                                    selected = !isDarkTheme,
+                                    onClick = { onToggleTheme(false) }
+                                )
+                                Text("Light")
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable { onToggleTheme(true) }
+                            ) {
+                                RadioButton(
+                                    selected = isDarkTheme,
+                                    onClick = { onToggleTheme(true) }
+                                )
+                                Text("Dark")
+                            }
                         }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleTheme(true) }
-                                .padding(vertical = 6.dp)
-                        ) {
-                            RadioButton(selected = isDarkTheme, onClick = { onToggleTheme(true) })
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Dark")
-                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "⚠️ Some theme combinations may reduce readability or blur meaning of state colors (e.g., success, warning, error). For clearer visual cues, try the default palette with Normal contrast.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
                     }
+
                 },
                 confirmButton = {
                     TextButton(onClick = { showThemeDialog = false }) {
@@ -299,6 +351,7 @@ fun SettingsScreen(
                 }
             )
         }
+
     }
 }
 
