@@ -37,6 +37,7 @@ import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
+import com.schoolbridge.v2.ui.home.teacher.TeacherQuickActionsSection
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.launch
 
@@ -281,7 +282,7 @@ private fun HomeUI(
             }
 
             UserRole.TEACHER -> {
-                CourseListSection() // Shows teacher's own courses
+                TeacherQuickActionsSection()
                 SpacerL()
                 TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
                 SpacerL()
@@ -290,7 +291,7 @@ private fun HomeUI(
                     onAlertClick = onAlertClick
                 )
                 SpacerL()
-                TeacherQuickActionsSection(currentUser = currentUser)
+                CourseListSection()
             }
 
             UserRole.SCHOOL_ADMIN -> {
@@ -365,44 +366,6 @@ data class UserEventStatus(
     val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
 )
 
-@Composable
-fun TeacherQuickActionsSection(currentUser: CurrentUser?) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        Text(
-            text = "Quick Actions",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            TeacherActionCard(
-                title = "Mark Attendance",
-                icon = Icons.Default.CheckCircle,
-                onClick = { /* Navigate to attendance */ }
-            )
-            TeacherActionCard(
-                title = "Mark Grades",
-                icon = Icons.Default.Grade,
-                onClick = { /* Navigate to grading */ }
-            )
-            TeacherActionCard(
-                title = "My Students",
-                icon = Icons.Default.Group,
-                onClick = { /* View student list */ }
-            )
-        }
-    }
-}
 
 @Composable
 fun TeacherActionCard(
