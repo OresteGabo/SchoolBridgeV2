@@ -49,8 +49,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.academic.teacher.TeacherQuickAction
+import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.home.TeacherActionCard
 import kotlin.collections.filter
 
@@ -149,13 +151,14 @@ fun TeacherQuickActionsSection() {
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "No quick actions selected.",
+                        text = t(R.string.empty_quick_actions_title),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
+
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "You can bookmark tools like attendance,\ngrading, or student lists for faster access.",
+                        text = t(R.string.empty_quick_actions_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = TextAlign.Center,
@@ -165,7 +168,7 @@ fun TeacherQuickActionsSection() {
                     Spacer(Modifier.height(16.dp))
 
                     OutlinedButton(onClick = { showDialog = true }) {
-                        Text("Add Quick Actions")
+                        Text(t(R.string.add_quick_actions_button))
                     }
                 }
             }
