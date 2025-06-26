@@ -1,4 +1,4 @@
-package com.schoolbridge.v2.ui.theme
+package com.schoolbridge.v2.ui.theme.colors.golden
 
 import androidx.compose.ui.graphics.Color
 
