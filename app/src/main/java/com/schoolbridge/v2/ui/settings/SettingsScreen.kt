@@ -86,7 +86,7 @@ fun SettingsScreen(
     )
 
     val storedLanguage by AppPreferences.getLanguage(context).collectAsState(initial = "en")
-    var currentLanguage by remember(storedLanguage) { mutableStateOf(storedLanguage) }
+    //var currentLanguage by remember(storedLanguage) { mutableStateOf(storedLanguage) }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
     val onChangeLanguage: (String) -> Unit = { newLang ->
@@ -351,7 +351,6 @@ fun SettingsScreen(
                 }
             )
         }
-
     }
 }
 
