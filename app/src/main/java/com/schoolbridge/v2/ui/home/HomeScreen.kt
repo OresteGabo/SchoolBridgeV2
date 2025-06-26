@@ -10,8 +10,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Grade
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +57,7 @@ private fun HomeTopBar(
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("SchoolBridge")
+               Text("SchoolBridge")
                 Spacer(Modifier.width(8.dp))
 
                 // Show the switcher only if the user owns >1 role
@@ -84,7 +88,7 @@ private fun HomeTopBar(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             )
 
-                            Divider()
+                            HorizontalDivider()
 
                             // List roles
                             availableRoles.forEach { role ->
@@ -277,7 +281,16 @@ private fun HomeUI(
             }
 
             UserRole.TEACHER -> {
-                //TeacherDashboardPlaceholder() // implement your teacher widgets
+                CourseListSection() // Shows teacher's own courses
+                SpacerL()
+                TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                SpacerL()
+                AlertsSection(
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onAlertClick = onAlertClick
+                )
+                SpacerL()
+                TeacherQuickActionsSection(currentUser = currentUser)
             }
 
             UserRole.SCHOOL_ADMIN -> {
@@ -351,3 +364,79 @@ data class UserEventStatus(
     val eventId: String,
     val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
 )
+
+@Composable
+fun TeacherQuickActionsSection(currentUser: CurrentUser?) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = "Quick Actions",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TeacherActionCard(
+                title = "Mark Attendance",
+                icon = Icons.Default.CheckCircle,
+                onClick = { /* Navigate to attendance */ }
+            )
+            TeacherActionCard(
+                title = "Mark Grades",
+                icon = Icons.Default.Grade,
+                onClick = { /* Navigate to grading */ }
+            )
+            TeacherActionCard(
+                title = "My Students",
+                icon = Icons.Default.Group,
+                onClick = { /* View student list */ }
+            )
+        }
+    }
+}
+
+@Composable
+fun TeacherActionCard(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier
+            .width(100.dp)
+            .height(100.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+    }
+}
