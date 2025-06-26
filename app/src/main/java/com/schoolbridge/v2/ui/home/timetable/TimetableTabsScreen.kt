@@ -24,7 +24,7 @@ import java.time.temporal.TemporalAdjusters // NEW IMPORT
 fun TimetableTabsScreen(
     onBack: () -> Unit,
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Weekly", "Daily")
 
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
