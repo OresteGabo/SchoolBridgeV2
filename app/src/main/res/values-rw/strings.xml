@@ -194,4 +194,8 @@
     <string name="no_upcoming_events">Nta gahunda zisigaye.</string>
     <string name="weekly_view">Icyumweru</string>
 
+    <string name="empty_quick_actions_title">Nta gikorwa cyihuse cyatoranijwe.</string>
+    <string name="empty_quick_actions_description">Ushobora kubika nk’inyongera ibikoresho nk\'ibarura ry’abitabiriye, amanota, cyangwa urutonde rw’abanyeshuri kugira ngo ubigereho vuba.</string>
+    <string name="add_quick_actions_button">Ongeraho Ibikorwa Byihuse</string>
+
 </resources>
