@@ -200,5 +200,5 @@
     <string name="empty_quick_actions_description">Vous pouvez ajouter des outils comme la présence,\nla notation ou la liste des élèves pour un accès rapide.</string>
     <string name="add_quick_actions_button">Ajouter des actions rapides</string>
 
-
+    <string name="no_courses_today">Aucun cours prévu pour aujourd\'hui.</string>
 </resources>

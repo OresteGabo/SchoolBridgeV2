@@ -198,5 +198,9 @@
     <string name="empty_quick_actions_title">No quick actions selected.</string>
     <string name="empty_quick_actions_description">You can bookmark tools like attendance,\ngrading, or student lists for faster access.</string>
     <string name="add_quick_actions_button">Add Quick Actions</string>
+
+    <string name="no_courses_today">No courses scheduled for today.</string>
+
+
 </resources>
 
