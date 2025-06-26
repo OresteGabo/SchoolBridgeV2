@@ -279,27 +279,3 @@ fun AlertCardDetailed(alert: Alert,
         }
     }
 }
-
-
-
-
-
-/*
-@Composable
-fun SeverityChip(severity: AlertSeverity, color: Color) {
-    val label = when (severity) {
-        AlertSeverity.LOW -> "Low"
-        AlertSeverity.MEDIUM -> "Medium"
-        AlertSeverity.HIGH -> "High"
-    }
-
-    Text(
-        text = label,
-        color = color,
-        style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier
-            .background(color.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    )
-}
-*/
