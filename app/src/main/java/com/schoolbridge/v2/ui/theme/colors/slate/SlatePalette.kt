@@ -1,9 +1,8 @@
-package com.schoolbridge.v2.ui.theme.colors.green
+package com.schoolbridge.v2.ui.theme.colors.slate
 
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ColorScheme
-import com.schoolbridge.v2.ui.theme.Contrast
 import com.schoolbridge.v2.ui.theme.LightDark
 import com.schoolbridge.v2.ui.theme.PaletteVariants
 /* -------------------------------------------------------------
@@ -40,7 +39,7 @@ private val normalLight: ColorScheme = lightColorScheme(
     inverseOnSurface = inverseOnSurfaceLight,
     inversePrimary = inversePrimaryLight,
     surfaceDim = surfaceDimLight,
-    surfaceBright = com.schoolbridge.v2.ui.theme.colors.red.surfaceBrightLight,
+    surfaceBright = com.schoolbridge.v2.ui.theme.colors.teal.surfaceBrightLight,
     surfaceContainerLowest = surfaceContainerLowestLight,
     surfaceContainerLow = surfaceContainerLowLight,
     surfaceContainer = surfaceContainerLight,
@@ -241,7 +240,7 @@ private val highDark: ColorScheme = darkColorScheme(
 /* -------------------------------------------------------------
    2.  Expose ONE object that bundles the six schemes.
    ------------------------------------------------------------- */
-val GreenPalette = PaletteVariants(
+val SlatePalette = PaletteVariants(
     normal = LightDark(normalLight,  normalDark ),
     medium = LightDark(mediumLight,  mediumDark ),
     high   = LightDark(highLight,    highDark   )
