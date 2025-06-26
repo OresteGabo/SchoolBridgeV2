@@ -95,62 +95,64 @@ fun TeacherQuickActionsSection() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(top = 12.dp, bottom = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Subtle background icons row (visual hint)
+                    // Icon hint row – less top space
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                         Icon(
                             imageVector = Icons.Default.Grade,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                         Icon(
                             imageVector = Icons.Default.Group,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp)) // smaller gap
 
-                    // Main info
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
                         text = "No quick actions selected.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
+
                     Text(
                         text = "Quick actions help you access key features faster.\n" +
-                                "Tap 'Customise' to add things like marking attendance,\n" +
+                                "Tap 'Customise' to add actions like attendance,\n" +
                                 "grading, or managing student lists.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
-                        lineHeight = 18.sp,
+                        lineHeight = 17.sp,
                         textAlign = TextAlign.Center
                     )
                 }
             }
         }
+
         else {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
