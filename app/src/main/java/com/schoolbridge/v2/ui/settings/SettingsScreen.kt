@@ -17,6 +17,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.ui.settings.components.SettingItem
 import com.schoolbridge.v2.data.preferences.AppPreferences
+import com.schoolbridge.v2.ui.theme.AppPalette
+import com.schoolbridge.v2.ui.theme.Contrast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -33,7 +35,11 @@ private fun SettingsScreenPrev() {
         onNavigateToAbout = {},
         onDataPrivacy = {},
         isDarkTheme = false,
-        onToggleTheme = {}
+        onToggleTheme = {},
+        currentPalette = TODO(),
+        currentContrast = TODO(),
+        onPalettePicked = TODO(),
+        onContrastPicked = TODO()
     )
 }
 
@@ -49,7 +55,11 @@ fun SettingsScreen(
     onNavigateToAbout: () -> Unit,
     onDataPrivacy: () -> Unit,
     isDarkTheme: Boolean,
-    onToggleTheme: (Boolean) -> Unit
+    currentPalette: AppPalette,
+    currentContrast: Contrast,
+    onToggleTheme: (Boolean) -> Unit,
+    onPalettePicked: (AppPalette) -> Unit,
+    onContrastPicked: (Contrast) -> Unit
 ) {
     val settingsItems = SettingOption.all.filterNot { it is SettingOption.Logout }
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -138,9 +148,7 @@ fun SettingsScreen(
                                 },
                                 currentLanguage = storedLanguage,
                                 isDarkTheme = isDarkTheme,
-                                onThemeToggle = { newValue ->
-                                    onToggleTheme(newValue)
-                                }
+                                onThemeToggle = { newValue -> onToggleTheme(newValue) }
                             )
                         }
                     }
@@ -212,29 +220,74 @@ fun SettingsScreen(
         if (showThemeDialog) {
             AlertDialog(
                 onDismissRequest = { showThemeDialog = false },
-                title = { Text("Select Theme") },
+                title = { Text("Customize Theme") },
                 text = {
                     Column {
+                        Text("Color Palette", style = MaterialTheme.typography.titleSmall)
+                        AppPalette.entries.forEach { palette ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onPalettePicked(palette)
+                                    }
+                                    .padding(vertical = 6.dp)
+                            ) {
+                                RadioButton(
+                                    selected = palette == currentPalette,
+                                    onClick = { onPalettePicked(palette) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(palette.name.lowercase().replaceFirstChar { it.uppercase() })
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Contrast Level", style = MaterialTheme.typography.titleSmall)
+                        Contrast.entries.forEach { contrast ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onContrastPicked(contrast)
+                                    }
+                                    .padding(vertical = 6.dp)
+                            ) {
+                                RadioButton(
+                                    selected = contrast == currentContrast,
+                                    onClick = { onContrastPicked(contrast) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(contrast.name.lowercase().replaceFirstChar { it.uppercase() })
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Theme Mode", style = MaterialTheme.typography.titleSmall)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onToggleTheme(false); showThemeDialog = false }
-                                .padding(vertical = 8.dp)
+                                .clickable { onToggleTheme(false) }
+                                .padding(vertical = 6.dp)
                         ) {
-                            RadioButton(selected = !isDarkTheme, onClick = { onToggleTheme(false); showThemeDialog = false })
-                            Spacer(Modifier.width(8.dp))
+                            RadioButton(selected = !isDarkTheme, onClick = { onToggleTheme(false) })
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Light")
                         }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onToggleTheme(true); showThemeDialog = false }
-                                .padding(vertical = 8.dp)
+                                .clickable { onToggleTheme(true) }
+                                .padding(vertical = 6.dp)
                         ) {
-                            RadioButton(selected = isDarkTheme, onClick = { onToggleTheme(true); showThemeDialog = false })
-                            Spacer(Modifier.width(8.dp))
+                            RadioButton(selected = isDarkTheme, onClick = { onToggleTheme(true) })
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Dark")
                         }
                     }
@@ -248,3 +301,4 @@ fun SettingsScreen(
         }
     }
 }
+
