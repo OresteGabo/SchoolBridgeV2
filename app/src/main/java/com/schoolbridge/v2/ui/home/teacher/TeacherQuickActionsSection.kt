@@ -1,6 +1,5 @@
 package com.schoolbridge.v2.ui.home.teacher
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -17,24 +15,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.PostAdd
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,16 +48,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.schoolbridge.v2.domain.user.CurrentUser
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
+import com.schoolbridge.v2.domain.academic.teacher.TeacherQuickAction
 import com.schoolbridge.v2.ui.home.TeacherActionCard
+import kotlin.collections.filter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeacherQuickActionsSection() {
-    var chosenIds by rememberSaveable { mutableStateOf(setOf<String>()) } // Empty by default
+
+    val qaViewModel: QuickActionViewModel = viewModel()
+    val chosenIds by qaViewModel.selected.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
 
     val chosenActions = allTeacherActions.filter { it.id in chosenIds }
+
 
     Column(
         modifier = Modifier
@@ -177,37 +176,26 @@ fun TeacherQuickActionsSection() {
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Done") }
-            },
+            confirmButton = { TextButton({ showDialog = false }) { Text("Done") } },
             title = { Text("Choose Quick Actions") },
             text = {
-                LazyColumn(
-                    modifier = Modifier
-                        .heightIn(max = 400.dp)
-                        .padding(end = 8.dp)
-                ) {
-                    items(allTeacherActions.size) { index ->
+                LazyColumn(Modifier.heightIn(max = 400.dp).padding(end = 8.dp)) {
+                    items(allTeacherActions.size){index->
                         val action = allTeacherActions[index]
                         val checked = action.id in chosenIds
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    chosenIds = if (checked)
-                                        chosenIds - action.id
-                                    else
-                                        chosenIds + action.id
-                                }
+                                .clickable { qaViewModel.toggle(action.id) }
                                 .padding(8.dp)
                         ) {
                             Checkbox(
                                 checked = checked,
-                                onCheckedChange = null // handled by row click
+                                onCheckedChange = { qaViewModel.toggle(action.id) }
                             )
                             Spacer(Modifier.width(8.dp))
-                            Icon(action.icon, contentDescription = null)
+                            Icon(action.icon, null)
                             Spacer(Modifier.width(12.dp))
                             Text(action.title, style = MaterialTheme.typography.bodyMedium)
                         }
@@ -222,15 +210,7 @@ fun TeacherQuickActionsSection() {
 
 
 
-/* ─────────────────────────────────────────────────────────────── */
-/* 1. Data model for a quick action                               */
-/* ─────────────────────────────────────────────────────────────── */
-data class TeacherQuickAction(
-    val id: String,
-    val title: String,
-    val icon: ImageVector,
-    val onClick: () -> Unit = {}
-)
+
 
 /* Pre-defined catalogue of actions teachers in RW may need */
 val allTeacherActions: List<TeacherQuickAction> = listOf(
