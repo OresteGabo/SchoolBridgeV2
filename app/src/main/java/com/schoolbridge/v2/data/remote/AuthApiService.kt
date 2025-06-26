@@ -15,7 +15,8 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 // Define your backend URL (replace with your actual IP if running on device)
-const val BASE_URL = "http://10.0.2.2:8080" // 10.0.2.2 is the emulator's localhost alias
+const val BASE_URL = "http://10.0.2.2:8080"
+//const val BASE_URL = "http://172.20.10.3:8080" //for real device
 
 interface AuthApiService {
     suspend fun login(request: LoginRequestDto): LoginResponseDto
