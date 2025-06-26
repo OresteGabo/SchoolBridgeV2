@@ -71,7 +71,12 @@ fun AppNavHost(
     themePreferenceManager: ThemePreferenceManager, // Added
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+    //val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+    /* ───── theme flows ──────────────────────────────────────────────── */
+    val isDarkTheme by themeViewModel.isDark.collectAsState()
+    val palette     by themeViewModel.palette.collectAsState()
+    val contrast    by themeViewModel.contrast.collectAsState()
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -281,6 +286,7 @@ fun AppNavHost(
         // --- Settings Flow ---
         composable(MainAppScreen.Settings.route) {
             SettingsScreen(
+                /* existing params … */
                 onLogout = {
                     CoroutineScope(Dispatchers.IO).launch {
                         userSessionManager.clearSession()
@@ -291,19 +297,31 @@ fun AppNavHost(
                         }
                     }
                 },
-                onBack = { navController.navigateUp() },
+                onBack = navController::navigateUp,
                 onViewLinkRequests = { /* TODO */ },
-                onNavigateToProfile = { navController.navigate(MainAppScreen.Profile.route) },
-                onNavigateToNotifications = { navController.navigate(MainAppScreen.Notifications.route) },
-                onNavigateToHelp = { navController.navigate(MainAppScreen.HelpFAQ.route) },
-                onNavigateToAbout = { navController.navigate(MainAppScreen.About.route) },
-                onDataPrivacy = { navController.navigate(MainAppScreen.DataPrivacy.route) },
-                isDarkTheme = isDarkTheme,
-                onToggleTheme = { enabled ->
-                    themeViewModel.toggleTheme(enabled)
+                onNavigateToProfile        = { navController.navigate(MainAppScreen.Profile.route) },
+                onNavigateToNotifications  = { navController.navigate(MainAppScreen.Notifications.route) },
+                onNavigateToHelp           = { navController.navigate(MainAppScreen.HelpFAQ.route) },
+                onNavigateToAbout          = { navController.navigate(MainAppScreen.About.route) },
+                onDataPrivacy              = { navController.navigate(MainAppScreen.DataPrivacy.route) },
+
+                /*  ↓↓↓ theming controls  ↓↓↓  */
+                isDarkTheme    = isDarkTheme,
+                currentPalette = palette,
+                currentContrast = contrast,
+
+                onToggleTheme   = { enabled ->
+                    themeViewModel.toggleDark(enabled)
+                },
+                onPalettePicked = { newPalette ->
+                    themeViewModel.setPalette(newPalette)
+                },
+                onContrastPicked = { newContrast ->
+                    themeViewModel.setContrast(newContrast)
                 }
             )
         }
+
 
         // --- Individual Settings Sub-Screens ---
         composable(MainAppScreen.Profile.route) {
