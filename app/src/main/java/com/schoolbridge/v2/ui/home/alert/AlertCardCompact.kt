@@ -79,7 +79,7 @@ fun AlertCardCompact(
     val textColor = if (alert.isRead)
         MaterialTheme.colorScheme.onSurfaceVariant
     else
-        MaterialTheme.colorScheme.onSecondaryContainer
+        MaterialTheme.colorScheme.onBackground
 
     AnimatedVisibility(
         visible = visible,
