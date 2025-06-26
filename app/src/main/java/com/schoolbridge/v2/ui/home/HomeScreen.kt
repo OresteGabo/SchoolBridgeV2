@@ -1,40 +1,56 @@
 package com.schoolbridge.v2.ui.home
 
+
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.academic.TodayCourse
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerL
+import com.schoolbridge.v2.ui.components.SpacerM
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
+import com.schoolbridge.v2.ui.home.schedule.TodayScheduleCard
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
 import com.schoolbridge.v2.ui.home.teacher.TeacherQuickActionsSection
@@ -295,8 +311,30 @@ private fun HomeUI(
             }
 
             UserRole.SCHOOL_ADMIN -> {
-                //AdminDashboardPlaceholder()   // implement your admin widgets
+                AdminQuickActionsSection()
+                SpacerL()
+
+                SpacerM()
+                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                PendingGradesSection()
+                RecentSanctionsSection()
+                ApprovalRequestsSection()
+                InternalMemosSection()
+                StudentExplorerSection()
+                AcademicCalendarSection()
+                TeacherActivitySummarySection()
+                SpacerL()
+                AlertsSection(
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onAlertClick = onAlertClick
+                )
+                SpacerL()
+                EventsSection(
+                    onViewAllEventsClick = onViewAllEventsClick,
+                    onEventClick = onEventClick
+                )
             }
+
 
             else -> { /* no role yet or still loading */ }
         }
@@ -400,6 +438,367 @@ fun TeacherActionCard(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
+        }
+    }
+}
+
+
+
+@Composable
+fun AdminQuickActionsSection(
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Quick Actions",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            adminQuickActions.forEach { action ->
+                TeacherActionCard(            // reuse existing card util
+                    title  = action.title,
+                    icon   = action.icon,
+                    onClick = action.onClick
+                )
+            }
+        }
+    }
+}
+
+data class AdminQuickAction(
+    val id: String,
+    val title: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit = {}
+)
+
+/* 🔧 Add/adjust actions as needed */
+val adminQuickActions = listOf(
+    AdminQuickAction("sanction",    "Record Sanction", Icons.Default.Warning),
+    AdminQuickAction("timetable",   "Edit Timetable",  Icons.Default.Schedule),
+    AdminQuickAction("assign",      "Assign Teacher",  Icons.Default.PersonAdd),
+    AdminQuickAction("students",    "Manage Students", Icons.Default.Group),
+    AdminQuickAction("announcement","Send Notice",     Icons.Default.Campaign),
+    AdminQuickAction("reports",     "Reports",         Icons.Default.Description),
+)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminTodayScheduleSection(
+    onWeeklyViewClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    /* simple filter state – replace with ViewModel later */
+    var selectedFilter by remember { mutableStateOf("All Levels") }
+    val levels = listOf("All Levels", "S1", "S2", "S3", "S4 Science", "S4 Arts")
+
+    val dummyCourses = listOf(
+        TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
+        TodayCourse("French",      "10:00", "11:40", "Mme. Mukamana", "Room B1"),
+        TodayCourse("Physics",     "13:00", "14:40", "Mr. Nkurunziza", "Lab 1"),
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+
+        /* header + weekly view */
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AppSubHeader("📅 Today’s Schedule")
+            TextButton(onClick = onWeeklyViewClick) {
+                Text("Weekly View", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+
+        /* level / stream filter */
+        Spacer(Modifier.height(4.dp))
+        ExposedDropdownMenuBox(
+            expanded = false,
+            onExpandedChange = {}        // implement if full dropdown needed
+        ) {
+            Text(
+                text = selectedFilter,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+            /* – implement real menu later – */
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        /* schedule list */
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(dummyCourses.size){ index ->
+                TodayScheduleCard(dummyCourses[index])
+            }
+        }
+    }
+}
+// -----------------------------------------------------------------------------
+//  💡  Dummy domain models (replace with real ones or ViewModel flows later)
+// -----------------------------------------------------------------------------
+data class Kpi(val title: String, val value: String, val icon: ImageVector)
+data class TeacherActivity(val name: String, val pendingAttendance: Boolean, val overdueGrades: Boolean)
+data class PendingGrade(val className: String, val subject: String, val teacher: String)
+data class Sanction(val student: String, val reason: String, val date: String, val issuer: String)
+data class ApprovalRequest(val title: String, val requester: String, val date: String)
+data class Memo(val title: String, val author: String, val date: String)
+data class ClassInfo(val level: String, val stream: String, val students: Int)
+data class ImportantDate(val title: String, val date: String)
+
+// -----------------------------------------------------------------------------
+//  1️⃣  KPI SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun AdminKpiSection(modifier: Modifier = Modifier) {
+    val kpis = remember {
+        listOf(
+            Kpi("Students", "134", Icons.Default.Group),
+            Kpi("Teachers", "18", Icons.Default.Person),
+            Kpi("Sanctions Today", "3", Icons.Default.Warning),
+            Kpi("Pending Grades", "5", Icons.Default.Grade)
+        )
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📊 Overview", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            kpis.forEach { kpi ->
+                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(140.dp)) {
+                    Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(kpi.icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(6.dp))
+                        Text(kpi.value, style = MaterialTheme.typography.headlineSmall)
+                        Text(kpi.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+//  2️⃣  TEACHER ACTIVITY SUMMARY
+// -----------------------------------------------------------------------------
+@Composable
+fun TeacherActivitySummarySection(modifier: Modifier = Modifier) {
+    val teachers = remember {
+        listOf(
+            TeacherActivity("Mr. Kamali", pendingAttendance = true, overdueGrades = false),
+            TeacherActivity("Ms. Uwase", pendingAttendance = false, overdueGrades = true),
+            TeacherActivity("Mr. Habimana", pendingAttendance = true, overdueGrades = true)
+        )
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("🧑‍🏫 Teacher Activity", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        teachers.forEach { t ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Person, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(t.name, fontWeight = FontWeight.SemiBold)
+                        Row {
+                            if (t.pendingAttendance) TagChip("Attendance", MaterialTheme.colorScheme.error)
+                            if (t.overdueGrades) TagChip("Grades", MaterialTheme.colorScheme.tertiary)
+                        }
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagChip(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .padding(end = 4.dp)
+            .background(color.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+    ) {
+        Text(text = text, color = color, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 3️⃣  PENDING GRADES SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun PendingGradesSection(modifier: Modifier = Modifier) {
+    val pending = remember {
+        listOf(
+            PendingGrade("S4 Science", "Physics", "Mr. Nkurunziza"),
+            PendingGrade("S2", "English", "Ms. Ingabire")
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📑 Pending Grades", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        pending.forEach { p ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("${p.className} - ${p.subject}", fontWeight = FontWeight.SemiBold)
+                        Text("Teacher: ${p.teacher}", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 4️⃣  RECENT SANCTIONS SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun RecentSanctionsSection(modifier: Modifier = Modifier) {
+    val sanctions = remember {
+        listOf(
+            Sanction("NIYO Alpha", "Late to class", "Today", "Mr. Kamali"),
+            Sanction("UMUHOZA Jane", "Disruptive", "Yesterday", "Ms. Uwase"),
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("⚖️ Recent Sanctions", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        sanctions.forEach { s ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(s.student, fontWeight = FontWeight.SemiBold)
+                    Text(s.reason, style = MaterialTheme.typography.labelSmall)
+                    Text("${s.date} • by ${s.issuer}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 5️⃣  APPROVAL REQUESTS SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun ApprovalRequestsSection(modifier: Modifier = Modifier) {
+    val approvals = remember {
+        listOf(
+            ApprovalRequest("Leave Request - Mr. Niyomugabo", "Mr. Niyomugabo", "Today"),
+            ApprovalRequest("Event: Debate Club", "Student Council", "Yesterday")
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📥 Approval Requests", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        approvals.forEach { a ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(a.title, fontWeight = FontWeight.SemiBold)
+                        Text(a.date, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 6️⃣  INTERNAL MEMOS SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun InternalMemosSection(modifier: Modifier = Modifier) {
+    val memos = remember {
+        listOf(
+            Memo("Staff Meeting Notes", "Headmaster", "Mon"),
+            Memo("New Hygiene Guidelines", "School Nurse", "Fri")
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📝 Internal Memos", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        memos.forEach { m ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(m.title, fontWeight = FontWeight.SemiBold)
+                        Text("${m.author} • ${m.date}", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Icon(Icons.Default.ArrowForward, null)
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 7️⃣  STUDENT EXPLORER SECTION (compact)
+// -----------------------------------------------------------------------------
+@Composable
+fun StudentExplorerSection(modifier: Modifier = Modifier) {
+    val classes = remember {
+        listOf(
+            ClassInfo("S1", "A", 40),
+            ClassInfo("S2", "B", 38),
+            ClassInfo("S4", "Science", 30)
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("👥 Classes & Students", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(classes.size){ index ->
+                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(120.dp)) {
+                    Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("${classes[index].level} ${classes[index].stream}", fontWeight = FontWeight.SemiBold)
+                        Text("${classes[index].students} students", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 8️⃣  ACADEMIC CALENDAR SECTION
+// -----------------------------------------------------------------------------
+@Composable
+fun AcademicCalendarSection(modifier: Modifier = Modifier) {
+    val dates = remember {
+        listOf(
+            ImportantDate("Mid-term Exams", "27 Jun 2025"),
+            ImportantDate("Parents' Meeting", "02 Jul 2025"),
+            ImportantDate("Term Break", "15 Jul 2025")
+        )
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📅 Important Dates", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        dates.forEach { d ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(d.title, fontWeight = FontWeight.SemiBold)
+                        Text(d.date, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Icon(Icons.Default.ArrowForward, null)
+                }
+            }
         }
     }
 }
