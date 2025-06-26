@@ -40,6 +40,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,8 +61,7 @@ import com.schoolbridge.v2.ui.home.TeacherActionCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeacherQuickActionsSection() {
-
-    var chosenIds by rememberSaveable { mutableStateOf(setOf("attendance", "grades", "students")) }
+    var chosenIds by rememberSaveable { mutableStateOf(setOf<String>()) } // Empty by default
     var showDialog by remember { mutableStateOf(false) }
 
     val chosenActions = allTeacherActions.filter { it.id in chosenIds }
@@ -72,36 +72,51 @@ fun TeacherQuickActionsSection() {
             .padding(vertical = 8.dp)
     ) {
 
-        // Title + Customize
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            TextButton(onClick = { showDialog = true }) {
-                Text("Customise")
+        // ─── When actions are selected ───
+        if (chosenActions.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                TextButton(onClick = { showDialog = true }) {
+                    Text("Customise")
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 4.dp, end = 4.dp)
+            ) {
+                chosenActions.forEach { action ->
+                    TeacherActionCard(
+                        title = action.title,
+                        icon = action.icon,
+                        onClick = action.onClick
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // Cards or Empty State
+        // ─── Empty state ───
         if (chosenActions.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 24.dp),
+                    .padding(vertical = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Icon hint row – less top space
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Background icons
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
@@ -123,7 +138,7 @@ fun TeacherQuickActionsSection() {
                         )
                     }
 
-                    Spacer(Modifier.height(8.dp)) // smaller gap
+                    Spacer(Modifier.height(8.dp))
 
                     Icon(
                         imageVector = Icons.Default.Info,
@@ -131,6 +146,7 @@ fun TeacherQuickActionsSection() {
                         tint = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(32.dp)
                     )
+
                     Spacer(Modifier.height(4.dp))
 
                     Text(
@@ -139,39 +155,25 @@ fun TeacherQuickActionsSection() {
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(2.dp))
-
                     Text(
-                        text = "Quick actions help you access key features faster.\n" +
-                                "Tap 'Customise' to add actions like attendance,\n" +
-                                "grading, or managing student lists.",
+                        text = "You can bookmark tools like attendance,\ngrading, or student lists for faster access.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
-                        lineHeight = 17.sp,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        lineHeight = 17.sp
                     )
-                }
-            }
-        }
 
-        else {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = 4.dp, end = 4.dp)
-            ) {
-                chosenActions.forEach { action ->
-                    TeacherActionCard(
-                        title = action.title,
-                        icon = action.icon,
-                        onClick = action.onClick
-                    )
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedButton(onClick = { showDialog = true }) {
+                        Text("Add Quick Actions")
+                    }
                 }
             }
         }
     }
 
-    // Action Picker Dialog
+    // ─── Action Picker Dialog ───
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -202,12 +204,7 @@ fun TeacherQuickActionsSection() {
                         ) {
                             Checkbox(
                                 checked = checked,
-                                onCheckedChange = {
-                                    chosenIds = if (checked)
-                                        chosenIds - action.id
-                                    else
-                                        chosenIds + action.id
-                                }
+                                onCheckedChange = null // handled by row click
                             )
                             Spacer(Modifier.width(8.dp))
                             Icon(action.icon, contentDescription = null)
@@ -220,6 +217,7 @@ fun TeacherQuickActionsSection() {
         )
     }
 }
+
 
 
 
