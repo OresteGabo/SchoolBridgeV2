@@ -6,16 +6,20 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
 import com.schoolbridge.v2.data.remote.AuthApiServiceImpl
+import com.schoolbridge.v2.data.session.SessionState
 import com.schoolbridge.v2.data.session.UserSessionManager
-import com.schoolbridge.v2.data.session.SessionState // 👈 Make sure you define this sealed class
 import com.schoolbridge.v2.ui.home.SplashScreen
 import com.schoolbridge.v2.ui.navigation.AppNavHost
 import com.schoolbridge.v2.ui.navigation.AuthScreen
@@ -25,58 +29,70 @@ import com.schoolbridge.v2.ui.theme.ThemeViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var authApiService: AuthApiServiceImpl
+    /* simple manual DI ---------------------------------------------------- */
+    private val authApiService        = AuthApiServiceImpl()
     private lateinit var userSessionManager: UserSessionManager
     private lateinit var themePreferenceManager: ThemePreferenceManager
+    /* -------------------------------------------------------------------- */
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Manual dependencies
-        authApiService = AuthApiServiceImpl()
-        userSessionManager = UserSessionManager(applicationContext)
+        userSessionManager     = UserSessionManager(applicationContext)
         themePreferenceManager = ThemePreferenceManager(applicationContext)
 
         setContent {
+            /* --- theme state from ViewModel ------------------------------ */
             val themeViewModel: ThemeViewModel = viewModel()
-            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
 
-            val currentSessionManager = remember { userSessionManager }
-            val sessionState by currentSessionManager.sessionState.collectAsState()
+            val isDarkTheme by themeViewModel.isDark.collectAsState()
+            val palette     by themeViewModel.palette.collectAsState()
+            val contrast    by themeViewModel.contrast.collectAsState()
+
+            /* --- session state ------------------------------------------ */
+            val sessionMgr         = remember { userSessionManager }
+            val sessionState by sessionMgr.sessionState.collectAsState()
 
             LaunchedEffect(Unit) {
-                Log.d("MainActivity", "Launching session initialization...")
-                currentSessionManager.initializeSession()
+                Log.d("MainActivity", "Launching session initialization…")
+                sessionMgr.initializeSession()
             }
 
-            SchoolBridgeV2Theme(isDarkTheme = isDarkTheme, dynamicColor = false) {
+            /* --- top-level theme wrapper -------------------------------- */
+            SchoolBridgeV2Theme(
+                isDarkTheme  = isDarkTheme,
+                palette      = palette,
+                contrast     = contrast,
+                dynamicColor = false      // or expose this via prefs later
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color    = MaterialTheme.colorScheme.background
                 ) {
-                    when (val state = sessionState) {
-                        is SessionState.Loading -> SplashScreen()
+                    when (sessionState) {
+                        is SessionState.Loading   -> SplashScreen()
+
                         is SessionState.LoggedOut -> {
                             val navController = rememberNavController()
                             AppNavHost(
-                                navController = navController,
-                                startDestination = AuthScreen.Login.route,
-                                authApiService = authApiService,
-                                userSessionManager = currentSessionManager,
-                                themeViewModel = themeViewModel,
+                                navController          = navController,
+                                startDestination       = AuthScreen.Login.route,
+                                authApiService         = authApiService,
+                                userSessionManager     = sessionMgr,
+                                themeViewModel         = themeViewModel,
                                 themePreferenceManager = themePreferenceManager
                             )
                         }
 
-                        is SessionState.LoggedIn -> {
+                        is SessionState.LoggedIn  -> {
                             val navController = rememberNavController()
                             AppNavHost(
-                                navController = navController,
-                                startDestination = MainAppScreen.Home.route,
-                                authApiService = authApiService,
-                                userSessionManager = currentSessionManager,
-                                themeViewModel = themeViewModel,
+                                navController          = navController,
+                                startDestination       = MainAppScreen.Home.route,
+                                authApiService         = authApiService,
+                                userSessionManager     = sessionMgr,
+                                themeViewModel         = themeViewModel,
                                 themePreferenceManager = themePreferenceManager
                             )
                         }
