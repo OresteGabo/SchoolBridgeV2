@@ -6,31 +6,37 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.academic.TodayCourse
+import com.schoolbridge.v2.domain.academic.schedule.TodayScheduleViewModel
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.components.AppSubHeader
-
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 
 @Composable
 fun TodayScheduleSection(
     onWeeklyViewClick: () -> Unit,
-    modifier: Modifier = Modifier) {
-    val dummySchedules = listOf(
-        TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
-        TodayCourse("Chemistry", "10:00", "11:40", "Ms. Uwase", "Lab 3"),
-        TodayCourse("History", "13:00", "14:40", "Mr. Habimana", "Room B2")
-    )
+    modifier: Modifier = Modifier,
+    viewModel: TodayScheduleViewModel = viewModel()
+) {
+    val courses by viewModel.courses.collectAsState()
 
     Column(modifier = modifier.fillMaxWidth()) {
+
+        /* Header row */
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -47,10 +53,20 @@ fun TodayScheduleSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        /* Schedule list */
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            dummySchedules.forEach { course ->
+            if (courses.isEmpty()) {
                 item {
-                    TodayScheduleCard(course)
+                    Text(
+                        text = t(R.string.no_courses_today),           // add to strings.xml
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            } else {
+                items(courses.size) { index ->
+                    TodayScheduleCard(courses[index])
                 }
             }
         }
