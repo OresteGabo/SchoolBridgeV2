@@ -1,9 +1,8 @@
-package com.schoolbridge.v2.ui.theme.colors.red
+package com.schoolbridge.v2.ui.theme.colors.teal
 
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ColorScheme
-import com.schoolbridge.v2.ui.theme.Contrast
 import com.schoolbridge.v2.ui.theme.LightDark
 import com.schoolbridge.v2.ui.theme.PaletteVariants
 /* -------------------------------------------------------------
@@ -241,7 +240,7 @@ private val highDark: ColorScheme = darkColorScheme(
 /* -------------------------------------------------------------
    2.  Expose ONE object that bundles the six schemes.
    ------------------------------------------------------------- */
-val RedPalette = PaletteVariants(
+val TealPalette = PaletteVariants(
     normal = LightDark(normalLight,  normalDark ),
     medium = LightDark(mediumLight,  mediumDark ),
     high   = LightDark(highLight,    highDark   )
