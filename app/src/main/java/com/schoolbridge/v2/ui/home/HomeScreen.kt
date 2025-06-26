@@ -309,31 +309,49 @@ private fun HomeUI(
                 SpacerL()
                 CourseListSection()
             }
-
             UserRole.SCHOOL_ADMIN -> {
-                AdminQuickActionsSection()
+                AdminQuickActionsSection() // 👨🏽‍💼 Sanctions, permissions, planning, announcements
                 SpacerL()
 
-                SpacerM()
-                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
-                PendingGradesSection()
-                RecentSanctionsSection()
-                ApprovalRequestsSection()
-                InternalMemosSection()
-                StudentExplorerSection()
-                AcademicCalendarSection()
-                TeacherActivitySummarySection()
+                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick) // 🗓️ School-wide schedule view
                 SpacerL()
-                AlertsSection(
+
+                PendingGradesSection() // ⌛ Grades awaiting approval or submission
+                SpacerM()
+
+                RecentSanctionsSection() // ⚠️ Latest student sanctions (e.g., conduite points, suspensions)
+                SpacerM()
+
+                ApprovalRequestsSection() // ✅ Permissions, early leave, content approval
+                SpacerM()
+
+                InternalMemosSection() // 🗒️ Internal staff communications
+                SpacerM()
+
+                TeacherActivitySummarySection() // 👩🏽‍🏫 Teaching loads, missing grades, feedback
+                SpacerM()
+
+                AcademicOverviewSection() // 📝 Academic stats (averages, top scores, etc.) per class
+                SpacerM()
+
+                StudentExplorerSection() // 👥 Compact student attendance & class explorer
+                SpacerM()
+
+                AcademicCalendarSection() // 📆 Term dates, holidays, exam periods
+                SpacerL()
+
+                AlertsSection( // 📢 Notices sent to staff, parents, or students
                     onViewAllAlertsClick = onViewAllAlertsClick,
                     onAlertClick = onAlertClick
                 )
                 SpacerL()
-                EventsSection(
+
+                EventsSection( // 🎉 Upcoming school-wide events
                     onViewAllEventsClick = onViewAllEventsClick,
                     onEventClick = onEventClick
                 )
             }
+
 
 
             else -> { /* no role yet or still loading */ }
@@ -753,26 +771,94 @@ fun InternalMemosSection(modifier: Modifier = Modifier) {
 fun StudentExplorerSection(modifier: Modifier = Modifier) {
     val classes = remember {
         listOf(
-            ClassInfo("S1", "A", 40),
-            ClassInfo("S2", "B", 38),
-            ClassInfo("S4", "Science", 30)
+            ClassAttendanceStats("S1", "A", 40, 36, mapOf("Medical" to 1, "Permission" to 2, "Sanctioned" to 1)),
+            ClassAttendanceStats("S2", "B", 38, 38, emptyMap()),
+            ClassAttendanceStats("S4", "Science", 30, 27, mapOf("Medical" to 2, "Sanctioned" to 1))
         )
     }
+
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("👥 Classes & Students", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "👥 Class Attendance",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(classes.size){ index ->
-                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(120.dp)) {
-                    Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${classes[index].level} ${classes[index].stream}", fontWeight = FontWeight.SemiBold)
-                        Text("${classes[index].students} students", style = MaterialTheme.typography.labelSmall)
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            //modifier = Modifier.animateItemPlacement()
+        ) {
+            items(classes.size){index->
+                AnimatedVisibility(visible = true) {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .width(160.dp)
+                            .heightIn(min = 120.dp),
+                            //.animateItemPlacement(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            Modifier
+                                .padding(12.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text(
+                                "${classes[index].level} ${classes[index].stream}",
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                "${classes[index].present}/${classes[index].total} present",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+
+                            if (classes[index].absentReasons.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    classes[index].absentReasons.forEach { (reason, count) ->
+                                        Text(
+                                            text = "$reason: $count",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    "✅ Full attendance",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
+
+data class ClassAttendanceStats(
+    val level: String,
+    val stream: String,
+    val total: Int,
+    val present: Int,
+    val absentReasons: Map<String, Int>
+)
+
 
 // -----------------------------------------------------------------------------
 // 8️⃣  ACADEMIC CALENDAR SECTION
@@ -802,3 +888,71 @@ fun AcademicCalendarSection(modifier: Modifier = Modifier) {
         }
     }
 }
+
+// 🧑🏽‍🏫 TEACHER OVERVIEW SECTION
+@Composable
+fun TeacherOverviewSection(modifier: Modifier = Modifier) {
+    val teacherStats = listOf(
+        TeacherStat("Mr. Kamali", courses = 4, pendingGrades = 2),
+        TeacherStat("Ms. Uwase", courses = 3, pendingGrades = 0),
+        TeacherStat("Mr. Habimana", courses = 5, pendingGrades = 1)
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("🧑🏽‍🏫 Teachers Overview", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(teacherStats.size){index->
+                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(180.dp)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(teacherStats[index].name, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Courses: ${teacherStats[index].courses}", style = MaterialTheme.typography.labelSmall)
+                        Text("Pending grades: ${teacherStats[index].pendingGrades}", style = MaterialTheme.typography.labelSmall, color = if (teacherStats[index].pendingGrades > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class TeacherStat(
+    val name: String,
+    val courses: Int,
+    val pendingGrades: Int
+)
+
+// 📝 ACADEMIC OVERVIEW SECTION
+@Composable
+fun AcademicOverviewSection(modifier: Modifier = Modifier) {
+    val classSummaries = listOf(
+        ClassAcademicSummary("S4 Science", avg = 72.5, topScore = 91.3),
+        ClassAcademicSummary("S2 B", avg = 64.7, topScore = 89.0),
+        ClassAcademicSummary("S1 A", avg = 58.9, topScore = 78.4)
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text("📊 Academic Summary", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(classSummaries.size){index->
+                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(180.dp)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(classSummaries[index].className, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Avg: ${classSummaries[index].avg}%", style = MaterialTheme.typography.labelSmall)
+                        Text("Top: ${classSummaries[index].topScore}%", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class ClassAcademicSummary(
+    val className: String,
+    val avg: Double,
+    val topScore: Double
+)
