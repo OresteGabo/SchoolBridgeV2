@@ -53,7 +53,7 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.academic.teacher.TeacherQuickAction
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.home.TeacherActionCard
+import com.schoolbridge.v2.ui.home.common.ActionCard
 import kotlin.collections.filter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +99,12 @@ fun TeacherQuickActionsSection() {
                     .padding(start = 4.dp, end = 4.dp)
             ) {
                 chosenActions.forEach { action ->
-                    TeacherActionCard(
+                    /*TeacherActionCard(
+                        title = action.title,
+                        icon = action.icon,
+                        onClick = action.onClick
+                    )*/
+                    ActionCard(
                         title = action.title,
                         icon = action.icon,
                         onClick = action.onClick
