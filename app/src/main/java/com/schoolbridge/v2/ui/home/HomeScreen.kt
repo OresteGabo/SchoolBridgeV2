@@ -4,21 +4,27 @@ package com.schoolbridge.v2.ui.home
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schedule
@@ -32,13 +38,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.academic.TodayCourse
+import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
@@ -47,6 +56,7 @@ import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
+import com.schoolbridge.v2.ui.home.common.ActionCard
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
@@ -462,32 +472,122 @@ fun TeacherActionCard(
 
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminQuickActionsSection(
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Quick Actions",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(8.dp))
+fun AdminQuickActionsSection() {
+    val viewModel: QuickActionViewModel = viewModel()
+    val chosenIds by viewModel.selected.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.horizontalScroll(rememberScrollState())
-        ) {
-            adminQuickActions.forEach { action ->
-                TeacherActionCard(            // reuse existing card util
-                    title  = action.title,
-                    icon   = action.icon,
-                    onClick = action.onClick
+    val chosenActions = adminQuickActions.filter { it.id in chosenIds }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        if (chosenActions.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Quick Admin Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
+                TextButton(onClick = { showDialog = true }) {
+                    Text("Customise")
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp)
+            ) {
+                chosenActions.forEach { action ->
+                    ActionCard(
+                        title = action.title,
+                        icon = action.icon,
+                        onClick = action.onClick
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                        Icon(Icons.AutoMirrored.Filled.EventNote, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.height(4.dp))
+                    Text("No quick actions selected.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "You can bookmark tools like sanctions, permissions,\nor planning for quick access.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 17.sp
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(onClick = { showDialog = true }) {
+                        Text("Add Quick Actions")
+                    }
+                }
             }
         }
     }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton({ showDialog = false }) { Text("Done") }
+            },
+            title = { Text("Choose Quick Actions") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 400.dp).padding(end = 8.dp)) {
+                    items(adminQuickActions.size) { index ->
+                        val action = adminQuickActions[index]
+                        val checked = action.id in chosenIds
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.toggle(action.id) }
+                                .padding(8.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { viewModel.toggle(action.id) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Icon(action.icon, contentDescription = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(action.title, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        )
+    }
 }
+
 
 data class AdminQuickAction(
     val id: String,
