@@ -95,90 +95,18 @@ import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import com.schoolbridge.v2.util.sampleOfferings
 import kotlinx.coroutines.launch
 
-@Composable
-fun M_TopBanner(role: UserRole) {
-    val g = when (role) {
-        UserRole.STUDENT -> listOf(Color(0xFF5C6BC0), Color(0xFF3949AB))
-        UserRole.PARENT -> listOf(Color(0xFFFFA270), Color(0xFFFF7043))
-        UserRole.TEACHER -> listOf(Color(0xFF4DD0E1), Color(0xFF0097A7))
-        UserRole.SCHOOL_ADMIN -> listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
-        UserRole.GUEST ->listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .clip(MaterialTheme.shapes.large)
-            .background(Brush.horizontalGradient(g))
-            .padding(20.dp),
-        contentAlignment = Alignment.BottomStart
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(R.drawable.ic_bridge), // ensure ic_bridge is in res/drawable
-                contentDescription = "Bridge icon",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text("Bridge to Learning", style = MaterialTheme.typography.labelMedium.copy(color = Color.White))
-                Text(
-                    "Dashboard · ${role.name}",
-                    style = MaterialTheme.typography.titleLarge.copy(color = Color.White, fontWeight = FontWeight.Bold)
-                )
-            }
-        }
-    }
-}
 
-/*@Composable
-fun AltHero() {
-    val colors = listOf(colorScheme.primary, colorScheme.secondary,)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(MaterialTheme.shapes.extraLarge)
-            .background(Color.Transparent)
-    )
-    {
-        // blobby gradient circles
-        listOf(300.dp, 200.dp, 260.dp).forEachIndexed { i, size ->
-            Box(
-                modifier = Modifier
-                    .size(size)
-                    .blur(120.dp)
-                    .graphicsLayer { alpha = 0.55f }
-                    .offset(x = (-40 + i * 80).dp, y = (-20 + i * 60).dp)
-                    .background(
-                        Brush.radialGradient(colors + Color.Transparent),
-                        shape = CircleShape
-                    )
-            )
-        }
-
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Bottom
-        ) {
-            Text("Hey there 👋", style = MaterialTheme.typography.headlineSmall.copy(color = Color.White, fontWeight = FontWeight.SemiBold))
-            SpacerS()
-            Text("Welcome SchoolBridge", style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.9f)))
-        }
-    }
-}
-*/
 @Composable
-fun AltHero() {
+fun AltHero(currentUser: CurrentUser?) {
+    val name = currentUser?.lastName ?: ""
+    val gender = currentUser?.gender
     val colors = listOf(
         MaterialTheme.colorScheme.primary,
         MaterialTheme.colorScheme.secondary
     )
 
+    val textColor = MaterialTheme.colorScheme.primary
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,19 +114,19 @@ fun AltHero() {
             .clip(MaterialTheme.shapes.extraLarge)
             .background(Color.Transparent)
     ) {
-        // 1️⃣ Bridge Background Image (low opacity, aesthetic only)
+        // 1️⃣ Background Image
         Image(
             painter = painterResource(id = R.drawable.ic_bridge),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(500.dp) // intentionally large to overflow and feel abstract
+                .size(500.dp)
                 .offset(x = (-60).dp, y = (-40).dp)
-                .alpha(0.08f) // barely visible
+                .alpha(0.08f)
         )
 
-        // 2️⃣ Glowy Gradient Circles
+        // 2️⃣ Glowy Circles
         listOf(300.dp, 200.dp, 260.dp).forEachIndexed { i, size ->
             Box(
                 modifier = Modifier
@@ -213,30 +141,57 @@ fun AltHero() {
             )
         }
 
-        // 3️⃣ Welcome Text
+        // 3️⃣ 🟣 Gradient overlay for text readability
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .height(100.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.0f)
+                        ),
+                        startY = Float.POSITIVE_INFINITY,
+                        endY = 0f
+                    )
+                )
+        )
+
+        // 4️⃣ Welcome Text
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp),
             verticalArrangement = Arrangement.Bottom
         ) {
+            val genderPrefix = when (gender?.name) {
+                "MALE" -> "Mr."
+                "FEMALE" -> "Ms."
+                else -> ""
+            }
+            val userP = if (name.isBlank()) "there" else "$genderPrefix $name"
+
             Text(
-                "Hey there 👋",
+                text = "Hey $userP 👋",
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = Color.White,
+                    color = textColor,
                     fontWeight = FontWeight.SemiBold
                 )
             )
             SpacerS()
             Text(
-                "Welcome to SchoolBridge",
+                text = "Welcome to SchoolBridge",
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = textColor.copy(alpha = 0.85f)
                 )
             )
         }
     }
 }
+
+
 
 
 /* ──────────────────────────────────────────────────────────────────────────────
@@ -507,7 +462,7 @@ private fun HomeUI(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AltHero()
+        AltHero(currentUser = currentUser)
         when (activeRole) {
             UserRole.STUDENT -> {
                 CourseListSection()
@@ -638,41 +593,7 @@ val dummyTeacherNames = mapOf(
     "teacher3" to "Mrs. Mukeshimana",
     "teacher4" to "Mr. Habimana"
 )
-/*
-@Composable
-fun TagChip(icon: ImageVector, text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-data class UserEventStatus(
-    val eventId: String,
-    val isConfirmed: Boolean? // Null means not responded, true for confirmed, false for declined
-)
 
-
-
-
-*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -877,40 +798,6 @@ data class ApprovalRequest(val title: String, val requester: String, val date: S
 data class Memo(val title: String, val author: String, val date: String)
 data class ClassInfo(val level: String, val stream: String, val students: Int)
 data class ImportantDate(val title: String, val date: String)
-
-/*
-// -----------------------------------------------------------------------------
-//  1️⃣  KPI SECTION
-// -----------------------------------------------------------------------------
-@Composable
-fun AdminKpiSection(modifier: Modifier = Modifier) {
-    val kpis = remember {
-        listOf(
-            Kpi("Students", "134", Icons.Default.Group),
-            Kpi("Teachers", "18", Icons.Default.Person),
-            Kpi("Sanctions Today", "3", Icons.Default.Warning),
-            Kpi("Pending Grades", "5", Icons.Default.Grade)
-        )
-    }
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text("📊 Overview", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-            kpis.forEach { kpi ->
-                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(140.dp)) {
-                    Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(kpi.icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(6.dp))
-                        Text(kpi.value, style = MaterialTheme.typography.headlineSmall)
-                        Text(kpi.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-    }
-}
-*/
 // -----------------------------------------------------------------------------
 //  2️⃣  TEACHER ACTIVITY SUMMARY
 // -----------------------------------------------------------------------------
@@ -1192,39 +1079,7 @@ fun AcademicCalendarSection(modifier: Modifier = Modifier) {
     }
 }
 
-// 🧑🏽‍🏫 TEACHER OVERVIEW SECTION
-@Composable
-fun TeacherOverviewSection(modifier: Modifier = Modifier) {
-    val teacherStats = listOf(
-        TeacherStat("Mr. Kamali", courses = 4, pendingGrades = 2),
-        TeacherStat("Ms. Uwase", courses = 3, pendingGrades = 0),
-        TeacherStat("Mr. Habimana", courses = 5, pendingGrades = 1)
-    )
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text("🧑🏽‍🏫 Teachers Overview", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
-        Spacer(Modifier.height(8.dp))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(teacherStats.size){index->
-                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(180.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(teacherStats[index].name, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Courses: ${teacherStats[index].courses}", style = MaterialTheme.typography.labelSmall)
-                        Text("Pending grades: ${teacherStats[index].pendingGrades}", style = MaterialTheme.typography.labelSmall, color = if (teacherStats[index].pendingGrades > 0) colorScheme.error else colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-    }
-}
-
-data class TeacherStat(
-    val name: String,
-    val courses: Int,
-    val pendingGrades: Int
-)
 
 // 📝 ACADEMIC OVERVIEW SECTION
 @Composable
@@ -1260,30 +1115,5 @@ data class ClassAcademicSummary(
     val topScore: Double
 )
 
-fun generateClassAcademicSummaries(
-    offerings: List<SchoolLevelOffering>,
-    gradeFetcher: (Course) -> List<Double> // fetches grades per course
-): List<ClassAcademicSummary> {
-    return offerings.mapNotNull { offering ->
-        val allGrades = offering.courses.flatMap { course ->
-            gradeFetcher(course)
-        }
 
-        if (allGrades.isNotEmpty()) {
-            val avg = allGrades.average()
-            val top = allGrades.maxOrNull() ?: 0.0
-            ClassAcademicSummary(
-                className = "${offering.schoolLevel.name} ${offering.stream.orEmpty()}".trim(),
-                avg = avg,
-                topScore = top
-            )
-        } else null
-    }
-}
 
-val mockGradeFetcher: (Course) -> List<Double> = { course ->
-    // Replace with real fetch from courseId or subjectId
-    listOf(58.0, 73.5, 66.0, 92.3, 81.0)
-}
-
-val summaries = generateClassAcademicSummaries(sampleOfferings, mockGradeFetcher)
