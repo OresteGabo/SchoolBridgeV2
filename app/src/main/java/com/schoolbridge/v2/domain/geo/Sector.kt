@@ -7,8 +7,10 @@ import com.google.gson.annotations.SerializedName
  * It belongs to a specific District.
  */
 data class Sector(
-    val id: String,
-    val name: String,
-    val districtId: String // Reference to the ID of the parent District
-    // You could optionally add 'val districtName: String' for display convenience.
-)
+    val code: Char,
+    val title: String
+) {
+    fun id(districtCode: Char): String {
+        return "${districtCode}$code"
+    }
+}
