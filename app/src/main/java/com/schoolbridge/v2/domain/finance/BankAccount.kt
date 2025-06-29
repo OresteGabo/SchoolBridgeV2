@@ -1,4 +1,4 @@
 package com.schoolbridge.v2.domain.finance
 
-class BankAccount {
+class BankAccount(bankName: String, accountNumber: String) {
 }
