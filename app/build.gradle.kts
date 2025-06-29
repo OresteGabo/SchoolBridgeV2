@@ -47,13 +47,17 @@ android {
     }
 
     packaging {
-        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
     }
 }
 
 dependencies {
     /* ---------- Compose core (BOM) ---------- */
-    implementation(platform(libs.androidx.compose.bom))          // e.g. 2024.06.00
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.testing)          // e.g. 2024.06.00
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     /* ---------- Compose UI toolkit ---------- */
