@@ -3,13 +3,22 @@ package com.schoolbridge.v2.ui.home
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,6 +30,8 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups
@@ -32,28 +43,44 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.academic.Course
 import com.schoolbridge.v2.domain.academic.TodayCourse
 import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.messaging.Alert
+import com.schoolbridge.v2.domain.school.SchoolLevelOffering
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
+import com.schoolbridge.v2.ui.components.SpacerS
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.common.ActionCard
@@ -65,7 +92,152 @@ import com.schoolbridge.v2.ui.home.schedule.TodayScheduleSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
 import com.schoolbridge.v2.ui.home.teacher.TeacherQuickActionsSection
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
+import com.schoolbridge.v2.util.sampleOfferings
 import kotlinx.coroutines.launch
+
+@Composable
+fun M_TopBanner(role: UserRole) {
+    val g = when (role) {
+        UserRole.STUDENT -> listOf(Color(0xFF5C6BC0), Color(0xFF3949AB))
+        UserRole.PARENT -> listOf(Color(0xFFFFA270), Color(0xFFFF7043))
+        UserRole.TEACHER -> listOf(Color(0xFF4DD0E1), Color(0xFF0097A7))
+        UserRole.SCHOOL_ADMIN -> listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
+        UserRole.GUEST ->listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(140.dp)
+            .clip(MaterialTheme.shapes.large)
+            .background(Brush.horizontalGradient(g))
+            .padding(20.dp),
+        contentAlignment = Alignment.BottomStart
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(R.drawable.ic_bridge), // ensure ic_bridge is in res/drawable
+                contentDescription = "Bridge icon",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text("Bridge to Learning", style = MaterialTheme.typography.labelMedium.copy(color = Color.White))
+                Text(
+                    "Dashboard · ${role.name}",
+                    style = MaterialTheme.typography.titleLarge.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+
+/*@Composable
+fun AltHero() {
+    val colors = listOf(colorScheme.primary, colorScheme.secondary,)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(Color.Transparent)
+    )
+    {
+        // blobby gradient circles
+        listOf(300.dp, 200.dp, 260.dp).forEachIndexed { i, size ->
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .blur(120.dp)
+                    .graphicsLayer { alpha = 0.55f }
+                    .offset(x = (-40 + i * 80).dp, y = (-20 + i * 60).dp)
+                    .background(
+                        Brush.radialGradient(colors + Color.Transparent),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text("Hey there 👋", style = MaterialTheme.typography.headlineSmall.copy(color = Color.White, fontWeight = FontWeight.SemiBold))
+            SpacerS()
+            Text("Welcome SchoolBridge", style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.9f)))
+        }
+    }
+}
+*/
+@Composable
+fun AltHero() {
+    val colors = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(Color.Transparent)
+    ) {
+        // 1️⃣ Bridge Background Image (low opacity, aesthetic only)
+        Image(
+            painter = painterResource(id = R.drawable.ic_bridge),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(500.dp) // intentionally large to overflow and feel abstract
+                .offset(x = (-60).dp, y = (-40).dp)
+                .alpha(0.08f) // barely visible
+        )
+
+        // 2️⃣ Glowy Gradient Circles
+        listOf(300.dp, 200.dp, 260.dp).forEachIndexed { i, size ->
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .blur(120.dp)
+                    .graphicsLayer { alpha = 0.55f }
+                    .offset(x = (-40 + i * 80).dp, y = (-20 + i * 60).dp)
+                    .background(
+                        Brush.radialGradient(colors + Color.Transparent),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        // 3️⃣ Welcome Text
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(
+                "Hey there 👋",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            SpacerS()
+            Text(
+                "Welcome to SchoolBridge",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            )
+        }
+    }
+}
+
 
 /* ──────────────────────────────────────────────────────────────────────────────
  *  1️⃣  Top-bar with a Role “combo-box”
@@ -80,97 +252,149 @@ private fun HomeTopBar(
     modifier: Modifier = Modifier
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        GlowingTopBarBackground()
+        TopAppBar(
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    //Text("SchoolBridge")
+                    //Spacer(Modifier.width(8.dp))
 
-    TopAppBar(
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-               Text("SchoolBridge")
-                Spacer(Modifier.width(8.dp))
-
-                // Show the switcher only if the user owns >1 role
-                AnimatedVisibility(visible = availableRoles.size > 1 && currentRole != null) {
-                    Box {
-                        TextButton(onClick = { menuOpen = true }) {
-                            Text(currentRole?.humanLabel ?: "")
-                            Icon(
-                                Icons.Default.ArrowDropDown,
-                                contentDescription = "Change role"
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = menuOpen,
-                            onDismissRequest = { menuOpen = false }
-                        ) {
-                            // Optional: Title
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "Switch Role",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                },
-                                onClick = {},
-                                enabled = false, // acts like a header
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            )
-
-                            HorizontalDivider()
-
-                            // List roles
-                            availableRoles.forEach { role ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                role.humanLabel,
-                                                style = MaterialTheme.typography.bodyMedium
-                                                    .copy(fontWeight = FontWeight.SemiBold)
-                                            )
-                                            // Optional subtitle based on role
-                                            Text(
-                                                text = when (role) {
-                                                    UserRole.PARENT -> "Monitor your children’s progress"
-                                                    UserRole.STUDENT -> "View your courses and schedule"
-                                                    UserRole.TEACHER -> "Manage your classes"
-                                                    UserRole.SCHOOL_ADMIN -> "School administration tools"
-                                                    else -> ""
-                                                },
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    },
-                                    trailingIcon = {
-                                        if (role == currentRole) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = "Current role",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        menuOpen = false
-                                        if (role != currentRole) onRoleSelected(role)
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    AnimatedVisibility(visible = availableRoles.size > 1 && currentRole != null) {
+                        Box {
+                            TextButton(onClick = { menuOpen = true }) {
+                                Text(currentRole?.humanLabel ?: "")
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = "Change role"
                                 )
                             }
-                        }
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Switch Role",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = colorScheme.primary
+                                        )
+                                    },
+                                    onClick = {},
+                                    enabled = false,
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                )
 
+                                HorizontalDivider()
+
+                                availableRoles.forEach { role ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    role.humanLabel,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                                )
+                                                Text(
+                                                    text = when (role) {
+                                                        UserRole.PARENT -> "Monitor your children’s progress"
+                                                        UserRole.STUDENT -> "View your courses and schedule"
+                                                        UserRole.TEACHER -> "Manage your classes"
+                                                        UserRole.SCHOOL_ADMIN -> "School administration tools"
+                                                        else -> ""
+                                                    },
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
+                                        trailingIcon = {
+                                            if (role == currentRole) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Current role",
+                                                    tint = colorScheme.primary
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            menuOpen = false
+                                            if (role != currentRole) onRoleSelected(role)
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        },
-        actions = {
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
-        },
-        modifier = modifier
-    )
+            },
+            actions = {
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = colorScheme.onSurface,
+                actionIconContentColor = colorScheme.onSurface
+            ),
+            modifier = modifier
+        )
+    }
 }
+
+@Composable
+fun GlowingGradientBackground(currentRole: UserRole?, scrollOffset: Float = 0f, modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "Glow Animation")
+    val animatedAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "glowAlpha"
+    )
+
+    val colors = when (currentRole) {
+        UserRole.TEACHER -> listOf(Color(0xFF00E5FF), Color(0xFF18FFFF), Color.Transparent)
+        UserRole.STUDENT -> listOf(Color(0xFF8C9EFF), Color(0xFF536DFE), Color.Transparent)
+        UserRole.PARENT -> listOf(Color(0xFFFF8A65), Color(0xFFFFAB91), Color.Transparent)
+        UserRole.SCHOOL_ADMIN -> listOf(Color(0xFF69F0AE), Color(0xFFB9F6CA), Color.Transparent)
+        else -> listOf(Color(0xFFD1C4E9), Color(0xFFB39DDB), Color.Transparent)
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Transparent)
+    ) {
+        listOf(
+            Offset(200f, 400f),
+            Offset(800f, 300f),
+            Offset(500f, 1000f)
+        ).forEachIndexed { index, offset ->
+            Box(
+                Modifier
+                    .size((700 + index * 100).dp)
+                    .graphicsLayer { alpha = animatedAlpha }
+                    .blur(150.dp)
+                    .offset { IntOffset((offset.x - scrollOffset).toInt(), offset.y.toInt()) }
+                    .background(
+                        Brush.radialGradient(
+                            colors = colors,
+                            center = offset,
+                            radius = 1000f
+                        ),
+                        shape = CircleShape
+                    )
+            )
+        }
+    }
+}
+
+
 
 /* ──────────────────────────────────────────────────────────────────────────────
  *  2️⃣  Main screen “Route” that wires the role switcher
@@ -193,43 +417,45 @@ fun HomeRoute(
     val scope = rememberCoroutineScope()
     var selectedAlert by remember { mutableStateOf<Alert?>(null) }
 
-    Scaffold(
-        topBar = {
-            HomeTopBar(
-                currentRole = currentUser?.currentRole,
-                availableRoles = currentUser?.activeRoles ?: emptySet(),
-                onRoleSelected = { selectedRole ->
-                    scope.launch { userSessionManager.setCurrentRole(selectedRole) }
-                },
-                onSettingsClick = onSettingsClick
-            )
-        },
-        bottomBar = {
-            CustomBottomNavBar(
-                currentScreen = currentScreen,
-                onTabSelected = onTabSelected
-            )
-        },
-        modifier = modifier
-    ) { paddingValues ->
+    Box(modifier = Modifier.fillMaxSize()) {
+        // ✨ Place the glow gradient behind everything
 
-        /* Main content */
-        HomeUI(
-            currentUser = currentUser,
-            onViewAllAlertsClick = onViewAllAlertsClick,
-            onViewAllEventsClick = onViewAllEventsClick,
-            onEventClick = onEventClick,
-            onAlertClick = { alert ->
-                selectedAlert = alert
-                scope.launch { sheetState.show() }
+            GlowingGradientBackground(currentRole = currentUser?.currentRole)
+        Scaffold(
+            topBar = {
+                HomeTopBar(
+                    currentRole = currentUser?.currentRole,
+                    availableRoles = currentUser?.activeRoles ?: emptySet(),
+                    onRoleSelected = { selectedRole ->
+                        scope.launch { userSessionManager.setCurrentRole(selectedRole) }
+                    },
+                    onSettingsClick = onSettingsClick
+                )
             },
-            onWeeklyViewClick = onWeeklyViewClick,
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        )
+            bottomBar = {
+                CustomBottomNavBar(
+                    currentScreen = currentScreen,
+                    onTabSelected = onTabSelected
+                )
+            },
+            modifier = modifier
+        ) { paddingValues ->
+            HomeUI(
+                currentUser = currentUser,
+                onViewAllAlertsClick = onViewAllAlertsClick,
+                onViewAllEventsClick = onViewAllEventsClick,
+                onEventClick = onEventClick,
+                onAlertClick = { alert ->
+                    selectedAlert = alert
+                    scope.launch { sheetState.show() }
+                },
+                onWeeklyViewClick = onWeeklyViewClick,
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+            )
+        }
 
-        /* One-off bottom sheet for a tapped alert */
         if (selectedAlert != null) {
             ModalBottomSheet(
                 onDismissRequest = {
@@ -248,9 +474,11 @@ fun HomeRoute(
     }
 }
 
+
 /* ──────────────────────────────────────────────────────────────────────────────
  *  3️⃣  HomeUI now keys off *currentRole* instead of only “isStudent()”
  * ────────────────────────────────────────────────────────────────────────────── */
+
 @Composable
 private fun HomeUI(
     currentUser: CurrentUser?,
@@ -263,22 +491,23 @@ private fun HomeUI(
 ) {
     var activeRole = currentUser?.currentRole
     Log.d("HomeUI", "Active role: $activeRole")
-    if(activeRole == null) {
-        if(currentUser != null) {
-            if(currentUser.activeRoles.isNotEmpty()){
+    if (activeRole == null) {
+        if (currentUser != null) {
+            if (currentUser.activeRoles.isNotEmpty()) {
                 Log.d("HomeUI", "Active roles: ${currentUser.activeRoles}")
-                currentUser.currentRole=currentUser.activeRoles.first()
+                currentUser.currentRole = currentUser.activeRoles.first()
                 activeRole = currentUser.currentRole
-
             }
         }
     }
     Column(
         modifier = modifier
+            .background(Color.Transparent)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        AltHero()
         when (activeRole) {
             UserRole.STUDENT -> {
                 CourseListSection()
@@ -292,7 +521,6 @@ private fun HomeUI(
                 SpacerL()
                 GradesSummarySection()
             }
-
             UserRole.PARENT -> {
                 StudentListSection(students = currentUser?.linkedStudents)
                 SpacerL()
@@ -306,7 +534,6 @@ private fun HomeUI(
                     onEventClick = onEventClick
                 )
             }
-
             UserRole.TEACHER -> {
                 TeacherQuickActionsSection()
                 SpacerL()
@@ -320,53 +547,61 @@ private fun HomeUI(
                 CourseListSection()
             }
             UserRole.SCHOOL_ADMIN -> {
-                AdminQuickActionsSection() // 👨🏽‍💼 Sanctions, permissions, planning, announcements
+                AdminQuickActionsSection()
                 SpacerL()
-
-                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick) // 🗓️ School-wide schedule view
+                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
                 SpacerL()
-
-                PendingGradesSection() // ⌛ Grades awaiting approval or submission
+                PendingGradesSection()
                 SpacerM()
-
-                RecentSanctionsSection() // ⚠️ Latest student sanctions (e.g., conduite points, suspensions)
+                RecentSanctionsSection()
                 SpacerM()
-
-                ApprovalRequestsSection() // ✅ Permissions, early leave, content approval
+                ApprovalRequestsSection()
                 SpacerM()
-
-                InternalMemosSection() // 🗒️ Internal staff communications
+                InternalMemosSection()
                 SpacerM()
-
-                TeacherActivitySummarySection() // 👩🏽‍🏫 Teaching loads, missing grades, feedback
+                TeacherActivitySummarySection()
                 SpacerM()
-
-                AcademicOverviewSection() // 📝 Academic stats (averages, top scores, etc.) per class
+                AcademicOverviewSection()
                 SpacerM()
-
-                StudentExplorerSection() // 👥 Compact student attendance & class explorer
+                StudentExplorerSection()
                 SpacerM()
-
-                AcademicCalendarSection() // 📆 Term dates, holidays, exam periods
+                AcademicCalendarSection()
                 SpacerL()
-
-                AlertsSection( // 📢 Notices sent to staff, parents, or students
+                AlertsSection(
                     onViewAllAlertsClick = onViewAllAlertsClick,
                     onAlertClick = onAlertClick
                 )
                 SpacerL()
-
-                EventsSection( // 🎉 Upcoming school-wide events
+                EventsSection(
                     onViewAllEventsClick = onViewAllEventsClick,
                     onEventClick = onEventClick
                 )
             }
-
-
-
-            else -> { /* no role yet or still loading */ }
+            else -> {}
         }
     }
+}
+
+
+
+
+@Composable
+private fun GlowingTopBarBackground(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        colorScheme.primary.copy(alpha = 0.15f),
+                        colorScheme.surface.copy(alpha = 0.05f)
+                    )
+                ),
+                shape = RectangleShape
+            )
+            .blur(radius = 30.dp) // Creates the frosted effect
+    )
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
@@ -380,6 +615,8 @@ val UserRole.humanLabel: String
         UserRole.SCHOOL_ADMIN  -> "Admin"
         UserRole.GUEST         -> "Guest"
     }
+
+
 
 @Preview(showBackground = true)
 @Composable
@@ -401,7 +638,7 @@ val dummyTeacherNames = mapOf(
     "teacher3" to "Mrs. Mukeshimana",
     "teacher4" to "Mr. Habimana"
 )
-
+/*
 @Composable
 fun TagChip(icon: ImageVector, text: String) {
     Row(
@@ -433,44 +670,9 @@ data class UserEventStatus(
 )
 
 
-@Composable
-fun TeacherActionCard(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier
-            .width(100.dp)
-            .height(100.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-    }
-}
 
 
+*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -495,7 +697,7 @@ fun AdminQuickActionsSection() {
                 Text(
                     text = "Quick Admin Actions",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = colorScheme.primary
                 )
                 TextButton(onClick = { showDialog = true }) {
                     Text("Customise")
@@ -527,20 +729,20 @@ fun AdminQuickActionsSection() {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
-                        Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
-                        Icon(Icons.AutoMirrored.Filled.EventNote, null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.Warning, null, tint = colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.Groups, null, tint = colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
+                        Icon(Icons.AutoMirrored.Filled.EventNote, null, tint = colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.size(28.dp))
                     }
 
                     Spacer(Modifier.height(8.dp))
-                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.Info, null, tint = colorScheme.outline, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.height(4.dp))
-                    Text("No quick actions selected.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                    Text("No quick actions selected.", style = MaterialTheme.typography.bodyMedium, color = colorScheme.outline)
                     Spacer(Modifier.height(2.dp))
                     Text(
                         "You can bookmark tools like sanctions, permissions,\nor planning for quick access.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = colorScheme.outline,
                         textAlign = TextAlign.Center,
                         lineHeight = 17.sp
                     )
@@ -646,7 +848,7 @@ fun AdminTodayScheduleSection(
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
                     .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        colorScheme.primary.copy(alpha = 0.12f),
                         RoundedCornerShape(8.dp)
                     )
                     .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -676,6 +878,7 @@ data class Memo(val title: String, val author: String, val date: String)
 data class ClassInfo(val level: String, val stream: String, val students: Int)
 data class ImportantDate(val title: String, val date: String)
 
+/*
 // -----------------------------------------------------------------------------
 //  1️⃣  KPI SECTION
 // -----------------------------------------------------------------------------
@@ -707,7 +910,7 @@ fun AdminKpiSection(modifier: Modifier = Modifier) {
         }
     }
 }
-
+*/
 // -----------------------------------------------------------------------------
 //  2️⃣  TEACHER ACTIVITY SUMMARY
 // -----------------------------------------------------------------------------
@@ -722,18 +925,18 @@ fun TeacherActivitySummarySection(modifier: Modifier = Modifier) {
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("🧑‍🏫 Teacher Activity", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("🧑‍🏫 Teacher Activity", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         teachers.forEach { t ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Person, null, Modifier.size(24.dp), tint = colorScheme.primary)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(t.name, fontWeight = FontWeight.SemiBold)
                         Row {
-                            if (t.pendingAttendance) TagChip("Attendance", MaterialTheme.colorScheme.error)
-                            if (t.overdueGrades) TagChip("Grades", MaterialTheme.colorScheme.tertiary)
+                            if (t.pendingAttendance) TagChip("Attendance", colorScheme.error)
+                            if (t.overdueGrades) TagChip("Grades", colorScheme.tertiary)
                         }
                     }
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
@@ -766,7 +969,7 @@ fun PendingGradesSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📑 Pending Grades", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("📑 Pending Grades", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         pending.forEach { p ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -775,7 +978,7 @@ fun PendingGradesSection(modifier: Modifier = Modifier) {
                         Text("${p.className} - ${p.subject}", fontWeight = FontWeight.SemiBold)
                         Text("Teacher: ${p.teacher}", style = MaterialTheme.typography.labelSmall)
                     }
-                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }
             }
         }
@@ -794,14 +997,14 @@ fun RecentSanctionsSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("⚖️ Recent Sanctions", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("⚖️ Recent Sanctions", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         sanctions.forEach { s ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Column(Modifier.padding(12.dp)) {
                     Text(s.student, fontWeight = FontWeight.SemiBold)
                     Text(s.reason, style = MaterialTheme.typography.labelSmall)
-                    Text("${s.date} • by ${s.issuer}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${s.date} • by ${s.issuer}", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -820,7 +1023,7 @@ fun ApprovalRequestsSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📥 Approval Requests", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("📥 Approval Requests", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         approvals.forEach { a ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -848,7 +1051,7 @@ fun InternalMemosSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📝 Internal Memos", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("📝 Internal Memos", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         memos.forEach { m ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -881,7 +1084,7 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
         Text(
             "👥 Class Attendance",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = colorScheme.primary
         )
         Spacer(Modifier.height(8.dp))
 
@@ -896,10 +1099,10 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .width(160.dp)
                             .heightIn(min = 120.dp),
-                            //.animateItemPlacement(),
+                        //.animateItemPlacement(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface
+                            containerColor = colorScheme.surface,
+                            contentColor = colorScheme.onSurface
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
@@ -920,7 +1123,7 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
                             Text(
                                 "${classes[index].present}/${classes[index].total} present",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = colorScheme.onSurfaceVariant
                             )
 
                             Spacer(Modifier.height(6.dp))
@@ -931,7 +1134,7 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
                                         Text(
                                             text = "$reason: $count",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.secondary
+                                            color = colorScheme.secondary
                                         )
                                     }
                                 }
@@ -973,7 +1176,7 @@ fun AcademicCalendarSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📅 Important Dates", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("📅 Important Dates", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
         dates.forEach { d ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -999,7 +1202,7 @@ fun TeacherOverviewSection(modifier: Modifier = Modifier) {
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("🧑🏽‍🏫 Teachers Overview", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("🧑🏽‍🏫 Teachers Overview", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1009,7 +1212,7 @@ fun TeacherOverviewSection(modifier: Modifier = Modifier) {
                         Text(teacherStats[index].name, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(4.dp))
                         Text("Courses: ${teacherStats[index].courses}", style = MaterialTheme.typography.labelSmall)
-                        Text("Pending grades: ${teacherStats[index].pendingGrades}", style = MaterialTheme.typography.labelSmall, color = if (teacherStats[index].pendingGrades > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Pending grades: ${teacherStats[index].pendingGrades}", style = MaterialTheme.typography.labelSmall, color = if (teacherStats[index].pendingGrades > 0) colorScheme.error else colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -1033,7 +1236,7 @@ fun AcademicOverviewSection(modifier: Modifier = Modifier) {
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📊 Academic Summary", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("📊 Academic Summary", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
         Spacer(Modifier.height(8.dp))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1056,3 +1259,31 @@ data class ClassAcademicSummary(
     val avg: Double,
     val topScore: Double
 )
+
+fun generateClassAcademicSummaries(
+    offerings: List<SchoolLevelOffering>,
+    gradeFetcher: (Course) -> List<Double> // fetches grades per course
+): List<ClassAcademicSummary> {
+    return offerings.mapNotNull { offering ->
+        val allGrades = offering.courses.flatMap { course ->
+            gradeFetcher(course)
+        }
+
+        if (allGrades.isNotEmpty()) {
+            val avg = allGrades.average()
+            val top = allGrades.maxOrNull() ?: 0.0
+            ClassAcademicSummary(
+                className = "${offering.schoolLevel.name} ${offering.stream.orEmpty()}".trim(),
+                avg = avg,
+                topScore = top
+            )
+        } else null
+    }
+}
+
+val mockGradeFetcher: (Course) -> List<Double> = { course ->
+    // Replace with real fetch from courseId or subjectId
+    listOf(58.0, 73.5, 66.0, 92.3, 81.0)
+}
+
+val summaries = generateClassAcademicSummaries(sampleOfferings, mockGradeFetcher)
