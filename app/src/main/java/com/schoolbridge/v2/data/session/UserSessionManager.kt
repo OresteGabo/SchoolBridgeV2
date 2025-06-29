@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.data.session
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
@@ -58,6 +59,19 @@ class UserSessionManager @Inject constructor(
 
     suspend fun initializeSession() {
         Log.d("UserSessionManager", "initializeSession()")
+
+        val isFirstTime = isFirstLaunch()
+        _sessionState.emit(
+            when {
+                isFirstTime -> SessionState.Onboarding
+                //isLoggedIn() -> SessionState.LoggedIn(getCurrentUserId()!!)
+                else -> SessionState.LoggedOut
+            }
+        )
+
+
+
+
         runCatching { context.userDataStore.data.first() }
             .onSuccess { prefs ->
                 val user = prefs.toCurrentUserOrNull()
@@ -198,6 +212,32 @@ class UserSessionManager @Inject constructor(
 
     private fun String.toRoleSet(): Set<UserRole> =
         split(',').mapNotNull { it.trim().takeIf { it.isNotEmpty() }?.toUserRoleOrNull() }.toSet()
+
+    // in UserSessionManager.kt
+
+    suspend fun isFirstLaunch(): Boolean {
+        val prefs = context.getSharedPreferences("prefs", MODE_PRIVATE)
+        return prefs.getBoolean("first_launch", true)
+    }
+
+    suspend fun markOnboardingComplete() {
+        val prefs = context.getSharedPreferences("prefs", MODE_PRIVATE)
+        prefs.edit().putBoolean("first_launch", false).apply()
+    }
+
+/*
+    suspend fun initializeSession() {
+        val isFirstTime = isFirstLaunch()
+        _sessionState.emit(
+            when {
+                isFirstTime -> SessionState.Onboarding
+                isLoggedIn() -> SessionState.LoggedIn(getCurrentUserId()!!)
+                else -> SessionState.LoggedOut
+            }
+        )
+    }*/
+
+
 }
 
 
