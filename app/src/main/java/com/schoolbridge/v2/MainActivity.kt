@@ -24,6 +24,7 @@ import com.schoolbridge.v2.ui.home.SplashScreen
 import com.schoolbridge.v2.ui.navigation.AppNavHost
 import com.schoolbridge.v2.ui.navigation.AuthScreen
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
+import com.schoolbridge.v2.ui.onboarding.OnboardingScreen
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 
@@ -73,6 +74,18 @@ class MainActivity : ComponentActivity() {
                     when (sessionState) {
                         is SessionState.Loading   -> SplashScreen()
 
+                        is SessionState.Onboarding -> {
+                            OnboardingScreen(
+                                onFinished = {
+                                    // Mark onboarding complete
+                                    LaunchedEffect(Unit) {
+                                        sessionMgr.markOnboardingComplete()
+                                        sessionMgr.initializeSession() // triggers recomposition to switch to Auth
+                                    }
+                                }
+                            )
+                        }
+
                         is SessionState.LoggedOut -> {
                             val navController = rememberNavController()
                             AppNavHost(
@@ -85,7 +98,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        is SessionState.LoggedIn  -> {
+                        is SessionState.LoggedIn -> {
                             val navController = rememberNavController()
                             AppNavHost(
                                 navController          = navController,
@@ -97,6 +110,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+
                 }
             }
         }
