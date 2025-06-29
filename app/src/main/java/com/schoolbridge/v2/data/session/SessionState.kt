@@ -6,4 +6,5 @@ sealed class SessionState {
     object Loading : SessionState()
     data class LoggedIn(val user: CurrentUser) : SessionState()
     object LoggedOut : SessionState()
+    object Onboarding : SessionState()
 }
