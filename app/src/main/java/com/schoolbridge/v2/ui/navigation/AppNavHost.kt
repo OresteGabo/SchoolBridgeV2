@@ -42,12 +42,18 @@ import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue
 import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
+import com.schoolbridge.v2.domain.user.CurrentUser
+import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.ui.home.ParentRoleRequestScreen
+import com.schoolbridge.v2.ui.home.RequestRoleScreen
+import com.schoolbridge.v2.ui.home.SchoolAdminRoleRequestScreen
+import com.schoolbridge.v2.ui.home.StudentRoleRequestScreen
+import com.schoolbridge.v2.ui.home.TeacherRoleRequestScreen
 import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
 import com.schoolbridge.v2.ui.home.timetable.TimetableTabsScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.message.MessageThreadScreen
-import com.schoolbridge.v2.ui.onboarding.shared.MainNavScreen
 
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -76,6 +82,7 @@ fun AppNavHost(
     val isDarkTheme by themeViewModel.isDark.collectAsState()
     val palette     by themeViewModel.palette.collectAsState()
     val contrast    by themeViewModel.contrast.collectAsState()
+    val currentUser = userSessionManager.currentUser
 
     NavHost(
         navController = navController,
@@ -170,9 +177,75 @@ fun AppNavHost(
                 },
                 onWeeklyViewClick = {
                     navController.navigate(MainAppScreen.WeeklySchedule.route)
+                },
+                onRequestNewRole = {
+                    navController.navigate(MainAppScreen.RequestRole.route)
                 }
             )
         }
+        composable(MainAppScreen.RequestRole.route) {
+            val currentUser by userSessionManager.currentUser.collectAsState() // collect state properly
+
+            RequestRoleScreen(
+                activeRoles = currentUser?.activeRoles ?: emptySet(),          // safe fallback
+                onRoleSelected = { role ->
+                    when(role){
+                        UserRole.PARENT -> navController.navigate(MainAppScreen.RequestParentRole.route)
+                        UserRole.STUDENT -> navController.navigate(MainAppScreen.RequestStudentRole.route)
+                        UserRole.TEACHER -> navController.navigate(MainAppScreen.RequestTeacherRole.route)
+                        UserRole.SCHOOL_ADMIN -> navController.navigate(MainAppScreen.RequestSchoolAdminRole.route)
+                        UserRole.GUEST -> {}
+                    }
+                    // TODO: handle selected role request
+                },
+                onBack = { navController.navigateUp() }
+            )
+        }
+        composable(MainAppScreen.RequestStudentRole.route) {
+            StudentRoleRequestScreen(
+                onSubmit = {_,_,_ ->
+                    // TODO: Handle student role request submission
+                },
+                onCancel = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        composable(MainAppScreen.RequestParentRole.route) {
+            ParentRoleRequestScreen(
+                onSubmit = {_,_,_,_ ->
+                    // TODO: Handle parent role request submission
+                },
+                onCancel = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        composable(MainAppScreen.RequestTeacherRole.route) {
+            TeacherRoleRequestScreen(
+                onSubmit = {_,_ ->
+                    // TODO: Handle teacher role request submission
+                },
+                onCancel = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        composable(MainAppScreen.RequestSchoolAdminRole.route) {
+            SchoolAdminRoleRequestScreen(
+                onSubmit = {
+                    // TODO: Handle school admin role request submission
+                },
+                onCancel = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+
 
         composable(MainAppScreen.WeeklySchedule.route){
             TimetableTabsScreen(
