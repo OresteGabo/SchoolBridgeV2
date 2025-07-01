@@ -49,11 +49,132 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.ViewModel
+import com.schoolbridge.v2.domain.messaging.Alert
+import com.schoolbridge.v2.domain.messaging.AlertSeverity
+import com.schoolbridge.v2.domain.messaging.AlertSourceType
+import com.schoolbridge.v2.domain.messaging.AlertType
+import com.schoolbridge.v2.ui.AlertRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import java.time.LocalDateTime
+/*
+@Composable
+fun DailyCourseCard(
+    entry: TimetableEntry,
+    participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ", "KL"),
+    modifier: Modifier = Modifier,
+    attendanceRate: Float = 0.75f,
+    onParticipantsClick: () -> Unit = {}
+) {
+    val accent = timetableEntryColor(entry.type)
+    val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val durationMin = Duration.between(entry.start, entry.end).toMinutes()
+    val durationStr = if (durationMin >= 60) {
+        val h = durationMin / 60
+        val m = durationMin % 60
+        if (m == 0L) "${h}h" else "${h}h ${m}m"
+    } else "${durationMin}m"
 
+    val now = LocalDateTime.now()
+    val showAttendance = entry.end.isBefore(now) || entry.start <= now
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(accent)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = entry.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.weight(1f))
+                if (showAttendance) {
+                    Text(
+                        text = "${(attendanceRate * 100).toInt()}% attended",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Person, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = entry.teacher,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (entry.room.isNotBlank()) {
+                    Spacer(Modifier.width(10.dp))
+                    Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = entry.room,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "${entry.start.format(timeFmt)} – ${entry.end.format(timeFmt)} • $durationStr",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (participants.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                ParticipantAvatars(
+                    participants = participants,
+                    onClickMore = onParticipantsClick
+                )
+            }
+
+            if (showAttendance) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = attendanceRate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = accent,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+        }
+    }
+}
+*/
+
+/*
 @Composable
 fun DailyCourseCard(
     entry: TimetableEntry,
@@ -64,6 +185,14 @@ fun DailyCourseCard(
     val accent = timetableEntryColor(entry.type)
     val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
     val durationMin = Duration.between(entry.start, entry.end).toMinutes()
+
+    // --- DUMMY attendance value (0f‒1f). Replace with real data later.
+    val attendanceRate = 0.75f
+
+    // Decide whether to show attendance: past or in‑progress
+    val now = LocalDateTime.now()
+    val isPastOrOngoing =
+        entry.end.isBefore(now) || (entry.start.isBefore(now) && entry.end.isAfter(now))
 
     val durationTxt = remember(durationMin) {
         when {
@@ -80,26 +209,31 @@ fun DailyCourseCard(
         modifier = modifier
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-            .height(120.dp),
+            .wrapContentHeight(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(1.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) // Use a higher surface tone
-
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     ) {
-        Box(
-            modifier = Modifier.wrapContentSize()
-        ) {
+        Box(modifier = Modifier.wrapContentSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 4.dp)
             ) {
+                // Colored side bar
                 Box(
                     modifier = Modifier
                         .width(6.dp)
                         .fillMaxHeight()
-                        .background(accent, RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
+                        .background(
+                            accent,
+                            RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                        )
                 )
+
+                // Main content
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -108,46 +242,404 @@ fun DailyCourseCard(
                 ) {
                     DurationIndicatorModern(accent, durationTxt)
                     Spacer(Modifier.width(16.dp))
+
                     Column(Modifier.weight(1f)) {
+                        // Title
                         Text(
                             entry.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
+                        // Time range
                         Spacer(Modifier.height(4.dp))
                         Text(
                             "${entry.start.format(timeFmt)} – ${entry.end.format(timeFmt)}",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        // Teacher / room
                         if (entry.teacher.isNotBlank() || entry.room.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
                             TeacherAndRoomLine(entry.teacher, entry.room)
+                        }
+
+                        // --- Attendance block (only if past or ongoing) ---
+                        if (isPastOrOngoing) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Attendance: ${(attendanceRate * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            LinearProgressIndicator(
+                                progress = { attendanceRate },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(50)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
                         }
                     }
                 }
             }
 
+            // Participant avatars
             if (participants.isNotEmpty()) {
                 ParticipantAvatars(
                     participants = participants,
                     modifier = Modifier
-                        .clickable{
-                            Log.d("DailyCourseCard", "Participants clicked__")
-                        }
+                        .clickable { onParticipantsClick() }
                         .align(Alignment.BottomEnd)
                         .padding(12.dp),
-                    avatarSize = 32.dp, // Reverted to original size for consistency, but you can adjust
-                    onClickMore = onParticipantsClick
+                    avatarSize = 32.dp
+                )
+            }
+        }
+    }
+}
+*/
+
+@Composable
+fun DailyCourseCard(
+    entry: TimetableEntry,
+    modifier: Modifier = Modifier,
+    attendanceRate: Float = 0.75f
+) {
+    val accentColor = timetableEntryColor(entry.type)
+    val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val now = LocalDateTime.now()
+    val isPastOrOngoing = entry.end.isBefore(now) || (entry.start.isBefore(now) && entry.end.isAfter(now))
+
+    val durationMin = Duration.between(entry.start, entry.end).toMinutes()
+    val durationText = if (durationMin >= 60) {
+        val h = durationMin / 60
+        val m = durationMin % 60
+        if (m == 0L) "${h}h" else "${h}h ${m}m"
+    } else "${durationMin}m"
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(Modifier.padding(12.dp)) {
+            // Accent bar
+            Box(
+                Modifier
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(accentColor)
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            // Main Content
+            Column(Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = entry.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (isPastOrOngoing) {
+                        AttendancePill(attendanceRate)
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (entry.teacher.isNotBlank()) {
+                        Icon(Icons.Default.Person, contentDescription = null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Text(entry.teacher, style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    if (entry.room.isNotBlank()) {
+                        Icon(Icons.Default.LocationOn, contentDescription = null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Text(entry.room, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "${entry.start.format(timeFmt)} – ${entry.end.format(timeFmt)}",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Icon(Icons.Default.MoreHoriz, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(durationText, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AttendancePill(rate: Float) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(100),
+        modifier = Modifier.padding(start = 8.dp)
+    ) {
+        Text(
+            text = "${(rate * 100).toInt()}%",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
+
+/*
+@Composable
+fun DailyCourseCard(
+    entry: TimetableEntry,
+    modifier: Modifier = Modifier,
+    attendanceRate: Float = 0.75f
+) {
+    val accentColor = timetableEntryColor(entry.type)
+    val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
+
+    val now = LocalDateTime.now()
+    val isPastOrOngoing = entry.end.isBefore(now) || (entry.start.isBefore(now) && entry.end.isAfter(now))
+
+    val durationMin = Duration.between(entry.start, entry.end).toMinutes()
+    val durationText = if (durationMin >= 60) {
+        val h = durationMin / 60
+        val m = durationMin % 60
+        if (m == 0L) "${h}h" else "${h}h ${m}m"
+    } else "${durationMin}m"
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(3.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (entry.teacher.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Person, contentDescription = null, Modifier.size(16.dp), tint = accentColor)
+                        Spacer(Modifier.width(6.dp))
+                        Text(entry.teacher, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                if (entry.room.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, contentDescription = null, Modifier.size(16.dp), tint = accentColor)
+                        Spacer(Modifier.width(6.dp))
+                        Text(entry.room, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("${entry.start.format(timeFmt)} – ${entry.end.format(timeFmt)}", style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.width(10.dp))
+                    Text("• $durationText", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            if (isPastOrOngoing) {
+                CircularAttendanceDisplay(attendanceRate = attendanceRate)
+            }
+        }
+    }
+}
+
+@Composable
+fun CircularAttendanceDisplay(attendanceRate: Float) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .padding(start = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+       CircularProgressIndicator(
+           progress = { attendanceRate },
+           modifier = Modifier.fillMaxSize(),
+           color = MaterialTheme.colorScheme.primary,
+           strokeWidth = 6.dp,
+           trackColor = MaterialTheme.colorScheme.surfaceVariant,
+       )
+        Text(
+            "${(attendanceRate * 100).toInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+*/
+
+
+
+/*
+@Composable
+fun DailyCourseCard(
+    entry: TimetableEntry,
+    modifier: Modifier = Modifier,
+    attendanceRate: Float = 0.75f // Dummy value
+) {
+    val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val now = LocalDateTime.now()
+    val isPastOrOngoing =
+        entry.end.isBefore(now) || (entry.start.isBefore(now) && entry.end.isAfter(now))
+
+    val durationMin = Duration.between(entry.start, entry.end).toMinutes()
+    val durationTxt = if (durationMin >= 60) {
+        val h = durationMin / 60
+        val m = durationMin % 60
+        if (m == 0L) "${h}h" else "${h}h ${m}m"
+    } else "${durationMin}m"
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Top Row: Time & Duration
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${entry.start.format(timeFmt)} – ${entry.end.format(timeFmt)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.MoreHoriz, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        durationTxt,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Course Title
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Teacher and Room Chips
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (entry.teacher.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Person, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = entry.teacher,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (entry.room.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = entry.room,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Attendance section (only show for past or ongoing)
+            if (isPastOrOngoing) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Attendance: ${(attendanceRate * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = attendanceRate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(100)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }
     }
 }
 
+*/
 
 
 @Composable
@@ -398,12 +890,4 @@ fun ParticipantAvatars(
         Log.d("ParticipantAvatars", "Tapped")
     }
 }
-
-
-
-
-
-
-
-
 
