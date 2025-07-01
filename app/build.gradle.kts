@@ -57,7 +57,7 @@ android {
 dependencies {
     /* ---------- Compose core (BOM) ---------- */
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.testing)          // e.g. 2024.06.00
+    //implementation(libs.androidx.compose.testing)          // e.g. 2024.06.00
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     /* ---------- Compose UI toolkit ---------- */
