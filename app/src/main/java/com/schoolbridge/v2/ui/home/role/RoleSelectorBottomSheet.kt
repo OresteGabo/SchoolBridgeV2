@@ -19,12 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.user.UserRole
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  Role‑selector Bottom‑sheet                                               */
+/* Role‑selector Bottom‑sheet                                               */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,19 +106,47 @@ fun RoleSelectorBottomSheet(
                         items(availableRoles.toList()) { role ->
                             val isSelected = role == currentRole
                             ListItem(
-                                headlineContent = { Text(role.humanLabel) },
-                                supportingContent = { Text(role.description, maxLines = 2) },
-                                trailingContent = {
-                                    if (isSelected) Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable(enabled = !isSelected) { onRoleSelected(role) }
                                     .padding(vertical = 4.dp)
+                                    // --- START OF CHANGE: Updated background for better dark mode visibility ---
+                                    .background(
+                                        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest // More distinct in dark mode
+                                        else Color.Transparent,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clip(RoundedCornerShape(8.dp)),
+                                // --- END OF CHANGE ---
+
+                                headlineContent = {
+                                    Text(
+                                        text = role.humanLabel,
+                                        style = if (isSelected) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                        else MaterialTheme.typography.bodyLarge,
+                                        // --- START OF CHANGE: Adjust text color for better contrast in dark mode ---
+                                        color = if (isSelected) MaterialTheme.colorScheme.onSurface // Typically good contrast on surfaceContainerHighest
+                                        else MaterialTheme.colorScheme.onSurface
+                                        // --- END OF CHANGE ---
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(
+                                        text = role.description,
+                                        maxLines = 2,
+                                        // --- START OF CHANGE: Adjust supporting text color for better contrast in dark mode ---
+                                        color = if (isSelected) MaterialTheme.colorScheme.onSurfaceVariant // Also works well on surfaceContainerHighest
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                        // --- END OF CHANGE ---
+                                    )
+                                },
+                                trailingContent = {
+                                    if (isSelected) Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = "Selected role",
+                                        tint = MaterialTheme.colorScheme.primary // Primary color is usually visible in dark mode
+                                    )
+                                }
                             )
                         }
                     }
@@ -183,7 +212,7 @@ fun RoleSelectorBottomSheet(
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  Re‑usable empty‑state composable                                         */
+/* Re‑usable empty‑state composable                                         */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 @Composable
@@ -242,18 +271,3 @@ fun EmptyStateMessage(
         }
     }
 }
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-/*  Optional: quick extensions                                               */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-// If your UserRole doesn’t already expose `description`, add an extension:
-//val UserRole.description: String
-//    get() = when (this) {
-//        UserRole.PARENT        -> "Monitor your children’s progress, attendance and finance."
-//        UserRole.STUDENT       -> "Access your courses, timetable and assignments."
-//        UserRole.TEACHER       -> "Manage classes, materials and student communication."
-//        UserRole.SCHOOL_ADMIN  -> "Oversee school operations, staff and data."
-//        UserRole.GUEST         -> "Limited read‑only access."
-//        else                   -> "Custom role."
-//    }
