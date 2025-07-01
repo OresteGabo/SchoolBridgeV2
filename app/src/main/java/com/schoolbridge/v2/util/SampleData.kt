@@ -1,8 +1,11 @@
 package com.schoolbridge.v2.util
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Construction
 import com.schoolbridge.v2.domain.academic.*
 import com.schoolbridge.v2.domain.finance.BankAccount
 import com.schoolbridge.v2.domain.school.*
+import com.schoolbridge.v2.ui.settings.about.VersionInfo
 import java.time.LocalDate
 val sampleSchool = School(
     id = "school-gha",
@@ -159,6 +162,37 @@ val dummyCourses = listOf(
     TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
     TodayCourse("French",      "10:00", "11:40", "Mme. Mukamana", "Room B1"),
     TodayCourse("Physics",     "13:00", "14:40", "Mr. Nkurunziza", "Lab 1"),
+)
+
+// Version metadata
+val versions = listOf(
+    VersionInfo(
+        title = "V1: Umusingi",
+        meaning = "“Umusingi” means foundation, the solid base of our journey.",
+        releaseDate = "May 2025",
+        focus = "Core infrastructure, identity, and onboarding",
+        future = "Stability & groundwork for AI & automation",
+        icon = Icons.Default.Construction,
+        isCurrent = true
+    ),
+    /*VersionInfo(
+        title = "V2: Intambwe",
+        meaning = "“Intambwe” means step — progress toward reports and live updates.",
+        releaseDate = "Planned: Late 2025",
+        focus = "Performance, real-time sync, and academic reports",
+        future = "Multi-student insights, offline mode",
+        icon = Icons.AutoMirrored.Filled.TrendingUp,
+        isCurrent = false
+    ),
+    VersionInfo(
+        title = "V3: Urumuri",
+        meaning = "“Urumuri” means light — guidance via AI and smart feedback.",
+        releaseDate = "Planned: Early 2026",
+        focus = "AI assistance, guidance, personalization",
+        future = "Adaptive learning and parent-teacher analytics",
+        icon = Icons.Default.LightMode,
+        isCurrent = false
+    )*/
 )
 
 
