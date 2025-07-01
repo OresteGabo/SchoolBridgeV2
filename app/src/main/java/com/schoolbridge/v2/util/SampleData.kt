@@ -147,4 +147,18 @@ val sampleOfferings = listOf(
     )
 )
 
+// Dummy data: Map teacherUserIds to names for display (in real app this would come from user repository)
+val dummyTeacherNames = mapOf(
+    "teacher1" to "Mr. Kamali",
+    "teacher2" to "Ms. Uwase",
+    "teacher3" to "Mrs. Mukeshimana",
+    "teacher4" to "Mr. Habimana"
+)
+
+val dummyCourses = listOf(
+    TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
+    TodayCourse("French",      "10:00", "11:40", "Mme. Mukamana", "Room B1"),
+    TodayCourse("Physics",     "13:00", "14:40", "Mr. Nkurunziza", "Lab 1"),
+)
+
 
