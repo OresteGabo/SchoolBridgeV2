@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -80,12 +81,16 @@ import com.schoolbridge.v2.ui.home.common.ActionCard
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
+import com.schoolbridge.v2.ui.home.role.RoleSelectorBottomSheet
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleCard
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
 import com.schoolbridge.v2.ui.home.teacher.TeacherQuickActionsSection
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.launch
+import com.schoolbridge.v2.ui.home.decoration.GlowingTopBarBackground
+import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
+import com.schoolbridge.v2.util.dummyCourses
 
 
 @Composable
@@ -200,6 +205,9 @@ fun HomeTopBar(
     modifier: Modifier = Modifier
 ) {
     val showRoleSheet = remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     if (showRoleSheet.value) {
         RoleSelectorBottomSheet(
@@ -252,316 +260,8 @@ fun HomeTopBar(
 
 
 
-@Composable
-fun RoleSelector(
-    currentRole: UserRole?,
-    availableRoles: Set<UserRole>,
-    onRolePicked: (UserRole) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    // --- Button that opens the menu ---
-    TextButton(onClick = { expanded = true }, enabled = currentRole != null) {
-        Text(currentRole?.humanLabel ?: "")
-        Icon(Icons.Default.ArrowDropDown, contentDescription = "Change role")
-    }
-
-    // --- Drop‑down menu ---
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
-    ) {
-        DropdownMenuItem(
-            text = { Text("Switch Role", style = MaterialTheme.typography.labelLarge, color = colorScheme.primary) },
-            enabled = false,
-            onClick = {}
-        )
-        HorizontalDivider()
-
-        availableRoles.forEach { role ->
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text(
-                            role.humanLabel,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                        )
-                        Text(
-                            when (role) {
-                                UserRole.PARENT -> "Monitor your children’s grades, attendance, messages, and financial status. Stay informed and involved."
-                                UserRole.STUDENT -> "Access your courses, timetable, assignments, and school alerts. Take ownership of your education."
-                                UserRole.TEACHER -> "Manage your subjects, share materials, track attendance, and communicate with students and parents."
-                                UserRole.SCHOOL_ADMIN -> "Oversee school operations, manage staff and student data, and monitor academic and financial records."
-                                else -> "Select role-specific features tailored to your access level."
-                            },
-
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                trailingIcon = {
-                    if (role == currentRole) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = colorScheme.primary)
-                    }
-                },
-                onClick = {
-                    expanded = false
-                    if (role != currentRole) onRolePicked(role)
-                }
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RoleSelectorBottomSheet(
-    currentRole: UserRole?,
-    availableRoles: Set<UserRole>,
-    onRoleSelected: (UserRole) -> Unit,
-    onRequestNewRole: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-        ) {
-            val maxSheetHeight = maxHeight
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxSheetHeight)
-            ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false) // Allow it to scroll if needed
-                ) {
-                    item {
-                        Text("Choose Your Role", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Your current role determines which features and permissions are available in the app.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(16.dp))
-                    }
-
-                    items(availableRoles.toList()) { role ->
-                        val isSelected = role == currentRole
-                        ListItem(
-                            headlineContent = { Text(role.humanLabel) },
-                            supportingContent = {
-                                Text(
-                                    when (role) {
-                                        UserRole.PARENT -> "Monitor your children’s grades, attendance, messages, and financial status. Stay informed and involved."
-                                        UserRole.STUDENT -> "Access your courses, timetable, assignments, and school alerts. Take ownership of your education."
-                                        UserRole.TEACHER -> "Manage your subjects, share materials, track attendance, and communicate with students and parents."
-                                        UserRole.SCHOOL_ADMIN -> "Oversee school operations, manage staff and student data, and monitor academic and financial records."
-                                        else -> ""
-                                    },
-                                    maxLines = 2
-                                )
-                            },
-                            trailingContent = {
-                                if (isSelected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { if (!isSelected) onRoleSelected(role) }
-                                .padding(vertical = 4.dp)
-                        )
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = onRequestNewRole,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                ) {
-                    Text("Request a New Role")
-                }
-            }
-        }
-    }
-}
-
-/*
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RoleSelectorBottomSheet(
-    currentRole: UserRole?,
-    availableRoles: Set<UserRole>,
-    onRoleSelected: (UserRole) -> Unit,
-    onRequestNewRole: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-        ) {
-            val maxHeight = this.maxHeight
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            ) {
-                // Scrollable list with height limited to available space minus fixed button height
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = maxHeight - 96.dp), // allow room for bottom section
-                    contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
-                ) {
-                    item {
-                        Text("Choose Your Role", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Your current role determines which features and permissions are available in the app.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(16.dp))
-                    }
-
-                    items(availableRoles.toList()) { role ->
-                        val isSelected = role == currentRole
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    role.humanLabel,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else null,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                                )
-                            },
-                            supportingContent = {
-                                Text(
-                                    when (role) {
-                                        UserRole.PARENT -> "Monitor children’s grades, attendance, messages, finances."
-                                        UserRole.STUDENT -> "View courses, timetable, assignments, and alerts."
-                                        UserRole.TEACHER -> "Manage classes, share materials, track attendance."
-                                        UserRole.SCHOOL_ADMIN -> "Oversee staff, students, and academic records."
-                                        else -> "Role-specific tools and views."
-                                    },
-                                    maxLines = 2
-                                )
-                            },
-                            leadingContent = {
-                                Icon(
-                                    imageVector = when (role) {
-                                        UserRole.PARENT -> Icons.Default.FamilyRestroom
-                                        UserRole.STUDENT -> Icons.Default.School
-                                        UserRole.TEACHER -> Icons.Default.MenuBook
-                                        UserRole.SCHOOL_ADMIN -> Icons.Default.AdminPanelSettings
-                                        else -> Icons.Default.Person
-                                    },
-                                    contentDescription = null,
-                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            trailingContent = {
-                                if (isSelected)
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { if (!isSelected) onRoleSelected(role) }
-                                .padding(vertical = 4.dp)
-                        )
-                    }
-                }
-
-                // Fixed bottom section
-                //Spacer(Modifier.height(8.dp))
-                //HorizontalDivider()
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onRequestNewRole,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        //.padding(bottom = 24.dp)
-                ) {
-                    Text("Request a New Role")
-                }
-                //SpacerM()
-            }
-        }
-    }
-}
-*/
 
 
-
-
-
-
-
-
-@Composable
-fun GlowingGradientBackground(currentRole: UserRole?, scrollOffset: Float = 0f, modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "Glow Animation")
-    val animatedAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "glowAlpha"
-    )
-
-    val colors = when (currentRole) {
-        UserRole.TEACHER -> listOf(Color(0xFF00E5FF), Color(0xFF18FFFF), Color.Transparent)
-        UserRole.STUDENT -> listOf(Color(0xFF8C9EFF), Color(0xFF536DFE), Color.Transparent)
-        UserRole.PARENT -> listOf(Color(0xFFFF8A65), Color(0xFFFFAB91), Color.Transparent)
-        UserRole.SCHOOL_ADMIN -> listOf(Color(0xFF69F0AE), Color(0xFFB9F6CA), Color.Transparent)
-        else -> listOf(Color(0xFFD1C4E9), Color(0xFFB39DDB), Color.Transparent)
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
-    ) {
-        listOf(
-            Offset(200f, 400f),
-            Offset(800f, 300f),
-            Offset(500f, 1000f)
-        ).forEachIndexed { index, offset ->
-            Box(
-                Modifier
-                    .size((700 + index * 100).dp)
-                    .graphicsLayer { alpha = animatedAlpha }
-                    .blur(150.dp)
-                    .offset { IntOffset((offset.x - scrollOffset).toInt(), offset.y.toInt()) }
-                    .background(
-                        Brush.radialGradient(
-                            colors = colors,
-                            center = offset,
-                            radius = 1000f
-                        ),
-                        shape = CircleShape
-                    )
-            )
-        }
-    }
-}
 
 
 
@@ -755,66 +455,6 @@ private fun HomeUI(
 }
 
 
-
-
-@Composable
-private fun GlowingTopBarBackground(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        colorScheme.primary.copy(alpha = 0.15f),
-                        colorScheme.surface.copy(alpha = 0.05f)
-                    )
-                ),
-                shape = RectangleShape
-            )
-            .blur(radius = 30.dp) // Creates the frosted effect
-    )
-}
-
-/* ──────────────────────────────────────────────────────────────────────────────
- *  4️⃣  Small helpers / previews
- * ────────────────────────────────────────────────────────────────────────────── */
-val UserRole.humanLabel: String
-    get() = when (this) {
-        UserRole.STUDENT       -> "Student"
-        UserRole.PARENT        -> "Parent"
-        UserRole.TEACHER       -> "Teacher"
-        UserRole.SCHOOL_ADMIN  -> "Admin"
-        UserRole.GUEST         -> "Guest"
-    }
-
-
-
-@Preview(showBackground = true)
-@Composable
-private fun HomeTopBarPreview() {
-    HomeTopBar(
-        currentRole = UserRole.PARENT,
-        availableRoles = setOf(UserRole.PARENT, UserRole.TEACHER),
-        onRoleSelected = {},
-        onSettingsClick = {},
-        onRequestNewRole = {},
-
-    )
-}
-
-
-
-// Dummy data: Map teacherUserIds to names for display (in real app this would come from user repository)
-val dummyTeacherNames = mapOf(
-    "teacher1" to "Mr. Kamali",
-    "teacher2" to "Ms. Uwase",
-    "teacher3" to "Mrs. Mukeshimana",
-    "teacher4" to "Mr. Habimana"
-)
-
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminQuickActionsSection() {
     val viewModel: QuickActionViewModel = viewModel()
@@ -957,11 +597,6 @@ fun AdminTodayScheduleSection(
     var selectedFilter by remember { mutableStateOf("All Levels") }
     val levels = listOf("All Levels", "S1", "S2", "S3", "S4 Science", "S4 Arts")
 
-    val dummyCourses = listOf(
-        TodayCourse("Mathematics", "08:00", "09:40", "Mr. Kamali", "Room A1"),
-        TodayCourse("French",      "10:00", "11:40", "Mme. Mukamana", "Room B1"),
-        TodayCourse("Physics",     "13:00", "14:40", "Mr. Nkurunziza", "Lab 1"),
-    )
 
     Column(modifier = modifier.fillMaxWidth()) {
 
