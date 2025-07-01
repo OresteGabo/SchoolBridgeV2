@@ -138,6 +138,12 @@ sealed class MainAppScreen(
     data object ParentChildrenList : MainAppScreen("parent_children_list_screen") // Changed to data object
     data object TeacherAssignedCourses : MainAppScreen("teacher_assigned_courses_screen") // Changed to data object
 
+    data object RequestRole : MainAppScreen("request_role_screen")
+    data object RequestStudentRole: MainAppScreen("request_student_role")
+    data object RequestParentRole: MainAppScreen("request_parent_role")
+    data object RequestTeacherRole: MainAppScreen("request_teachert_role")
+    data object RequestSchoolAdminRole: MainAppScreen("request_school_admin_role")
+
     // TODO: Add more specific routes as your application's features are implemented.
 }
 
