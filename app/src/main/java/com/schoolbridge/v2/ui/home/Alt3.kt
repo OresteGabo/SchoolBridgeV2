@@ -255,12 +255,12 @@ private fun _Alt3_CourseCard(course: _Course) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = course.progress,
+                progress = { course.progress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
