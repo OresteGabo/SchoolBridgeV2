@@ -34,7 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.academic.CourseWithStatus
-import com.schoolbridge.v2.ui.home.dummyTeacherNames
+import com.schoolbridge.v2.util.dummyTeacherNames
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
