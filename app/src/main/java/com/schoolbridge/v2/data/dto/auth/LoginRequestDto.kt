@@ -15,14 +15,14 @@ import kotlinx.serialization.Serializable
  * taps "Sign In", the app creates an instance of this `LoginRequestDto` and sends it to
  * the `/auth/login` endpoint.
  *
- * @property usernameOrEmail The user's identifier for logging in. This could be their username
+ * @property username The user's identifier for logging in. This could be their username
  * or their email address, depending on backend configuration. Example: "john.doe@example.com" or "johndoe123"
  * @property password The user's password.
  */
 @Serializable
 data class LoginRequestDto(
     //@SerializedName("usernameOrEmail")
-    val usernameOrEmail: String,
+    val username: String,
     //@SerializedName("password")
     val password: String
 )
