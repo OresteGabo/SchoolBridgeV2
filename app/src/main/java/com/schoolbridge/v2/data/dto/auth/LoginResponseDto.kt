@@ -1,8 +1,11 @@
 package com.schoolbridge.v2.data.dto.auth
 
+import com.schoolbridge.v2.data.dto.common.AddressDto
+import com.schoolbridge.v2.data.dto.user.student.LinkedStudentDto
 import com.schoolbridge.v2.domain.user.CurrentUser
 import kotlinx.serialization.Serializable
 import com.schoolbridge.v2.domain.user.Gender
+import kotlinx.serialization.SerialName
 
 
 /**
@@ -36,6 +39,7 @@ import com.schoolbridge.v2.domain.user.Gender
  * @property linkedStudents A list of children linked to this user, encapsulated in [CurrentUser.LinkedStudent] objects.
  * @property gender The gender of the user. (Uncomment if you decide to include and use Gender enum from your model)
  */
+/*
 @Serializable
 data class LoginResponseDto(
     val authToken: String,
@@ -48,26 +52,33 @@ data class LoginResponseDto(
 
     val phoneNumber: String?,
     val nationalId: String?,
-    val address: CurrentUser.Address?, // <--- MAKE THIS NULLABLE
+    val address: CurrentUser.Address?,
     val profilePictureUrl: String?,
     val role: String?,
     val joinDate: String?,
-    val linkedStudents: List<CurrentUser.LinkedStudent>?, // <--- MAKE THIS NULLABLE
+    val linkedStudents: List<CurrentUser.LinkedStudent>?,
     val gender: Gender?,
     val isVerified: Boolean
-)
-/*
-// Example using a WebSocket client in Kotlin
-val client = OkHttpClient()
-val request = Request.Builder().url("wss://your-websocket-url").build()
-val webSocket = client.newWebSocket(request, object : WebSocketListener() {
-    override fun onOpen(webSocket: WebSocket, response: Response) {
-        // Connection established
-    }
+)*/
 
-    override fun onMessage(webSocket: WebSocket, text: String) {
-        // Handle incoming message
-        val update = parseUpdate(text)
-        updateUI(update)
-    }
-})*/
+@Serializable
+data class LoginResponseDto(
+    val authToken: String,
+    val refreshToken: String,
+    val userId: String,
+    val email: String,
+    val firstName: String,
+    val lastName: String,
+    val phoneNumber: String,
+    val nationalId: String,
+    val gender: String,
+    val role: String,
+    val activeRoles: List<String>,
+    val joinDate: String,
+    val address: AddressDto? = null,
+    val linkedStudents: List<LinkedStudentDto> = emptyList(),
+
+    // ✅ Fix these two
+    val profilePictureUrl: String? = null,
+    @SerialName("verified") val isVerified: Boolean = false
+)
