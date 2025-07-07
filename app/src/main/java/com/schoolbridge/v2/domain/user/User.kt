@@ -162,14 +162,14 @@ data class CurrentUser(
     val email: String,
     val firstName: String,
     val lastName: String,
-    val activeRoles: Set<UserRole>, // Better than List<String> for type safety
+    val activeRoles: Set<UserRole>,
     val phoneNumber: String?,
     val nationalId: String?,
-    val address: Address?, // Nested data class
+    val address: Address?,
     val profilePictureUrl: String?,
-    var currentRole: UserRole?, // Replaces ambiguous "role" field
+    var currentRole: UserRole?,
     val joinDate: String?,
-    val linkedStudents: List<LinkedStudent>?, // Nested data class
+    val linkedStudents: List<LinkedStudent>?,
     val gender: Gender?,
     val isVerified: Boolean
 ) {
