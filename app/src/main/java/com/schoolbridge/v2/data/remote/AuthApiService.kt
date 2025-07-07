@@ -45,7 +45,7 @@ class AuthApiServiceImpl : AuthApiService {
     }
 
     override suspend fun login(request: LoginRequestDto): LoginResponseDto {
-        val response = client.post("$BASE_URL/auth/login") {
+        val response = client.post("$BASE_URL/api/auth/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }
