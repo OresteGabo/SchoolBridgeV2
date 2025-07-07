@@ -12,7 +12,7 @@ val sampleSchool = School(
     name = "Green Hills Academy",
     abbrevName = "GHA",
     logoUrl = "https://cdn.schoolbridge.com/logos/gha-logo.png",
-    educationLevelsOffered = listOf(
+    /*educationLevelsOffered = listOf(
         EducationLevel(
             id = "edu-primary",
             name = "Primary",
@@ -30,6 +30,17 @@ val sampleSchool = School(
             name = "A’Level",
             description = "Senior Secondary",
             order = 3
+        )
+    ),*/
+    educationLevelsOffered= listOf(
+        SchoolLevel.ALevel(
+            name = "",
+            id="",
+            section = SchoolSection("MCB","MCB"),
+        ),
+        SchoolLevel.OLevel(
+            id ="O level",
+            name = "O level"
         )
     ),
     hasBoarding = true,
