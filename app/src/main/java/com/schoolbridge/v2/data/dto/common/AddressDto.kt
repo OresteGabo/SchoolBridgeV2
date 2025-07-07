@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.data.dto.common
 
 import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 
 /**
  * Data Transfer Object (DTO) for a **generic Address**.
@@ -23,10 +24,11 @@ import com.google.gson.annotations.SerializedName
  * @property postalCode The postal or ZIP code, nullable if not applicable. Example: "00001"
  * @property country The country name. Example: "Rwanda"
  */
+@Serializable
 data class AddressDto(
-    @SerializedName("street") val street: String?,
-    @SerializedName("city") val city: String,
-    @SerializedName("state_province") val stateProvince: String?,
-    @SerializedName("postal_code") val postalCode: String?,
-    @SerializedName("country") val country: String
+    val street: String?,
+    val city: String,
+    val stateProvince: String?,
+    val postalCode: String?,
+    val country: String
 )
