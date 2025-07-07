@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.ui.home.role
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PersonOff
@@ -23,10 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.user.UserRole
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* Role‑selector Bottom‑sheet                                               */
-/* ─────────────────────────────────────────────────────────────────────────── */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +55,6 @@ fun RoleSelectorBottomSheet(
                 .padding(horizontal = 24.dp)
         ) {
 
-            /* ── Header ────────────────────────────────────────────────────── */
             Spacer(Modifier.height(8.dp))
             Text("Choose Your Role", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
@@ -69,7 +65,6 @@ fun RoleSelectorBottomSheet(
             )
             Spacer(Modifier.height(16.dp))
 
-            /* ── Tabs ─────────────────────────────────────────────────────── */
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent,
@@ -84,9 +79,7 @@ fun RoleSelectorBottomSheet(
                 }
             }
 
-            /* ── Tab content ──────────────────────────────────────────────── */
             when (selectedTabIndex) {
-                /* ── Active roles tab ─────────────────────────────────────── */
                 0 -> LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -105,54 +98,56 @@ fun RoleSelectorBottomSheet(
                     } else {
                         items(availableRoles.toList()) { role ->
                             val isSelected = role == currentRole
+
                             ListItem(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable(enabled = !isSelected) { onRoleSelected(role) }
                                     .padding(vertical = 4.dp)
-                                    // --- START OF CHANGE: Updated background for better dark mode visibility ---
-                                    .background(
-                                        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest // More distinct in dark mode
-                                        else Color.Transparent,
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                    .clip(RoundedCornerShape(8.dp)),
-                                // --- END OF CHANGE ---
-
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .then(
+                                        if (isSelected) Modifier
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                        else Modifier
+                                    ),
                                 headlineContent = {
                                     Text(
                                         text = role.humanLabel,
                                         style = if (isSelected) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                         else MaterialTheme.typography.bodyLarge,
-                                        // --- START OF CHANGE: Adjust text color for better contrast in dark mode ---
-                                        color = if (isSelected) MaterialTheme.colorScheme.onSurface // Typically good contrast on surfaceContainerHighest
-                                        else MaterialTheme.colorScheme.onSurface
-                                        // --- END OF CHANGE ---
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 },
                                 supportingContent = {
                                     Text(
                                         text = role.description,
                                         maxLines = 2,
-                                        // --- START OF CHANGE: Adjust supporting text color for better contrast in dark mode ---
-                                        color = if (isSelected) MaterialTheme.colorScheme.onSurfaceVariant // Also works well on surfaceContainerHighest
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
-                                        // --- END OF CHANGE ---
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 },
                                 trailingContent = {
-                                    if (isSelected) Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = "Selected role",
-                                        tint = MaterialTheme.colorScheme.primary // Primary color is usually visible in dark mode
-                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Selected role",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                 }
                             )
                         }
                     }
                 }
 
-                /* ── Pending roles tab ────────────────────────────────────── */
                 1 -> LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -198,7 +193,6 @@ fun RoleSelectorBottomSheet(
                 }
             }
 
-            /* ── CTA ──────────────────────────────────────────────────────── */
             OutlinedButton(
                 onClick = onRequestNewRole,
                 modifier = Modifier
@@ -210,10 +204,6 @@ fun RoleSelectorBottomSheet(
         }
     }
 }
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* Re‑usable empty‑state composable                                         */
-/* ─────────────────────────────────────────────────────────────────────────── */
 
 @Composable
 fun EmptyStateMessage(
