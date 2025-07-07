@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
+import com.schoolbridge.v2.data.dto.common.AddressDto
 import com.schoolbridge.v2.domain.user.*
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
@@ -108,7 +109,7 @@ class UserSessionManager @Inject constructor(
             prefs[Keys.PROFILE_PICTURE_URL] = dto.profilePictureUrl ?: ""
             prefs[Keys.JOIN_DATE] = dto.joinDate ?: ""
             prefs[Keys.LINKED_STUDENTS_JSON] = gson.toJson(dto.linkedStudents) ?: ""
-            prefs[Keys.GENDER] = dto.gender?.name ?: ""
+            prefs[Keys.GENDER] = dto.gender ?: ""
             prefs[Keys.IS_VERIFIED] = dto.isVerified
         }
 
@@ -145,6 +146,12 @@ class UserSessionManager @Inject constructor(
     suspend fun getAuthToken(): String? =
         runCatching { context.userDataStore.data.first()[Keys.AUTH_TOKEN] }.getOrNull()
 
+    val addressDto = CurrentUser.Address(
+        district = "Gicumbi",
+        sector = "Kageyo",
+        cell = "Gihembe",
+        village = "Nyamiyaga"
+    )
     private fun LoginResponseDto.toCurrentUser() = CurrentUser(
         userId = userId,
         email = email,
@@ -153,12 +160,12 @@ class UserSessionManager @Inject constructor(
         activeRoles = activeRoles.mapNotNull { it.toUserRoleOrNull() }.toSet(),
         phoneNumber = phoneNumber,
         nationalId = nationalId,
-        address = address,
+        address = addressDto,
         profilePictureUrl = profilePictureUrl,
         currentRole = (role ?: activeRoles.firstOrNull())?.toUserRoleOrNull(),
         joinDate = joinDate,
-        linkedStudents = linkedStudents,
-        gender = gender,
+        linkedStudents = emptyList(),//linkedStudents?.map { it.toDomain() } ?: emptyList(),
+        gender = Gender.FEMALE,
         isVerified = isVerified
     )
 
