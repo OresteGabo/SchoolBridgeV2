@@ -48,7 +48,7 @@ data class School(
     val name: String,
     val abbrevName: String,
     val logoUrl: String,
-    val educationLevelsOffered: List<EducationLevel>,
+    val educationLevelsOffered: List<SchoolLevel>,
     val hasBoarding: Boolean,
     val contactPhone: String,
     val contactEmail: String?,
