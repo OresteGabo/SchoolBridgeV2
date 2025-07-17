@@ -38,7 +38,8 @@ enum class TimetableEntryType {
     GROUP_WORK,
     REMEDIAL,
     TEST,
-    ASSEMBLY
+    ASSEMBLY,
+    LAB
 }
 
 
@@ -51,6 +52,7 @@ fun timetableEntryColor(type: TimetableEntryType): Color {
         TimetableEntryType.REMEDIAL -> MaterialTheme.colorScheme.errorContainer
         TimetableEntryType.TEST -> MaterialTheme.colorScheme.error
         TimetableEntryType.ASSEMBLY -> MaterialTheme.colorScheme.surfaceVariant
+        TimetableEntryType.LAB -> MaterialTheme.colorScheme.surfaceVariant
     }
 }
 
