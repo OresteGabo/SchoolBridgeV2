@@ -19,7 +19,7 @@ import com.schoolbridge.v2.domain.academic.*
 import java.time.LocalDate
 import kotlin.math.max
 import java.time.temporal.WeekFields
-
+import kotlin.random.Random
 @Composable
 fun TimetableScreen(
     events: List<TimetableEntry>,
@@ -29,7 +29,8 @@ fun TimetableScreen(
     onEventClick: (TimetableEntry) -> Unit,
     days: List<DayOfWeek> = DayHeaders,
     hourRange: IntRange = HourRange,
-    startOfWeek: LocalDate // NEW PARAMETER
+    startOfWeek: LocalDate,
+    onDayHeaderClick: (LocalDate) -> Unit
 ) {
     val headerHeight = 40.dp
     val hScroll = rememberScrollState()
@@ -44,9 +45,11 @@ fun TimetableScreen(
             headerHeight = headerHeight,
             hScroll = hScroll,
             startOfWeek = startOfWeek, // PASS THE NEW PARAMETER
+            onDayHeaderClick = onDayHeaderClick,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = timeColWidth)
+
         )
 
         // 2. Hour column
@@ -87,7 +90,8 @@ private fun DayHeaderRow(
     timeColWidth: Dp,
     headerHeight: Dp,
     hScroll: ScrollState,
-    startOfWeek: LocalDate, // NEW PARAMETER
+    startOfWeek: LocalDate,
+    onDayHeaderClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -97,12 +101,13 @@ private fun DayHeaderRow(
             .background(MaterialTheme.colorScheme.primaryContainer)
             .zIndex(2f)
     ) {
-        days.forEachIndexed { index, dayOfWeek -> // Use indexed to get position
-            val date = startOfWeek.plusDays(index.toLong()) // Calculate date for this column
+        days.forEachIndexed { index, dayOfWeek ->
+            val date = startOfWeek.plusDays(index.toLong())
             Box(
                 Modifier
                     .width(dayWidth)
                     .fillMaxHeight()
+                    .clickable { onDayHeaderClick(date) } // ✅ handle click
                     .border(0.5.dp, MaterialTheme.colorScheme.outline),
                 contentAlignment = Alignment.Center
             ) {
@@ -113,8 +118,8 @@ private fun DayHeaderRow(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        date.dayOfMonth.toString(), // Display day of month
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), // More prominent day number
+                        date.dayOfMonth.toString(),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
@@ -122,6 +127,7 @@ private fun DayHeaderRow(
         }
     }
 }
+
 
 @Composable
 private fun DayHeaderRow(
@@ -395,41 +401,58 @@ val sampleEvents = listOf(
     )
 )
 */
-
+/*
 val sampleEvents = generateSampleEventsForWeek(LocalDate.now())
+*/
 
 
 
-
-fun generateSampleEventsForWeek(startOfWeek: LocalDate): List<TimetableEntry> {
+fun generateSampleEventsForWeek(startOfWeek: LocalDate=LocalDate.now()): List<TimetableEntry> {
+    val random = Random(startOfWeek.toEpochDay()) // Seeded for reproducibility
     val weekNumber = startOfWeek.get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
-    fun dateForDay(day: DayOfWeek) = startOfWeek.with(day)
+    val subjects = listOf("Mathematics", "Physics", "Biology", "Chemistry", "History", "Geography", "Literature", "ICT", "Kinyarwanda", "English", "French")
+    val rooms = listOf("Room A1", "Room B1", "Room C1", "Room D1", "Room E1", "Lab 1", "Lab 2", "Auditorium")
+    val teachers = listOf("Mr. Nshimiyimana", "Mrs. Uwase", "Ms. Mukamana", "Mr. Twizeyimana", "Dr. Uwimana", "Ms. Kayitesi", "Mr. Mugenzi", "Mrs. Ingabire")
 
-    // Define 3 different timetables that cycle every 3 weeks:
-    val timetable1 = listOf(
-        TimetableEntry(1, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Mathematics", "Room A1", "Mr. Nshimiyimana", TimetableEntryType.LECTURE),
-        TimetableEntry(2, dateForDay(DayOfWeek.TUESDAY).atTime(10, 0), dateForDay(DayOfWeek.TUESDAY).atTime(11, 30), "Physics", "Physics Lab", "Mrs. Uwase", TimetableEntryType.LECTURE),
-    )
+    val timetableEntries = mutableListOf<TimetableEntry>()
+    var idCounter = weekNumber * 1000
 
-    val timetable2 = listOf(
-        TimetableEntry(3, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Biology", "Room B1", "Ms. Mukamana", TimetableEntryType.LECTURE),
-        TimetableEntry(4, dateForDay(DayOfWeek.WEDNESDAY).atTime(9, 0), dateForDay(DayOfWeek.WEDNESDAY).atTime(10, 30), "History", "Room C1", "Mr. Twizeyimana", TimetableEntryType.LECTURE),
-    )
+    for (i in 0..6) { // Each day from Monday to Sunday
+        val day = DayOfWeek.of((i % 7) + 1)
+        val date = startOfWeek.with(day)
 
-    val timetable3 = listOf(
-        TimetableEntry(5, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Chemistry", "Room D1", "Dr. Uwimana", TimetableEntryType.LECTURE),
-        TimetableEntry(6, dateForDay(DayOfWeek.THURSDAY).atTime(10, 0), dateForDay(DayOfWeek.THURSDAY).atTime(11, 30), "Geography", "Room E2", "Ms. Kayitesi", TimetableEntryType.LECTURE),
-    )
+        // Max 4 events per day, random 1-4:
+        val numberOfEvents = random.nextInt(1, 5)
+        val usedTimeSlots = mutableSetOf<Int>() // avoid overlapping
 
-    // Cycle the timetables every 3 weeks:
-    return when (weekNumber % 3) {
-        1 -> timetable1
-        2 -> timetable2
-        else -> timetable3
+        repeat(numberOfEvents) {
+            var startHour: Int
+            do {
+                startHour = random.nextInt(7, 17) // allow courses between 7:00 and 16:00
+            } while (!usedTimeSlots.add(startHour))
+
+            val endHour = startHour + 1
+            val start = date.atTime(startHour, 0)
+            val end = date.atTime(endHour, 30)
+
+            val subject = subjects.random(random)
+            val room = rooms.random(random)
+            val teacher = teachers.random(random)
+
+            timetableEntries += TimetableEntry(
+                id = idCounter++,
+                start = start,
+                end = end,
+                title = subject,
+                room = room,
+                teacher = teacher,
+                type = TimetableEntryType.LECTURE
+            )
+        }
     }
+
+    return timetableEntries
 }
-
-
 
 
 
