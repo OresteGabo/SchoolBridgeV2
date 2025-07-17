@@ -7,15 +7,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
-import java.util.Locale
-import java.time.DayOfWeek // Import DayOfWeek
-import java.time.temporal.TemporalAdjusters // NEW IMPORT
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 
 // Assuming AddEventBottomSheet and sampleEvents are defined elsewhere
 
@@ -32,12 +32,13 @@ fun TimetableTabsScreen(
 
     val today = LocalDate.now()
 
-    // Initialize selectedDate for Daily Timetable
     var selectedDate by remember { mutableStateOf(today) }
-
-    // Initialize selectedWeekDate to the Monday of the current week
+/*
     var selectedWeekDate by remember {
         mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+    }*/
+    var selectedWeekDate by rememberSaveable {
+        mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -55,14 +56,12 @@ fun TimetableTabsScreen(
                             val weekFields = WeekFields.of(DayOfWeek.MONDAY, 1)
                             val weekNumber = startOfWeek.get(weekFields.weekOfWeekBasedYear())
 
-
                             Column {
                                 Text(
-                                    text = "Week $weekNumber, ${startOfWeek.year}", // Example: "Week 26, 2025"
+                                    text = "Week $weekNumber, ${startOfWeek.year}",
                                     style = MaterialTheme.typography.titleLarge
                                 )
                                 Text(
-                                    // CORRECTED PATTERN: Use "MMM d, yyyy" for full date with year
                                     text = "${startOfWeek.format(DateTimeFormatter.ofPattern("MMM d"))} - ${endOfWeek.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -71,7 +70,6 @@ fun TimetableTabsScreen(
                         }
                         1 -> { // Daily Tab
                             Text(
-                                // CORRECTED PATTERN: Use "EEEE, MMM d, yyyy" for full date with year
                                 text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
                                 style = MaterialTheme.typography.titleLarge
                             )
@@ -84,7 +82,16 @@ fun TimetableTabsScreen(
                     }
                 },
                 actions = {
-                    // ...
+                    if (selectedTabIndex == 0 && selectedWeekDate != today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) {
+                        OutlinedButton(
+                            onClick = {
+                                selectedWeekDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                            },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("This Week")
+                        }
+                    }
                 },
                 scrollBehavior = scrollBehavior
             )
@@ -127,9 +134,9 @@ fun TimetableTabsScreen(
             Spacer(Modifier.height(8.dp))
 
             when (selectedTabIndex) {
-                0 -> WeeklyTimetableTab(
-                    events = sampleEvents,
-                    startOfWeek = selectedWeekDate
+                0->WeeklyTimetableTab(
+                    initialStartOfWeek = selectedWeekDate,
+                    onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
                 )
                 1 -> DailyTimetableTab(
                     selectedDate = selectedDate,
