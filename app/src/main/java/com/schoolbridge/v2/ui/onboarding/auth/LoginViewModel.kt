@@ -96,9 +96,6 @@ class LoginViewModel(
         }
     }
 
-
-
-
     fun resetState() {
         isLoading = false
         loginError = null
