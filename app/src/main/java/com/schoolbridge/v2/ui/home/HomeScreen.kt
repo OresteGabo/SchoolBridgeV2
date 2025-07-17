@@ -78,6 +78,11 @@ import com.schoolbridge.v2.ui.components.SpacerS
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
 import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.common.ActionCard
+import com.schoolbridge.v2.ui.home.common.AddressCard
+import com.schoolbridge.v2.ui.home.common.GenderTag
+import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
+import com.schoolbridge.v2.ui.home.common.LocalTimetableRepo
+import com.schoolbridge.v2.ui.home.common.TimetableBoard
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
@@ -393,19 +398,124 @@ private fun HomeUI(
                 SpacerL()
                 GradesSummarySection()
             }
-            UserRole.PARENT -> {
-                StudentListSection(students = currentUser?.linkedStudents)
-                SpacerL()
+
+
+             /*UserRole.PARENT -> {
+                 val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
+
+                 LaunchedEffect(Unit) {
+                     LocalTimetableRepo.loadMockDataForTesting() // Temporary for demo
+                 }
+
+                 if (timetable.isNotEmpty()) {
+                     SpacerL()
+                     Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
+                     TimetableBoard(entries = timetable)
+                 }
+                currentUser?.let {
+                    // 1️⃣ Address and Gender
+                    if (it.address != null) {
+                        //AddressCard(address = it.address)
+                        SpacerS()
+                    }
+                    if (it.gender != null) {
+                        GenderTag(gender = it.gender)
+                        SpacerS()
+                    }
+
+                    // 2️⃣ Linked Students
+                    if (!it.linkedStudents.isNullOrEmpty()) {
+                        Text(
+                            text = "Linked Students",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        LinkedStudentRow(list = it.linkedStudents!!)
+                        SpacerL()
+                    }
+                }
+
+                // 3️⃣ Alerts and Events
                 AlertsSection(
                     onViewAllAlertsClick = onViewAllAlertsClick,
                     onAlertClick = onAlertClick
                 )
                 SpacerL()
+
                 EventsSection(
                     onViewAllEventsClick = onViewAllEventsClick,
                     onEventClick = onEventClick
                 )
+
+                // 4️⃣ Timetable for Parent's Children
+                val timetable by LocalTimetableRepo.current.cachedTimetable.collectAsState()
+                if (timetable.isNotEmpty()) {
+                    SpacerL()
+                    Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
+                    TimetableBoard(entries = timetable)
+                }
+            }*/
+            UserRole.PARENT -> {
+                currentUser?.let {
+                    // 1️⃣ Address and Gender
+                    if (it.address != null) {
+                        Text(
+                            text = "Your Address",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                        AddressCard(address = it.address)
+                        SpacerM()
+                    }
+
+                    if (it.gender != null) {
+                        GenderTag(gender = it.gender)
+                        SpacerM()
+                    }
+
+                    // 2️⃣ Linked Students
+                    if (!it.linkedStudents.isNullOrEmpty()) {
+                        Text(
+                            text = "Linked Students",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                        LinkedStudentRow(list = it.linkedStudents)
+                        SpacerL()
+                    }
+                }
+
+                // 3️⃣ Alerts and Events
+                AlertsSection(
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onAlertClick = onAlertClick
+                )
+                SpacerL()
+
+                EventsSection(
+                    onViewAllEventsClick = onViewAllEventsClick,
+                    onEventClick = onEventClick
+                )
+
+                // 4️⃣ Timetable for Parent's Children
+                val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
+
+                LaunchedEffect(Unit) {
+                    // In production, you'd load timetable for selected child
+                    LocalTimetableRepo.loadMockDataForTesting()
+                }
+
+                if (timetable.isNotEmpty()) {
+                    SpacerL()
+                    Text(
+                        text = "Today's Timetable",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    TimetableBoard(entries = timetable)
+                }
             }
+
             UserRole.TEACHER -> {
                 TeacherQuickActionsSection()
                 SpacerL()
