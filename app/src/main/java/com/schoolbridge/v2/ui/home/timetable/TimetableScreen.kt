@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import com.schoolbridge.v2.domain.academic.*
 import java.time.LocalDate
 import kotlin.math.max
+import java.time.temporal.WeekFields
 
 @Composable
 fun TimetableScreen(
@@ -273,7 +274,7 @@ private fun TimetableGridAndEvents(
 
 
 
-
+/*
 val sampleEvents = listOf(
     // Monday
     TimetableEntry(
@@ -393,6 +394,43 @@ val sampleEvents = listOf(
         type  = TimetableEntryType.TEST
     )
 )
+*/
+
+val sampleEvents = generateSampleEventsForWeek(LocalDate.now())
+
+
+
+
+fun generateSampleEventsForWeek(startOfWeek: LocalDate): List<TimetableEntry> {
+    val weekNumber = startOfWeek.get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
+    fun dateForDay(day: DayOfWeek) = startOfWeek.with(day)
+
+    // Define 3 different timetables that cycle every 3 weeks:
+    val timetable1 = listOf(
+        TimetableEntry(1, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Mathematics", "Room A1", "Mr. Nshimiyimana", TimetableEntryType.LECTURE),
+        TimetableEntry(2, dateForDay(DayOfWeek.TUESDAY).atTime(10, 0), dateForDay(DayOfWeek.TUESDAY).atTime(11, 30), "Physics", "Physics Lab", "Mrs. Uwase", TimetableEntryType.LECTURE),
+    )
+
+    val timetable2 = listOf(
+        TimetableEntry(3, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Biology", "Room B1", "Ms. Mukamana", TimetableEntryType.LECTURE),
+        TimetableEntry(4, dateForDay(DayOfWeek.WEDNESDAY).atTime(9, 0), dateForDay(DayOfWeek.WEDNESDAY).atTime(10, 30), "History", "Room C1", "Mr. Twizeyimana", TimetableEntryType.LECTURE),
+    )
+
+    val timetable3 = listOf(
+        TimetableEntry(5, dateForDay(DayOfWeek.MONDAY).atTime(8, 0), dateForDay(DayOfWeek.MONDAY).atTime(9, 30), "Chemistry", "Room D1", "Dr. Uwimana", TimetableEntryType.LECTURE),
+        TimetableEntry(6, dateForDay(DayOfWeek.THURSDAY).atTime(10, 0), dateForDay(DayOfWeek.THURSDAY).atTime(11, 30), "Geography", "Room E2", "Ms. Kayitesi", TimetableEntryType.LECTURE),
+    )
+
+    // Cycle the timetables every 3 weeks:
+    return when (weekNumber % 3) {
+        1 -> timetable1
+        2 -> timetable2
+        else -> timetable3
+    }
+}
+
+
+
 
 
 
