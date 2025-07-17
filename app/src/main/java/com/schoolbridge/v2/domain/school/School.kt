@@ -56,4 +56,10 @@ data class School(
     val bankAccounts: List<BankAccount>,
     val district: District,
     val sector: Sector,
-)
+    val establishedYear: Int,
+    val rating: Double,
+    val studentsCount: Int,
+    val type: String
+) {
+
+}
