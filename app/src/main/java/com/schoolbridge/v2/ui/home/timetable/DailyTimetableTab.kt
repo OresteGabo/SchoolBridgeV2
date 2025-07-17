@@ -52,7 +52,7 @@ fun DailyTimetableTab(
     onDateChange: (LocalDate) -> Unit
 ) {
     val dailyEvents = remember(selectedDate) {
-        sampleEvents
+        generateSampleEventsForWeek()
             .filter { it.start.toLocalDate() == selectedDate }
             .sortedBy { it.start }
     }
@@ -142,12 +142,10 @@ private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: Lo
                 entry = entry,
                 modifier = Modifier
                     .fillMaxWidth()
-
                 ,
 
             )
             Spacer(modifier = Modifier.height(16.dp))
-
         }
     }
 }
@@ -162,7 +160,7 @@ fun NoEventsPlaceholder(
     val nextDateWithEvent = remember(selectedDate) {
         (1..30).map { selectedDate.plusDays(it.toLong()) }
             .firstOrNull { date ->
-                sampleEvents.any { it.start.toLocalDate() == date }
+                generateSampleEventsForWeek().any { it.start.toLocalDate() == date }
             }
     }
 
@@ -320,7 +318,7 @@ fun HorizontalDateSelector(
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            itemsIndexed(daysInMonth) { index, date ->
+            itemsIndexed(daysInMonth) { _, date ->
                 val isSelected = date == selectedDay
 
                 Column(
