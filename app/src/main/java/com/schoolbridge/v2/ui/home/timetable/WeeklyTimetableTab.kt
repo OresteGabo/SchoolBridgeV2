@@ -37,14 +37,20 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyTimetableTab(
-    events: List<TimetableEntry> = sampleEvents,
-    startOfWeek: LocalDate // NEW: Receive the start of the week
+    initialStartOfWeek: LocalDate,
+    onStartOfWeekChange: (LocalDate) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var selected by rememberSaveable { mutableStateOf<TimetableEntry?>(null) }
 
-    // Base sizes as Dp units
+    var startOfWeek by rememberSaveable { mutableStateOf(initialStartOfWeek) }
+
+    // Generate events dynamically based on current week
+    val events = remember(startOfWeek) {
+        generateSampleEventsForWeek(startOfWeek)
+    }
+
     val baseSlotH = 64.dp
     val baseDayW = 128.dp
     val baseTimeW = 56.dp
@@ -56,7 +62,6 @@ fun WeeklyTimetableTab(
     Box(
         Modifier
             .fillMaxSize()
-            // Removed .padding(paddingValues) as it's now handled by the parent Scaffold
             .background(MaterialTheme.colorScheme.background)
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -71,7 +76,7 @@ fun WeeklyTimetableTab(
                 val totalHeightPx = with(density) { (baseSlotH * totalHours).toPx() }
                 val wFit = constraints.maxWidth.toFloat() / totalWidthPx
                 val hFit = constraints.maxHeight.toFloat() / totalHeightPx
-                kotlin.comparisons.minOf(wFit, hFit).coerceAtMost(maxScale)
+                minOf(wFit, hFit).coerceAtMost(maxScale)
             }
 
             scale = scale.coerceIn(minScaleFit, maxScale)
@@ -93,16 +98,24 @@ fun WeeklyTimetableTab(
                     selected = it
                     scope.launch { sheetState.show() }
                 },
-                startOfWeek = startOfWeek // Pass the received startOfWeek down
+                startOfWeek = startOfWeek
             )
         }
 
-        FloatingZoomControls(
+        FloatingTimetableControls(
             onZoomIn = { scale = (scale * 1.12f).coerceIn(minScale, maxScale) },
             onZoomOut = { scale = (scale / 1.12f).coerceIn(minScale, maxScale) },
-            onAddPersonalEvent = { /* TODO */ },
-            onNavigateToday = { /* TODO */ },
-            modifier = Modifier.align(Alignment.BottomEnd)
+            modifier = Modifier.align(Alignment.BottomEnd),
+            onNavigatePreviousWeek = {
+                val newWeek = startOfWeek.minusWeeks(1)
+                startOfWeek = newWeek
+                onStartOfWeekChange(newWeek)
+            },
+            onNavigateNextWeek = {
+                val newWeek = startOfWeek.plusWeeks(1)
+                startOfWeek = newWeek
+                onStartOfWeekChange(newWeek)
+            }
         )
     }
 
@@ -140,3 +153,5 @@ fun WeeklyTimetableTab(
         }
     }
 }
+
+
