@@ -39,28 +39,6 @@ import kotlinx.serialization.SerialName
  * @property linkedStudents A list of children linked to this user, encapsulated in [CurrentUser.LinkedStudent] objects.
  * @property gender The gender of the user. (Uncomment if you decide to include and use Gender enum from your model)
  */
-/*
-@Serializable
-data class LoginResponseDto(
-    val authToken: String,
-    val refreshToken: String,
-    val userId: String,
-    val email: String,
-    val firstName: String,
-    val lastName: String,
-    val activeRoles: List<String>,
-
-    val phoneNumber: String?,
-    val nationalId: String?,
-    val address: CurrentUser.Address?,
-    val profilePictureUrl: String?,
-    val role: String?,
-    val joinDate: String?,
-    val linkedStudents: List<CurrentUser.LinkedStudent>?,
-    val gender: Gender?,
-    val isVerified: Boolean
-)*/
-
 @Serializable
 data class LoginResponseDto(
     val authToken: String,
