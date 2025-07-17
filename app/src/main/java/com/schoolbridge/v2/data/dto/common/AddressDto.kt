@@ -26,9 +26,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class AddressDto(
-    val street: String?,
-    val city: String,
-    val stateProvince: String?,
-    val postalCode: String?,
-    val country: String
+    val district: String?="NO_DISTRICT_FOUND",
+    val sector: String?="NO_SECTOR_FOUND",
+    val cell: String?="NO_CELL_FOUND",
+    val village : String?="NO_VILLAGE_FOUND"
 )
