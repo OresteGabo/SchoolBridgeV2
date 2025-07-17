@@ -67,9 +67,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import java.time.LocalDateTime
-/*
+
+@Deprecated("Use DailyCourseCard instead")
 @Composable
-fun DailyCourseCard(
+fun DailyCourseCard1(
     entry: TimetableEntry,
     participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ", "KL"),
     modifier: Modifier = Modifier,
@@ -172,11 +173,11 @@ fun DailyCourseCard(
         }
     }
 }
-*/
 
-/*
+
+@Deprecated("Use DailyCourseCard instead")
 @Composable
-fun DailyCourseCard(
+fun DailyCourseCard2(
     entry: TimetableEntry,
     modifier: Modifier = Modifier,
     participants: List<String> = listOf("AB", "CD", "EF", "GH", "IJ", "KL"), // Example participants
@@ -304,7 +305,7 @@ fun DailyCourseCard(
         }
     }
 }
-*/
+
 
 @Composable
 fun DailyCourseCard(
@@ -417,9 +418,9 @@ fun AttendancePill(rate: Float) {
 }
 
 
-/*
+@Deprecated("Use DailyCourseCard instead")
 @Composable
-fun DailyCourseCard(
+fun DailyCourseCard3(
     entry: TimetableEntry,
     modifier: Modifier = Modifier,
     attendanceRate: Float = 0.75f
@@ -512,13 +513,13 @@ fun CircularAttendanceDisplay(attendanceRate: Float) {
         )
     }
 }
-*/
 
 
 
-/*
+
+@Deprecated("Use DailyCourseCard instead")
 @Composable
-fun DailyCourseCard(
+fun DailyCourseCard4(
     entry: TimetableEntry,
     modifier: Modifier = Modifier,
     attendanceRate: Float = 0.75f // Dummy value
@@ -639,7 +640,7 @@ fun DailyCourseCard(
     }
 }
 
-*/
+
 
 
 @Composable
@@ -740,6 +741,7 @@ private fun timetableEntryColor(type: TimetableEntryType): Color {
         TimetableEntryType.REMEDIAL -> MaterialTheme.colorScheme.inversePrimary
         TimetableEntryType.TEST -> MaterialTheme.colorScheme.error
         TimetableEntryType.ASSEMBLY -> MaterialTheme.colorScheme.surfaceTint
+        TimetableEntryType.LAB -> MaterialTheme.colorScheme.surfaceTint
     }
 }
 
