@@ -32,14 +32,14 @@ val sampleSchool = School(
             order = 3
         )
     ),*/
-    educationLevelsOffered= listOf(
+    educationLevelsOffered = listOf(
         SchoolLevel.ALevel(
             name = "",
-            id="",
-            section = SchoolSection("MCB","MCB"),
+            id = "",
+            section = SchoolSection("MCB", "MCB"),
         ),
         SchoolLevel.OLevel(
-            id ="O level",
+            id = "O level",
             name = "O level"
         )
     ),
@@ -51,7 +51,11 @@ val sampleSchool = School(
         BankAccount(bankName = "Bank of Kigali", accountNumber = "000123456789")
     ),
     district = getDistrictByName("Gasabo"),
-    sector = getSectorByDistringNameAndSectorName("Gasabo","Kacyiru")
+    sector = getSectorByDistringNameAndSectorName("Gasabo", "Kacyiru"),
+    establishedYear = 1888,
+    rating = 3.1,
+    studentsCount = 766,
+    type = "public"
 )
 
 
