@@ -43,6 +43,8 @@ fun WeeklyTimetableTab(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var selected by rememberSaveable { mutableStateOf<TimetableEntry?>(null) }
+    var selectedDay by rememberSaveable { mutableStateOf<LocalDate?>(null) }
+
 
     var startOfWeek by rememberSaveable { mutableStateOf(initialStartOfWeek) }
 
@@ -98,8 +100,16 @@ fun WeeklyTimetableTab(
                     selected = it
                     scope.launch { sheetState.show() }
                 },
-                startOfWeek = startOfWeek
+                startOfWeek = startOfWeek,
+                days = DayHeaders, // ✅ Replace TODO(): This is the standard Mon-Sat list.
+                hourRange = HourRange, // ✅ Replace TODO(): Standard hour range (7..20 or whatever you've defined)
+                onDayHeaderClick = { day -> // ✅ Replace TODO(): Set selected day and open bottom sheet
+                    selectedDay = day
+                    selected = null // in case an event was selected, clear it
+                    scope.launch { sheetState.show() }
+                }
             )
+
         }
 
         FloatingTimetableControls(
@@ -152,6 +162,52 @@ fun WeeklyTimetableTab(
             }
         }
     }
+
+    if (selectedDay != null) {
+        val dayEvents = events.filter { it.start.toLocalDate() == selectedDay }
+
+        ModalBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = {
+                scope.launch { sheetState.hide() }
+                selectedDay = null
+            }
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    text = selectedDay!!.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                if (dayEvents.isEmpty()) {
+                    Text("No events for this day.")
+                } else {
+                    dayEvents.forEach { e ->
+                        Column(Modifier.padding(vertical = 8.dp)) {
+                            Text("• ${e.title}", fontWeight = FontWeight.SemiBold)
+                            Text("  ${e.start.toLocalTime()} – ${e.end.toLocalTime()}")
+                            Text("  ${e.room} | ${e.teacher}")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        scope.launch { sheetState.hide() }
+                        selectedDay = null
+                    },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Close")
+                }
+            }
+        }
+    }
+
 }
 
 
