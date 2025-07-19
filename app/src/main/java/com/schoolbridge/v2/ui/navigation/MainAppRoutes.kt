@@ -78,6 +78,7 @@ sealed class MainAppScreen(
     data object Terms : MainAppScreen("terms_screen")
     data object PrivacyPolicy : MainAppScreen("privacy_policy_screen")
 
+    data object VerificationScreen : MainAppScreen("verification_screen")
     // --- Academic Sections (examples of nested routes or detail screens) ---
     data object CoursesList : MainAppScreen("courses_list_screen") // Changed to data object
 
