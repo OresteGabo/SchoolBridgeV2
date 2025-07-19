@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,37 +66,23 @@ fun CredentialsSetupScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
-
-    val passwordsMatch = password == confirmPassword && password.isNotEmpty()
-    val isValid = passwordsMatch && calculatePasswordStrength(password) >= PasswordStrength.FAIR
-
     var email by remember { mutableStateOf("") }
 
-
-    // Calculate password strength in real-time as the password changes
-    val passwordStrength by remember(password) {
-        mutableStateOf(calculatePasswordStrength(password))
-    }
-
+    val passwordsMatch = password == confirmPassword && password.isNotEmpty()
+    val passwordStrength by remember(password) { mutableStateOf(calculatePasswordStrength(password)) }
     val isEmailValid = email.isBlank() || isValidEmail(email)
-    val showError = email.isNotBlank() && !isEmailValid
-    val isValidEmailOrBlank = isEmailValid || email.isBlank()
-
-    // Password is considered "valid" for submission if it's not "NONE" (i.e., at least WEAK)
-    val isPasswordSufficient = passwordStrength != PasswordStrength.NONE
-    val isMatch = password == confirmPassword
-
-    // Can submit only if password is sufficient, passwords match, and email is valid/blank
-    val canSubmit = isPasswordSufficient && isMatch && isValidEmailOrBlank
+    val isValid = passwordsMatch && passwordStrength >= PasswordStrength.FAIR && isEmailValid
 
     val keyboardController = LocalSoftwareKeyboardController.current
-
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            .verticalScroll(scrollState)
+            .padding(24.dp)
+            .imePadding(), // Push up content when keyboard is visible
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start
     ) {
         Text("Secure Your Account", fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -106,8 +93,8 @@ fun CredentialsSetupScreen(
             value = "250788000000",
             onValueChange = {},
             label = { Text("Phone Number (Username)") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = false
+            enabled = false,
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -116,21 +103,20 @@ fun CredentialsSetupScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email (optional)") },
-            isError = showError,
-            modifier = Modifier.fillMaxWidth(),
+            isError = email.isNotBlank() && !isEmailValid,
+            supportingText = {
+                if (email.isNotBlank() && !isEmailValid) {
+                    Text("Invalid email address", color = MaterialTheme.colorScheme.error)
+                }
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next
             ),
-            supportingText = {
-                if (showError) {
-                    Text("Invalid email address", color = MaterialTheme.colorScheme.error)
-                }
-            }
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
 
         OutlinedTextField(
             value = password,
@@ -144,11 +130,16 @@ fun CredentialsSetupScreen(
                     Icon(icon, contentDescription = null)
                 }
             },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        PasswordStrengthIndicatorWithTips(password = password)
+        PasswordStrengthIndicatorWithTips(password)
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = confirmPassword,
@@ -162,7 +153,13 @@ fun CredentialsSetupScreen(
                     Icon(icon, contentDescription = null)
                 }
             },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = {
+                keyboardController?.hide()
+            }),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -184,8 +181,11 @@ fun CredentialsSetupScreen(
         ) {
             Text("Continue")
         }
+
+        Spacer(modifier = Modifier.height(32.dp)) // for final breathing room
     }
 }
+
 
 @Composable
 fun PasswordStrengthIndicatorWithTips(
