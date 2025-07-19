@@ -54,7 +54,7 @@ import com.schoolbridge.v2.ui.home.alert.EventsScreen
 import com.schoolbridge.v2.ui.home.timetable.TimetableTabsScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
 import com.schoolbridge.v2.ui.message.MessageThreadScreen
-
+import com.schoolbridge.v2.ui.onboarding.auth.VerificationScreen
 /**
  * The main navigation host for the SchoolBridge V2 application.
  * This composable defines all the navigation routes and their associated UI screens.
@@ -134,8 +134,31 @@ fun AppNavHost(
 
         composable(AuthScreen.CredentialsSetup.route) {
             CredentialsSetupScreen(
-                onContinue = {},
+                onContinue = { phoneNumber ->
+                    navController.navigate("${MainAppScreen.VerificationScreen.route}/$phoneNumber")
+                },
                 modifier = Modifier
+            )
+        }
+
+// Accept phone number as nav argument
+        composable(
+            route = "${MainAppScreen.VerificationScreen.route}/{phoneNumber}",
+            arguments = listOf(navArgument("phoneNumber") { defaultValue = "" })
+        ) { backStackEntry ->
+            val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
+
+            VerificationScreen(
+                phoneNumber = phoneNumber,
+                onVerificationSuccess = {
+                    // Navigate to home screen or next flow
+                    navController.navigate(MainAppScreen.Home.route) {
+                        popUpTo(AuthScreen.CredentialsSetup.route) { inclusive = true }
+                    }
+                },
+                onResendCode = {
+                    // Logic to resend code (maybe ViewModel handles it)
+                }
             )
         }
 
