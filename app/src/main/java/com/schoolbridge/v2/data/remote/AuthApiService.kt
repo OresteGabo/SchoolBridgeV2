@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.data.remote
 
 import android.os.Build
+import android.util.Log
 import com.schoolbridge.v2.data.dto.auth.LoginRequestDto
 import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
 import io.ktor.client.HttpClient
@@ -20,16 +21,17 @@ import kotlinx.serialization.json.Json
 import java.io.IOException
 
 // Dynamically choose BASE_URL based on environment
-private val BASE_URL: String
+public val BASE_URL: String
     get() {
         return if (isRunningOnEmulator()) {
             "http://10.0.2.2:8080"
         } else {
-            "http://172.20.10.3:8080" // Replace with your real machine IP
+           "http://172.20.10.3:8080" // For my machine IP
         }
     }
 
 private fun isRunningOnEmulator(): Boolean {
+    Log.d("EMULATOR_EMU",Build.FINGERPRINT)
     return (Build.FINGERPRINT.startsWith("generic")
             || Build.FINGERPRINT.lowercase().contains("emulator")
             || Build.MODEL.contains("Emulator")
