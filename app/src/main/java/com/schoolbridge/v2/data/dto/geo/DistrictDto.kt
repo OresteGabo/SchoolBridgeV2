@@ -1,6 +1,6 @@
 package com.schoolbridge.v2.data.dto.geo
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 
 /**
  * Data Transfer Object (DTO) for a **District**.
@@ -17,8 +17,9 @@ import com.google.gson.annotations.SerializedName
  * @property provinceId The ID of the [ProvinceDto] this district belongs to. This creates the
  * hierarchical link. Example: "PROV001"
  */
+@Serializable
 data class DistrictDto(
-    val id: String,
+    val id: Long,
     val name: String,
-    @SerializedName("provinceId") val provinceId: String
+    val sectorCount: Int
 )
