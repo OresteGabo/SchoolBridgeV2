@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +72,7 @@ import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.ideatrials.DistrictsScreen
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
@@ -329,7 +331,8 @@ fun HomeRoute(
                 onWeeklyViewClick = onWeeklyViewClick,
                 modifier = Modifier
                     .padding(paddingValues)
-                    .fillMaxSize()
+                    .fillMaxSize(),
+                userSessionManager = userSessionManager
             )
         }
 
@@ -364,6 +367,7 @@ private fun HomeUI(
     onWeeklyViewClick: () -> Unit,
     onEventClick: (String) -> Unit,
     onAlertClick: (Alert) -> Unit,
+    userSessionManager: UserSessionManager,
     modifier: Modifier = Modifier
 ) {
     var activeRole = currentUser?.currentRole
@@ -397,6 +401,8 @@ private fun HomeUI(
                 )
                 SpacerL()
                 GradesSummarySection()
+                DistrictsScreen(context=LocalContext.current)
+                AuthTokenDisplay(userSessionManager = userSessionManager)
             }
 
 
@@ -680,6 +686,44 @@ fun AdminQuickActionsSection() {
     }
 }
 
+@Composable
+fun AuthTokenDisplay(userSessionManager: UserSessionManager) {
+    // Collect the authentication token as a State.
+    // We use LaunchedEffect to perform the suspend call once and update the state.
+    // In a real app, you might have this token exposed directly from a ViewModel
+    // as a StateFlow for more reactive updates.
+    var authToken by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(userSessionManager) {
+        authToken = userSessionManager.getAuthToken()
+    }
+
+    Card(
+        modifier = Modifier.padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Authentication Token:",
+                style = MaterialTheme.typography.titleSmall,
+                color = colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = authToken ?: "No token available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+            if (authToken == null) {
+                Text(
+                    text = "Log in to see the token.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
 
 data class AdminQuickAction(
     val id: String,
