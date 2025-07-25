@@ -98,6 +98,7 @@ fun ProfileScreen(
     onBack: () -> Unit
 ) {
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
+    val isLoggedIn by userSessionManager.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
 
     val currentOnBack by rememberUpdatedState(onBack)
     var isEditing by remember { mutableStateOf(false) }
@@ -114,6 +115,7 @@ fun ProfileScreen(
     val sectionAnimatedStates = remember { mutableStateOf(MutableList(8) { false }) }
 
     LaunchedEffect(currentUser) {
+        Log.d("CURRENT_USER",currentUser.toString())
         currentUser?.let { user ->
             editablePhone = user.phoneNumber ?: ""
             editableEmail = user.email
