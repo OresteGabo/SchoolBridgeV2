@@ -14,6 +14,7 @@ import com.schoolbridge.v2.data.dto.common.AddressDto
 import com.schoolbridge.v2.data.dto.user.student.LinkedStudentDto
 import com.schoolbridge.v2.domain.user.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +55,9 @@ class UserSessionManager @Inject constructor(
     val userId: Flow<String?> = currentUser.map { it?.userId }
     val currentRole: Flow<UserRole?> = currentUser.map { it?.currentRole }
 
+    fun getAuthTokenSync(): String? = runBlocking {
+        context.userDataStore.data.first()[Keys.AUTH_TOKEN]
+    }
     suspend fun initializeSession() {
         Log.d("UserSessionManager", "initializeSession()")
 
@@ -82,10 +86,11 @@ class UserSessionManager @Inject constructor(
 
     suspend fun saveLoginResponse(dto: LoginResponseDto): CurrentUser {
         Log.d("UserSessionManager", "saveLoginResponse(${dto.userId})")
+        Log.d("UserSessionManager", "Saving auth token: ${dto.authToken}")
+        Log.d("UserSessionManager", "Saving refresh token: ${dto.refreshToken}")
 
         val rolesCsv = dto.activeRoles.joinToString(",")
-        val roleString = dto.role ?: dto.activeRoles.firstOrNull()
-
+        val roleString = dto.role
         val address = dto.address?.toDomain()
         val linkedStudents = dto.linkedStudents.map { it.toDomain() }
 
@@ -108,6 +113,13 @@ class UserSessionManager @Inject constructor(
             prefs[Keys.IS_VERIFIED] = dto.isVerified
         }
 
+        // Read back saved values to confirm
+        val savedPrefs = context.userDataStore.data.first()
+        Log.d("UserSessionManager", "Retrieved auth token: ${savedPrefs[Keys.AUTH_TOKEN]}")
+        Log.d("UserSessionManager", "Retrieved refresh token: ${savedPrefs[Keys.REFRESH_TOKEN]}")
+        Log.d("UserSessionManager", "Retrieved user ID: ${savedPrefs[Keys.USER_ID]}")
+        Log.d("UserSessionManager", "Retrieved email: ${savedPrefs[Keys.EMAIL]}")
+
         val user = CurrentUser(
             userId = dto.userId,
             email = dto.email,
@@ -127,8 +139,12 @@ class UserSessionManager @Inject constructor(
 
         _currentUser.value = user
         _sessionState.value = SessionState.LoggedIn(user)
+
+        Log.d("UserSessionManager", "User session initialized for: ${user.firstName}")
         return user
     }
+
+
 
     suspend fun setCurrentRole(role: UserRole) {
         context.userDataStore.edit { prefs ->
@@ -166,53 +182,6 @@ class UserSessionManager @Inject constructor(
         val prefs = context.getSharedPreferences("prefs", MODE_PRIVATE)
         prefs.edit().putBoolean("first_launch", false).apply()
     }
-
-//    private fun Preferences.toCurrentUserOrNull(): CurrentUser? {
-//        val authToken = this[Keys.AUTH_TOKEN] ?: return null
-//        val userId = this[Keys.USER_ID] ?: return null
-//        val email = this[Keys.EMAIL] ?: return null
-//        val firstName = this[Keys.FIRST_NAME] ?: return null
-//        val lastName = this[Keys.LAST_NAME] ?: return null
-//
-//        val rolesCsv = this[Keys.ACTIVE_ROLES] ?: ""
-//        val currentRoleStr = this[Keys.CURRENT_ROLE]
-//        val addressJson = this[Keys.ADDRESS_JSON]
-//        val linkedJson = this[Keys.LINKED_STUDENTS_JSON]
-//        val genderStr = this[Keys.GENDER]
-//
-//        val address = addressJson?.takeIf { it.isNotBlank() }?.let {
-//            gson.fromJson(it, CurrentUser.Address::class.java)
-//        }
-//
-//        val linkedStudents = linkedJson?.takeIf { it.isNotBlank() }?.let {
-//            gson.fromJson<List<CurrentUser.LinkedStudent>>(
-//                it, object : TypeToken<List<CurrentUser.LinkedStudent>>() {}.type
-//            )
-//        }
-//
-//        val gender = genderStr?.runCatching { Gender.valueOf(this) }?.getOrNull()
-//
-//        return linkedStudents?.let {
-//            CurrentUser(
-//                userId = userId,
-//                email = email,
-//                firstName = firstName,
-//                lastName = lastName,
-//                activeRoles = rolesCsv.toRoleSet(),
-//                phoneNumber = this[Keys.PHONE_NUMBER],
-//                nationalId = this[Keys.NATIONAL_ID],
-//                address = address,
-//                profilePictureUrl = this[Keys.PROFILE_PICTURE_URL],
-//                currentRole = currentRoleStr?.toUserRoleOrNull(),
-//                joinDate = this[Keys.JOIN_DATE],
-//                linkedStudents = it,
-//                gender = gender,
-//                isVerified = this[Keys.IS_VERIFIED] ?: false
-//            ).also {
-//                Log.d("UserSessionManager", "Prefs→User mapped (${it.userId})")
-//            }
-//        }
-//    }
 
     private fun Preferences.toCurrentUserOrNull(): CurrentUser? {
         val authToken = this[Keys.AUTH_TOKEN] ?: return null
