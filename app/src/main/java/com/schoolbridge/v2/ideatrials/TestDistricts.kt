@@ -42,18 +42,11 @@ import java.io.IOException
 
 class DistrictService(
     private val client: HttpClient,
-    private val sessionManager: UserSessionManager
-) {
+    private val token: String
+)
+{
     suspend fun fetchDistricts(): List<DistrictDto> {
         Log.d("DistrictService", "Fetching districts...")
-        val token = sessionManager.getAuthToken()
-        Log.d("DistrictService", "Auth token: $token")
-
-        if (token == null) {
-            Log.e("DistrictService", "Token is null, returning empty list.")
-            return emptyList()
-        }
-
         return try {
             val response = client.get("$BASE_URL/api/districts") {
                 headers {
@@ -96,7 +89,8 @@ class DistrictRepository(private val service: DistrictService) {
 
 class DistrictsViewModel(
     private val repository: DistrictRepository
-) : ViewModel() {
+) : ViewModel()
+{
 
     var districts by mutableStateOf<List<DistrictDto>>(emptyList())
         private set
@@ -135,7 +129,7 @@ class DistrictsViewModel(
 // ✅ ViewModel Factory
 // -------------------------
 
-class DistrictsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+class DistrictsViewModelFactory(private val context: Context,private val token: String) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         Log.d("DistrictVMFactory", "Creating ViewModel with context: $context")
 
@@ -148,8 +142,8 @@ class DistrictsViewModelFactory(private val context: Context) : ViewModelProvide
             }
         }
 
-        val sessionManager = UserSessionManager(context)
-        val service = DistrictService(client, sessionManager)
+        //val sessionManager = UserSessionManager(context)
+        val service = DistrictService(client, token)
         val repo = DistrictRepository(service)
 
         return DistrictsViewModel(repo) as T
@@ -162,9 +156,9 @@ class DistrictsViewModelFactory(private val context: Context) : ViewModelProvide
 
 
 @Composable
-fun DistrictsScreen(context: Context) {
+fun DistrictsScreen(context: Context, token: String) {
     val viewModel: DistrictsViewModel = viewModel(
-        factory = DistrictsViewModelFactory(context)
+        factory = DistrictsViewModelFactory(token = token, context = context)
     )
 
     val districts = viewModel.districts
