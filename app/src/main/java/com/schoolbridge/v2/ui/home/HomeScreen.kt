@@ -371,6 +371,10 @@ private fun HomeUI(
     modifier: Modifier = Modifier
 ) {
     var activeRole = currentUser?.currentRole
+    var authToken by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(userSessionManager) {
+        authToken = userSessionManager.getAuthToken()
+    }
     Log.d("HomeUI", "Active role: $activeRole")
     if (activeRole == null) {
         if (currentUser != null) {
@@ -401,7 +405,13 @@ private fun HomeUI(
                 )
                 SpacerL()
                 GradesSummarySection()
-                DistrictsScreen(context=LocalContext.current)
+                if(authToken != null){
+                    DistrictsScreen(
+                        context = LocalContext.current,
+                        token = authToken!!
+                    )
+                }
+
                 AuthTokenDisplay(userSessionManager = userSessionManager)
             }
 
