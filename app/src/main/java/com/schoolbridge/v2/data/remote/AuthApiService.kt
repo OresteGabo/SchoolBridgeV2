@@ -11,6 +11,7 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -19,14 +20,15 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import java.io.IOException
+import io.ktor.client.statement.*
 
 // Dynamically choose BASE_URL based on environment
-public val BASE_URL: String
+val BASE_URL: String
     get() {
         return if (isRunningOnEmulator()) {
             "http://10.0.2.2:8080"
         } else {
-           "http://172.20.10.3:8080" // For my machine IP
+            "http://172.20.10.4:8080" // For my machine IP
         }
     }
 
@@ -62,29 +64,42 @@ class AuthApiServiceImpl : AuthApiService {
     }
 
     override suspend fun login(request: LoginRequestDto): LoginResponseDto {
+        val TAG = "LoginRepo"
+
         return try {
-            val response = client.post("$BASE_URL/api/auth/login") {
+            Log.d(TAG, "Sending login request to $BASE_URL/api/auth/login with username=${request.username}")
+
+            val response: HttpResponse = client.post("$BASE_URL/api/auth/login") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
 
+            Log.d(TAG, "Received response with status=${response.status}")
+
             if (response.status == HttpStatusCode.OK) {
-                response.body()
+                val body: LoginResponseDto = response.body()
+                Log.d(TAG, "Login success. Response body=$body")
+                body
             } else {
                 val errorBody = response.body<String>()
+                Log.e(TAG, "Login failed. Status=${response.status}, Body=$errorBody")
                 throw Exception("Login failed with status ${response.status}: $errorBody")
             }
 
         } catch (e: ClientRequestException) {
+            Log.e(TAG, "ClientRequestException: ${e.message}", e)
             throw Exception("Client error (${e.response.status}): ${e.message}", e)
 
         } catch (e: ServerResponseException) {
+            Log.e(TAG, "ServerResponseException: ${e.message}", e)
             throw Exception("Server error (${e.response.status}): ${e.message}", e)
 
         } catch (e: IOException) {
+            Log.e(TAG, "IOException: ${e.message}", e)
             throw IOException("Network error. Please check your connection.", e)
 
         } catch (e: Exception) {
+            Log.e(TAG, "Unexpected exception: ${e.message}", e)
             throw Exception("Unexpected error: ${e.message}", e)
         }
     }
