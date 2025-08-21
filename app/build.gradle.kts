@@ -122,4 +122,11 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
     implementation("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    // ---------- MQTT (Eclipse Paho) ----------
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5") // latest stable Java client
+    implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1") // Android wrapper
+
+
+
 }
