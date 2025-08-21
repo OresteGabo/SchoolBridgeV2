@@ -319,7 +319,7 @@ fun AppNavHost(
 
         composable(MainAppScreen.Message.route) {
             MessageScreen(
-                userSessionManager = userSessionManager,
+                //userSessionManager = userSessionManager,
                 currentScreen = MainAppScreen.Message, // ✅ This is the current tab
                 onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
                     navController.navigate(screen.route) {
@@ -332,8 +332,13 @@ fun AppNavHost(
                 },
                 onBack = navController::navigateUp,
                 onMessageThreadClick = { messageThreadId ->
-                    navController.navigate(MainAppScreen.MessageThreadDetails.createRoute(messageThreadId))
-                }
+                    navController.navigate(
+                        MainAppScreen.MessageThreadDetails.createRoute(
+                            messageThreadId
+                        )
+                    )
+                },
+
             )
             println("Navigated to Message Screen") // Placeholder for MessageScreen
         }
