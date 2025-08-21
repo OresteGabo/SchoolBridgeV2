@@ -1,6 +1,7 @@
 package com.schoolbridge.v2.data.dto.academic
 
 import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 
 /**
  * Data Transfer Object (DTO) for a **Course**.
@@ -36,16 +37,25 @@ import com.google.gson.annotations.SerializedName
  * @property active A boolean indicating if the course is currently active and available.
  * Example: `true` for a current course, `false` for an archived or inactive one.
  */
+/*
+@Serializable
 data class CourseDto(
-    val id: String,
+    val id: Long,
     val name: String,
     val description: String,
-    @SerializedName("subject_id") val subjectId: String,
-    @SerializedName("subject_name") val subjectName: String,
-    @SerializedName("academic_year_id") val academicYearId: String,
-    @SerializedName("school_level_offering_id") val schoolLevelOfferingId: String,
-    @SerializedName("teacher_ids") val teacherIds: List<String>,
+    @SerializedName("subject_id") val subjectId: Long,
+    @SerializedName("name") val subjectName: String,
+    @SerializedName("academic_year_id") val academicYearId: Long,
+    @SerializedName("school_level_offering_id") val schoolLevelOfferingId: Long,
+    @SerializedName("teacher_ids") val teacherIds: List<Long>,
     @SerializedName("start_date") val startDate: String,
     @SerializedName("end_date") val endDate: String,
     val active: Boolean
+)
+*/
+@Serializable
+data class CourseDto(
+    val id: Long,
+    val name: String,
+    val description: String
 )
