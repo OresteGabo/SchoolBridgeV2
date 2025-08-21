@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:name=".SchoolBridgeApp"
         android:usesCleartextTraffic="true"
@@ -41,8 +41,8 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/today_schedule_widget_info" />
-
         </receiver>
 
     </application>
 </manifest>
+
