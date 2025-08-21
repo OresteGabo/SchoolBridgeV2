@@ -2,6 +2,7 @@ package com.schoolbridge.v2.ui.home
 
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -72,7 +73,9 @@ import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.ideatrials.CoursesScreen
 import com.schoolbridge.v2.ideatrials.DistrictsScreen
+import com.schoolbridge.v2.mqtt.SimpleMqttClient
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
@@ -98,6 +101,9 @@ import kotlinx.coroutines.launch
 import com.schoolbridge.v2.ui.home.decoration.GlowingTopBarBackground
 import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
 import com.schoolbridge.v2.util.dummyCourses
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import org.eclipse.paho.client.mqttv3.*
 
 
 @Composable
@@ -297,7 +303,7 @@ fun HomeRoute(
     Box(modifier = Modifier.fillMaxSize()) {
         // ✨ Place the glow gradient behind everything
 
-            GlowingGradientBackground(currentRole = currentUser?.currentRole)
+        GlowingGradientBackground(currentRole = currentUser?.currentRole)
         Scaffold(
             topBar = {
                 HomeTopBar(
@@ -359,6 +365,7 @@ fun HomeRoute(
  *  3️⃣  HomeUI now keys off *currentRole* instead of only “isStudent()”
  * ────────────────────────────────────────────────────────────────────────────── */
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeUI(
     currentUser: CurrentUser?,
@@ -375,6 +382,8 @@ private fun HomeUI(
     LaunchedEffect(userSessionManager) {
         authToken = userSessionManager.getAuthToken()
     }
+    val mqtt = remember { SimpleMqttClient() }
+    val context = LocalContext.current
     Log.d("HomeUI", "Active role: $activeRole")
     if (activeRole == null) {
         if (currentUser != null) {
@@ -393,6 +402,27 @@ private fun HomeUI(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AltHero(currentUser = currentUser)
+
+        OutlinedButton(onClick = {
+            mqtt.connect(
+                onConnected = {
+                    //mqtt.subscribe("schoolbridge/test")
+                    mqtt.subscribe("schoolbridge/#")
+                    mqtt.publish("schoolbridge/test", "Hello from Android 🚀")
+                    Toast.makeText(context, "Connected to MQTT", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Subscribing to schoolbridge/#", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Publishing to schoolbridge/test", Toast.LENGTH_SHORT).show()
+                    Log.d("MQTT", "Connected to MQTT")
+                },
+                onMessage = { topic, message ->
+                    Toast.makeText(context, "Got message from $topic: $message", Toast.LENGTH_SHORT).show()
+                    Log.d("MQTT", "Got message from $topic: $message")
+                }
+            )
+        }) {
+            Text("Test MQTT")
+        }
+
         when (activeRole) {
             UserRole.STUDENT -> {
                 CourseListSection()
@@ -410,67 +440,72 @@ private fun HomeUI(
                         context = LocalContext.current,
                         token = authToken!!
                     )
+
+                    CoursesScreen(
+                        context = LocalContext.current,
+                        token = authToken!!
+                    )
                 }
 
                 AuthTokenDisplay(userSessionManager = userSessionManager)
             }
 
 
-             /*UserRole.PARENT -> {
-                 val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
+            /*UserRole.PARENT -> {
+                val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
 
-                 LaunchedEffect(Unit) {
-                     LocalTimetableRepo.loadMockDataForTesting() // Temporary for demo
-                 }
-
-                 if (timetable.isNotEmpty()) {
-                     SpacerL()
-                     Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
-                     TimetableBoard(entries = timetable)
-                 }
-                currentUser?.let {
-                    // 1️⃣ Address and Gender
-                    if (it.address != null) {
-                        //AddressCard(address = it.address)
-                        SpacerS()
-                    }
-                    if (it.gender != null) {
-                        GenderTag(gender = it.gender)
-                        SpacerS()
-                    }
-
-                    // 2️⃣ Linked Students
-                    if (!it.linkedStudents.isNullOrEmpty()) {
-                        Text(
-                            text = "Linked Students",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        LinkedStudentRow(list = it.linkedStudents!!)
-                        SpacerL()
-                    }
+                LaunchedEffect(Unit) {
+                    LocalTimetableRepo.loadMockDataForTesting() // Temporary for demo
                 }
 
-                // 3️⃣ Alerts and Events
-                AlertsSection(
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onAlertClick = onAlertClick
-                )
-                SpacerL()
-
-                EventsSection(
-                    onViewAllEventsClick = onViewAllEventsClick,
-                    onEventClick = onEventClick
-                )
-
-                // 4️⃣ Timetable for Parent's Children
-                val timetable by LocalTimetableRepo.current.cachedTimetable.collectAsState()
                 if (timetable.isNotEmpty()) {
                     SpacerL()
                     Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
                     TimetableBoard(entries = timetable)
                 }
-            }*/
+               currentUser?.let {
+                   // 1️⃣ Address and Gender
+                   if (it.address != null) {
+                       //AddressCard(address = it.address)
+                       SpacerS()
+                   }
+                   if (it.gender != null) {
+                       GenderTag(gender = it.gender)
+                       SpacerS()
+                   }
+
+                   // 2️⃣ Linked Students
+                   if (!it.linkedStudents.isNullOrEmpty()) {
+                       Text(
+                           text = "Linked Students",
+                           style = MaterialTheme.typography.titleMedium,
+                           modifier = Modifier.padding(vertical = 8.dp)
+                       )
+                       LinkedStudentRow(list = it.linkedStudents!!)
+                       SpacerL()
+                   }
+               }
+
+               // 3️⃣ Alerts and Events
+               AlertsSection(
+                   onViewAllAlertsClick = onViewAllAlertsClick,
+                   onAlertClick = onAlertClick
+               )
+               SpacerL()
+
+               EventsSection(
+                   onViewAllEventsClick = onViewAllEventsClick,
+                   onEventClick = onEventClick
+               )
+
+               // 4️⃣ Timetable for Parent's Children
+               val timetable by LocalTimetableRepo.current.cachedTimetable.collectAsState()
+               if (timetable.isNotEmpty()) {
+                   SpacerL()
+                   Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
+                   TimetableBoard(entries = timetable)
+               }
+           }*/
             UserRole.PARENT -> {
                 currentUser?.let {
                     // 1️⃣ Address and Gender
@@ -579,6 +614,7 @@ private fun HomeUI(
         }
     }
 }
+
 
 
 @Composable
@@ -965,7 +1001,7 @@ fun InternalMemosSection(modifier: Modifier = Modifier) {
                         Text(m.title, fontWeight = FontWeight.SemiBold)
                         Text("${m.author} • ${m.date}", style = MaterialTheme.typography.labelSmall)
                     }
-                    Icon(Icons.Default.ArrowForward, null)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
                 }
             }
         }
