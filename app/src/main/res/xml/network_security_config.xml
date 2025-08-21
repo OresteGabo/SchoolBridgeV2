@@ -7,6 +7,6 @@
 
     <!-- Real device access (using your actual local IP address) -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">172.20.10.3</domain>
+        <domain includeSubdomains="true">172.20.10.4</domain>
     </domain-config>
 </network-security-config>
