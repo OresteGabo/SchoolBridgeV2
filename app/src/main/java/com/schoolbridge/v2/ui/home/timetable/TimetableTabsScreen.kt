@@ -23,6 +23,7 @@ import java.time.temporal.TemporalAdjusters
 @Composable
 fun TimetableTabsScreen(
     onBack: () -> Unit,
+
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Weekly", "Daily")
@@ -37,10 +38,15 @@ fun TimetableTabsScreen(
     var selectedWeekDate by remember {
         mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
     }*/
+
     var selectedWeekDate by rememberSaveable {
         mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
     }
-
+    val dailyEvents = remember(selectedDate) {
+            generateSampleEventsForWeek()
+                .filter { it.start.toLocalDate() == selectedDate }
+                .sortedBy { it.start }
+        }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -140,7 +146,8 @@ fun TimetableTabsScreen(
                 )
                 1 -> DailyTimetableTab(
                     selectedDate = selectedDate,
-                    onDateChange = { selectedDate = it }
+                    onDateChange = { selectedDate = it },
+                    //dailyEvents = dailyEvents
                 )
             }
         }
