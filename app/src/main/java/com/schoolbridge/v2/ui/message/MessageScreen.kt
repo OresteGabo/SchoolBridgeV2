@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
-import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 import androidx.compose.animation.*
@@ -58,12 +57,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import com.schoolbridge.v2.domain.messaging.MqttThreadRepository
+import com.schoolbridge.v2.domain.messaging.MqttThreadViewer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageScreen(
-    userSessionManager: UserSessionManager,
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
     onBack: () -> Unit,
@@ -72,10 +73,12 @@ fun MessageScreen(
     onContactsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val repo = remember { MessageThreadRepository() }
+    // ✅ Get context from Compose
+    //val context = LocalContext.current
+    val repo = remember { MqttThreadRepository() }
     val threads by repo.threads.collectAsState()
-    val invitations by repo.invites.collectAsState()
-    val inviteCount = invitations.size
+
+    val inviteCount = 5 // TODO: replace with repo.invites.collectAsState() if you add invites
 
     var search by remember { mutableStateOf("") }
     var searchMode by remember { mutableStateOf(false) }
@@ -91,9 +94,7 @@ fun MessageScreen(
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(searchMode) {
-        if (searchMode) {
-            focusRequester.requestFocus()
-        }
+        if (searchMode) focusRequester.requestFocus()
     }
 
     Scaffold(
@@ -175,30 +176,16 @@ fun MessageScreen(
                 )
             }
 
-
-
-            // --- Threads List ---
-            if (filteredThreads.isEmpty()) {
-                EmptyState()
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = filteredThreads,
-                        key = { it.id }
-                    ) { thread ->
-                        ThreadCard(
-                            thread = thread,
-                            onClick = { onMessageThreadClick(it.id) }
-                        )
-                    }
-                }
+            Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                MqttThreadViewer(
+                    threads = filteredThreads, // ✅ use filtered, not raw threads
+                    onMessageThreadClick = onMessageThreadClick
+                )
             }
         }
     }
 }
+
 
 @Composable
 fun EmptyState() {
