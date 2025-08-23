@@ -41,7 +41,6 @@ import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue
-import com.schoolbridge.v2.domain.messaging.MessageThreadRepository
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.home.ParentRoleRequestScreen
@@ -352,12 +351,7 @@ fun AppNavHost(
             val messageThreadId = backStackEntry.arguments?.getString(MainAppScreen.MessageThreadDetails.MESSAGETHREAD_ID_ARG)
             if (messageThreadId != null) {
                 Log.d("MessageThreadID", messageThreadId)
-                MessageThreadScreen(
-                    messageThreadId = messageThreadId,
-                    onBack = { navController.popBackStack() },
-                    messageThreadRepository = remember { MessageThreadRepository() },
-                    onSendMessage = { message ->},
-                )
+                MessageThreadScreen()
             } else {
                 // Handle case where eventId is null, e.g., show an error screen or navigate back
                 // For now, let's just log and pop back
