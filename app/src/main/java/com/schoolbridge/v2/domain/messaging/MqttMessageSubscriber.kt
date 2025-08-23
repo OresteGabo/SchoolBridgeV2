@@ -8,8 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.ui.message.EmptyState
-import com.schoolbridge.v2.ui.message.ThreadCard
-
+/*
 @Composable
 fun MqttThreadViewer(
     threads: List<MessageThread>,
@@ -31,4 +30,4 @@ fun MqttThreadViewer(
             )
         }
     }
-}
+}*/
