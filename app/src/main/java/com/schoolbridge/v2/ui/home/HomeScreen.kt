@@ -408,7 +408,9 @@ private fun HomeUI(
                 onConnected = {
                     //mqtt.subscribe("schoolbridge/test")
                     mqtt.subscribe("schoolbridge/#")
-                    mqtt.publish("schoolbridge/test", "Hello from Android 🚀")
+                    if (currentUser != null) {
+                        mqtt.publish("schoolbridge/android", currentUser.userId+" Hello from Android 🚀")
+                    }
                     Toast.makeText(context, "Connected to MQTT", Toast.LENGTH_SHORT).show()
                     Toast.makeText(context, "Subscribing to schoolbridge/#", Toast.LENGTH_SHORT).show()
                     Toast.makeText(context, "Publishing to schoolbridge/test", Toast.LENGTH_SHORT).show()
