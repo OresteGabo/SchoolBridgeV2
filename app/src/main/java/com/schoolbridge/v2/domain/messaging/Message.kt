@@ -6,6 +6,7 @@ import java.util.UUID
 /**
  * A single message inside a thread.
  */
+/*
 data class Message(
     val id: String = UUID.randomUUID().toString(),
     val sender: String,
@@ -13,4 +14,11 @@ data class Message(
     val timestamp: LocalDateTime,
     val isRead: Boolean = false,
     val attachments: List<String> = emptyList(),
+)
+*/
+data class Message(
+    val sender: String,
+    val content: String,
+    val timestamp: String,
+    var isUnread: Boolean
 )
