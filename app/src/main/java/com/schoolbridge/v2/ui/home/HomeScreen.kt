@@ -403,7 +403,7 @@ private fun HomeUI(
     ) {
         AltHero(currentUser = currentUser)
 
-        OutlinedButton(onClick = {
+        /*OutlinedButton(onClick = {
             mqtt.connect(
                 onConnected = {
                     //mqtt.subscribe("schoolbridge/test")
@@ -423,7 +423,7 @@ private fun HomeUI(
             )
         }) {
             Text("Test MQTT")
-        }
+        }*/
 
         when (activeRole) {
             UserRole.STUDENT -> {
