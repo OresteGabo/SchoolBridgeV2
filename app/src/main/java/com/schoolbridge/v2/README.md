@@ -31,7 +31,6 @@ By giving parents visibility into their children’s school life, SchoolBridge h
     - When a course is modified in the timetable, all concerned users (students + teachers) get notified.
 
 - **Messaging System**
-    - Built on **MQTT protocol** (`Eclipse Paho`).
     - Supports **message threads** instead of continuous chat.
     - Users get notified of role change requests, admin messages, and important announcements.
 
@@ -56,7 +55,6 @@ By giving parents visibility into their children’s school life, SchoolBridge h
     - Kotlin Coroutines, ViewModel, Navigation
 
 - **Messaging**
-    - [MQTT](https://mqtt.org/) via [Eclipse Paho](https://www.eclipse.org/paho/)
 
 - **Backend**
     - [Spring Boot](https://spring.io/projects/spring-boot) API
@@ -90,7 +88,7 @@ By giving parents visibility into their children’s school life, SchoolBridge h
 
 ## 📂 Project Structure
 
-- `app/` → Android app source code (Jetpack Compose UI, business logic, MQTT integration)
+- `app/` → Android app source code (Jetpack Compose UI and business logic)
 - `screenshots/` → Screenshots and demo video for documentation
 - Backend API → [SchoolBridgeApi](https://github.com/oresteGabo/SchoolBridgeApi)
 
