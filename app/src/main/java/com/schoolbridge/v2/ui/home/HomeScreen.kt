@@ -1,8 +1,5 @@
 package com.schoolbridge.v2.ui.home
-
-
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -73,9 +70,6 @@ import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
-import com.schoolbridge.v2.ideatrials.CoursesScreen
-import com.schoolbridge.v2.ideatrials.DistrictsScreen
-import com.schoolbridge.v2.mqtt.SimpleMqttClient
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
@@ -101,9 +95,6 @@ import kotlinx.coroutines.launch
 import com.schoolbridge.v2.ui.home.decoration.GlowingTopBarBackground
 import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
 import com.schoolbridge.v2.util.dummyCourses
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import org.eclipse.paho.client.mqttv3.*
 
 
 @Composable
@@ -378,12 +369,6 @@ private fun HomeUI(
     modifier: Modifier = Modifier
 ) {
     var activeRole = currentUser?.currentRole
-    var authToken by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(userSessionManager) {
-        authToken = userSessionManager.getAuthToken()
-    }
-    val mqtt = remember { SimpleMqttClient() }
-    val context = LocalContext.current
     Log.d("HomeUI", "Active role: $activeRole")
     if (activeRole == null) {
         if (currentUser != null) {
@@ -403,53 +388,20 @@ private fun HomeUI(
     ) {
         AltHero(currentUser = currentUser)
 
-        /*OutlinedButton(onClick = {
-            mqtt.connect(
-                onConnected = {
-                    //mqtt.subscribe("schoolbridge/test")
-                    mqtt.subscribe("schoolbridge/#")
-                    if (currentUser != null) {
-                        mqtt.publish("schoolbridge/android", currentUser.userId+" Hello from Android 🚀")
-                    }
-                    Toast.makeText(context, "Connected to MQTT", Toast.LENGTH_SHORT).show()
-                    Toast.makeText(context, "Subscribing to schoolbridge/#", Toast.LENGTH_SHORT).show()
-                    Toast.makeText(context, "Publishing to schoolbridge/test", Toast.LENGTH_SHORT).show()
-                    Log.d("MQTT", "Connected to MQTT")
-                },
-                onMessage = { topic, message ->
-                    Toast.makeText(context, "Got message from $topic: $message", Toast.LENGTH_SHORT).show()
-                    Log.d("MQTT", "Got message from $topic: $message")
-                }
-            )
-        }) {
-            Text("Test MQTT")
-        }*/
-
         when (activeRole) {
             UserRole.STUDENT -> {
-                CourseListSection()
+                StudentOverviewSection(currentUser = currentUser)
                 SpacerL()
                 TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                SpacerL()
+                GradesSummarySection()
                 SpacerL()
                 AlertsSection(
                     onViewAllAlertsClick = onViewAllAlertsClick,
                     onAlertClick = onAlertClick
                 )
                 SpacerL()
-                GradesSummarySection()
-                if(authToken != null){
-                    DistrictsScreen(
-                        context = LocalContext.current,
-                        token = authToken!!
-                    )
-
-                    CoursesScreen(
-                        context = LocalContext.current,
-                        token = authToken!!
-                    )
-                }
-
-                AuthTokenDisplay(userSessionManager = userSessionManager)
+                CourseListSection()
             }
 
 
@@ -509,6 +461,8 @@ private fun HomeUI(
                }
            }*/
             UserRole.PARENT -> {
+                ParentOverviewSection(currentUser = currentUser)
+                SpacerL()
                 currentUser?.let {
                     // 1️⃣ Address and Gender
                     if (it.address != null) {
@@ -570,6 +524,8 @@ private fun HomeUI(
             }
 
             UserRole.TEACHER -> {
+                TeacherOverviewSection()
+                SpacerL()
                 TeacherQuickActionsSection()
                 SpacerL()
                 TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
@@ -582,19 +538,13 @@ private fun HomeUI(
                 CourseListSection()
             }
             UserRole.SCHOOL_ADMIN -> {
+                AdminOverviewSection()
+                SpacerL()
                 AdminQuickActionsSection()
                 SpacerL()
                 AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
                 SpacerL()
-                PendingGradesSection()
-                SpacerM()
-                RecentSanctionsSection()
-                SpacerM()
-                ApprovalRequestsSection()
-                SpacerM()
-                InternalMemosSection()
-                SpacerM()
-                TeacherActivitySummarySection()
+                AdminOperationsBoard()
                 SpacerM()
                 AcademicOverviewSection()
                 SpacerM()
@@ -1170,6 +1120,3 @@ data class ClassAcademicSummary(
     val avg: Double,
     val topScore: Double
 )
-
-
-
