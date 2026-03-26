@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+
     <!-- Emulator access -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
 
-    <!-- Real device access (using your actual local IP address) -->
+    <!-- Real device access on local networks -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">172.20.10.4</domain>
+        <domain includeSubdomains="true">172.20.10.2</domain>
     </domain-config>
 </network-security-config>
