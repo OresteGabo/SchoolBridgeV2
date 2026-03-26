@@ -5,78 +5,113 @@ import androidx.lifecycle.viewModelScope
 import com.schoolbridge.v2.domain.messaging.Message
 import com.schoolbridge.v2.domain.messaging.MessageAction
 import com.schoolbridge.v2.domain.messaging.MessageThread
-import com.schoolbridge.v2.domain.messaging.ThreadMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 class MessageThreadViewModel : ViewModel() {
+
     private val _messageThreads = MutableStateFlow(defaultThreads())
     val messageThreads: StateFlow<List<MessageThread>> = _messageThreads
 
-    fun updateMessageThreads(threadId: String, newMessage: Message) {
+    // 🔥 ADD USER MESSAGE (NEW)
+    fun addUserMessage(threadId: String, content: String) {
         viewModelScope.launch {
-            val currentThreads = _messageThreads.value.map { thread ->
+
+            val newMessage = Message(
+                id = UUID.randomUUID().toString(),
+                sender = "You",
+                content = formatUserReply(content),
+                timestamp = now(),
+                title = null,
+                status = null,
+                actions = emptyList(),
+                isUnread = false
+            )
+
+            val updatedThreads = _messageThreads.value.map { thread ->
                 if (thread.id == threadId) {
-                    thread.copy(messages = (thread.messages + newMessage).toMutableList())
-                } else {
-                    thread
-                }
+                    thread.copy(
+                        messages = (thread.messages + newMessage).toMutableList()
+                    )
+                } else thread
             }
-            _messageThreads.value = currentThreads
+
+            _messageThreads.value = updatedThreads
+        }
+    }
+
+    // 🔥 IMPROVED ACTION HANDLING
+    fun performAction(threadId: String, messageId: String, actionId: String) {
+        viewModelScope.launch {
+
+            val updatedThreads = _messageThreads.value.map { thread ->
+                if (thread.id == threadId) {
+
+                    val updatedMessages = thread.messages.map { msg ->
+                        if (msg.id == messageId) {
+
+                            val newStatus = when (actionId) {
+                                "mark_paid" -> "Marked as Paid"
+                                "acknowledge" -> "Acknowledged"
+                                "seen" -> "Seen"
+                                "yes" -> "Confirmed"
+                                "no" -> "Declined"
+                                "not_sure" -> "Pending"
+                                else -> "Updated"
+                            }
+
+                            msg.copy(status = newStatus)
+
+                        } else msg
+                    }
+
+                    thread.copy(messages = updatedMessages.toMutableList())
+                } else thread
+            }
+
+            _messageThreads.value = updatedThreads
         }
     }
 
     fun markAsRead(threadId: String) {
         viewModelScope.launch {
-            val currentThreads = _messageThreads.value.map { thread ->
+            val updated = _messageThreads.value.map { thread ->
                 if (thread.id == threadId) {
-                    val updatedMessages = thread.messages.map { it.copy(isUnread = false) }
-                    thread.copy(messages = updatedMessages.toMutableList())
-                } else {
-                    thread
-                }
+                    thread.copy(
+                        messages = thread.messages.map {
+                            it.copy(isUnread = false)
+                        }.toMutableList()
+                    )
+                } else thread
             }
-            _messageThreads.value = currentThreads
+            _messageThreads.value = updated
         }
     }
 
-    fun performAction(threadId: String, messageId: String, actionId: String) {
-        viewModelScope.launch {
-            val currentThreads = _messageThreads.value.map { thread ->
-                if (thread.id == threadId) {
-                    val updatedMessages = thread.messages.map { msg ->
-                        if (msg.id == messageId) {
-                            val newStatus = when (actionId) {
-                                "mark_paid" -> "Marked as Paid"
-                                "acknowledge" -> "Acknowledged"
-                                "seen" -> "Seen"
-                                "yes" -> "Confirmed: Yes"
-                                "no" -> "Confirmed: No"
-                                "not_sure" -> "Confirmed: Not Sure"
-                                else -> msg.status
-                            }
-                            msg.copy(status = newStatus)
-                        } else {
-                            msg
-                        }
-                    }
-                    thread.copy(messages = updatedMessages.toMutableList())
-                } else {
-                    thread
-                }
-            }
-            _messageThreads.value = currentThreads
+    // 🎯 SMART USER REPLY FORMATTING (VERY IMPORTANT UX)
+    private fun formatUserReply(actionLabel: String): String {
+        return when (actionLabel.lowercase()) {
+            "yes" -> "Yes"
+            "no" -> "No"
+            "not sure" -> "Not sure"
+            "mark as paid" -> "Payment completed"
+            "acknowledge" -> "Acknowledged"
+            else -> actionLabel
         }
     }
 
     private companion object {
-        fun now() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm, MMM d"))
-        
+
+        fun now(): String =
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm, MMM d"))
+
         fun defaultThreads(): List<MessageThread> {
             return listOf(
+
                 MessageThread(
                     id = "finance_office_thread",
                     topic = "School Fees",
@@ -91,7 +126,7 @@ class MessageThreadViewModel : ViewModel() {
                             isUnread = true,
                             actions = listOf(
                                 MessageAction("Mark as Paid", "mark_paid"),
-                                MessageAction("Need Help", "help", com.schoolbridge.v2.domain.messaging.ActionStyle.OUTLINE)
+                                MessageAction("Need Help", "help")
                             )
                         ),
                         Message(
@@ -104,6 +139,7 @@ class MessageThreadViewModel : ViewModel() {
                         )
                     )
                 ),
+
                 MessageThread(
                     id = "admin_office_thread",
                     topic = "General Announcements",
@@ -113,7 +149,7 @@ class MessageThreadViewModel : ViewModel() {
                             id = "msg_3",
                             title = "General Assembly",
                             sender = "Head Teacher",
-                            content = "The annual general assembly will take place on July 15th at 10:00 AM in the main hall. We look forward to seeing you all.",
+                            content = "The annual general assembly will take place on July 15th at 10:00 AM in the main hall.",
                             timestamp = now(),
                             isUnread = false,
                             actions = listOf(
@@ -124,6 +160,7 @@ class MessageThreadViewModel : ViewModel() {
                         )
                     )
                 ),
+
                 MessageThread(
                     id = "academic_office_thread",
                     topic = "Academic Updates",
@@ -133,7 +170,7 @@ class MessageThreadViewModel : ViewModel() {
                             id = "msg_4",
                             title = "Mock Exams",
                             sender = "Class Teacher",
-                            content = "Mock exams for S4 students start on Monday. Please ensure students have all necessary stationery.",
+                            content = "Mock exams for S4 students start on Monday.",
                             timestamp = now(),
                             isUnread = true
                         )
