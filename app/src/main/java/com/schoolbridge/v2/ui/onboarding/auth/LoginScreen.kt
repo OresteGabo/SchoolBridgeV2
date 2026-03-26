@@ -32,6 +32,8 @@ import com.schoolbridge.v2.data.session.UserSessionManager // Import UserSession
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
 import kotlinx.coroutines.delay
 
+private const val AUTH_TRACE_TAG = "AUTH_TRACE"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoginScreen(
@@ -48,8 +50,31 @@ fun LoginScreen(
     val loginSuccess = viewModel.loginSuccess
     var isPasswordVisible by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        Log.d(
+            AUTH_TRACE_TAG,
+            "LoginScreen:entered usernameLength=${viewModel.usernameOrEmail.length} passwordLength=${viewModel.password.length}"
+        )
+    }
+
+    LaunchedEffect(isLoading) {
+        Log.d(AUTH_TRACE_TAG, "LoginScreen:isLoading changed to $isLoading")
+    }
+
+    LaunchedEffect(viewModel.usernameOrEmail) {
+        Log.d(AUTH_TRACE_TAG, "LoginScreen:username state length=${viewModel.usernameOrEmail.length}")
+    }
+
+    LaunchedEffect(viewModel.password) {
+        Log.d(AUTH_TRACE_TAG, "LoginScreen:password state length=${viewModel.password.length}")
+    }
+
     LaunchedEffect(loginSuccess) {
         loginSuccess?.let {
+            Log.d(
+                AUTH_TRACE_TAG,
+                "LoginScreen:loginSuccess observed userId=${it.userId} currentRole=${it.currentRole}"
+            )
             navigateToHome()
             viewModel.resetState()
         }
@@ -57,6 +82,7 @@ fun LoginScreen(
 
     LaunchedEffect(loginError) {
         loginError?.let {
+            Log.d(AUTH_TRACE_TAG, "LoginScreen:loginError observed message=$it")
             Log.d("ERROR_LOGIN", it)
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.resetState()
@@ -118,21 +144,27 @@ fun LoginScreen(
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Lock Icon") },
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { viewModel.login() }
-                ),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                isError = loginError != null
-            )
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                    onDone = {
+                        Log.d(AUTH_TRACE_TAG, "LoginScreen:IME action Done triggered")
+                        viewModel.login()
+                    }
+            ),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            isError = loginError != null
+        )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = viewModel::login,
+                onClick = {
+                    Log.d(AUTH_TRACE_TAG, "LoginScreen:login button clicked")
+                    viewModel.login()
+                },
                 enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +201,6 @@ fun LoginScreen(
         }
     }
 }
-
 
 
 
