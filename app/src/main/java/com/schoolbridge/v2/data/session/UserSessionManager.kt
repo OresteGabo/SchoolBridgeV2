@@ -10,8 +10,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
-import com.schoolbridge.v2.data.dto.common.AddressDto
-import com.schoolbridge.v2.data.dto.user.student.LinkedStudentDto
 import com.schoolbridge.v2.domain.user.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
@@ -85,56 +83,52 @@ class UserSessionManager @Inject constructor(
     }
 
     suspend fun saveLoginResponse(dto: LoginResponseDto): CurrentUser {
-        Log.d("UserSessionManager", "saveLoginResponse(${dto.userId})")
-        Log.d("UserSessionManager", "Saving auth token: ${dto.authToken}")
-        Log.d("UserSessionManager", "Saving refresh token: ${dto.refreshToken}")
+        Log.d("UserSessionManager", "saveLoginResponse(${dto.user.id})")
+        Log.d("UserSessionManager", "Saving auth token")
 
-        val rolesCsv = dto.activeRoles.joinToString(",")
-        val roleString = dto.role
-        val address = dto.address?.toDomain()
-        val linkedStudents = dto.linkedStudents.map { it.toDomain() }
+        val rolesCsv = dto.user.roles.joinToString(",")
+        val roleString = dto.user.roles.firstOrNull()
 
         context.userDataStore.edit { prefs ->
-            prefs[Keys.AUTH_TOKEN] = dto.authToken
-            prefs[Keys.REFRESH_TOKEN] = dto.refreshToken
-            prefs[Keys.USER_ID] = dto.userId
-            prefs[Keys.EMAIL] = dto.email
-            prefs[Keys.FIRST_NAME] = dto.firstName
-            prefs[Keys.LAST_NAME] = dto.lastName
+            prefs[Keys.AUTH_TOKEN] = dto.token
+            prefs[Keys.REFRESH_TOKEN] = ""
+            prefs[Keys.USER_ID] = dto.user.id.toString()
+            prefs[Keys.EMAIL] = dto.user.email
+            prefs[Keys.FIRST_NAME] = dto.user.firstName
+            prefs[Keys.LAST_NAME] = dto.user.familyName
             prefs[Keys.ACTIVE_ROLES] = rolesCsv
             prefs[Keys.CURRENT_ROLE] = roleString ?: ""
-            prefs[Keys.PHONE_NUMBER] = dto.phoneNumber ?: ""
-            prefs[Keys.NATIONAL_ID] = dto.nationalId ?: ""
-            prefs[Keys.ADDRESS_JSON] = gson.toJson(address)
-            prefs[Keys.PROFILE_PICTURE_URL] = dto.profilePictureUrl ?: ""
-            prefs[Keys.JOIN_DATE] = dto.joinDate ?: ""
-            prefs[Keys.LINKED_STUDENTS_JSON] = gson.toJson(linkedStudents)
-            prefs[Keys.GENDER] = dto.gender ?: ""
-            prefs[Keys.IS_VERIFIED] = dto.isVerified
+            prefs[Keys.PHONE_NUMBER] = ""
+            prefs[Keys.NATIONAL_ID] = ""
+            prefs[Keys.ADDRESS_JSON] = ""
+            prefs[Keys.PROFILE_PICTURE_URL] = ""
+            prefs[Keys.JOIN_DATE] = dto.user.lastLogin ?: ""
+            prefs[Keys.LINKED_STUDENTS_JSON] = gson.toJson(emptyList<CurrentUser.LinkedStudent>())
+            prefs[Keys.GENDER] = ""
+            prefs[Keys.IS_VERIFIED] = dto.user.isActive
         }
 
         // Read back saved values to confirm
         val savedPrefs = context.userDataStore.data.first()
-        Log.d("UserSessionManager", "Retrieved auth token: ${savedPrefs[Keys.AUTH_TOKEN]}")
-        Log.d("UserSessionManager", "Retrieved refresh token: ${savedPrefs[Keys.REFRESH_TOKEN]}")
+        Log.d("UserSessionManager", "Retrieved auth token: ${savedPrefs[Keys.AUTH_TOKEN] != null}")
         Log.d("UserSessionManager", "Retrieved user ID: ${savedPrefs[Keys.USER_ID]}")
         Log.d("UserSessionManager", "Retrieved email: ${savedPrefs[Keys.EMAIL]}")
 
         val user = CurrentUser(
-            userId = dto.userId,
-            email = dto.email,
-            firstName = dto.firstName,
-            lastName = dto.lastName,
-            activeRoles = dto.activeRoles.mapNotNull { it.toUserRoleOrNull() }.toSet(),
-            phoneNumber = dto.phoneNumber,
-            nationalId = dto.nationalId,
-            address = address,
-            profilePictureUrl = dto.profilePictureUrl,
-            currentRole = (dto.role ?: dto.activeRoles.firstOrNull())?.toUserRoleOrNull(),
-            joinDate = dto.joinDate,
-            linkedStudents = linkedStudents,
-            gender = Gender.valueOf(dto.gender),
-            isVerified = dto.isVerified
+            userId = dto.user.id.toString(),
+            email = dto.user.email,
+            firstName = dto.user.firstName,
+            lastName = dto.user.familyName,
+            activeRoles = dto.user.roles.mapNotNull { it.toUserRoleOrNull() }.toSet(),
+            phoneNumber = null,
+            nationalId = null,
+            address = null,
+            profilePictureUrl = null,
+            currentRole = dto.user.roles.firstOrNull()?.toUserRoleOrNull(),
+            joinDate = dto.user.lastLogin,
+            linkedStudents = emptyList(),
+            gender = null,
+            isVerified = dto.user.isActive
         )
 
         _currentUser.value = user
@@ -253,17 +247,4 @@ class UserSessionManager @Inject constructor(
     private fun String.toRoleSet(): Set<UserRole> =
         split(',').mapNotNull { it.trim().takeIf { it.isNotEmpty() }?.toUserRoleOrNull() }.toSet()
 
-    // Extension mappers
-    private fun AddressDto.toDomain(): CurrentUser.Address = CurrentUser.Address(
-        district = district,
-        sector = sector,
-        cell = cell,
-        village = village
-    )
-
-    private fun LinkedStudentDto.toDomain(): CurrentUser.LinkedStudent = CurrentUser.LinkedStudent(
-        id = id,
-        firstName = firstName,
-        lastName = lastName
-    )
 }
