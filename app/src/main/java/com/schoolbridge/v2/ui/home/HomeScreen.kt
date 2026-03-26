@@ -7,7 +7,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -35,6 +34,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
@@ -51,9 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,7 +74,6 @@ import com.schoolbridge.v2.ui.components.SpacerL
 import com.schoolbridge.v2.ui.components.SpacerM
 import com.schoolbridge.v2.ui.components.SpacerS
 import com.schoolbridge.v2.ui.home.alert.AlertDetailsBottomSheetContent
-import com.schoolbridge.v2.ui.home.alert.AlertsSection
 import com.schoolbridge.v2.ui.home.common.ActionCard
 import com.schoolbridge.v2.ui.home.common.AddressCard
 import com.schoolbridge.v2.ui.home.common.GenderTag
@@ -83,7 +81,6 @@ import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
 import com.schoolbridge.v2.ui.home.common.LocalTimetableRepo
 import com.schoolbridge.v2.ui.home.common.TimetableBoard
 import com.schoolbridge.v2.ui.home.course.CourseListSection
-import com.schoolbridge.v2.ui.home.event.EventsSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
 import com.schoolbridge.v2.ui.home.role.RoleSelectorBottomSheet
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleCard
@@ -99,96 +96,171 @@ import com.schoolbridge.v2.util.dummyCourses
 
 @Composable
 fun AltHero(currentUser: CurrentUser?) {
-    val name = currentUser?.lastName ?: ""
-    val gender = currentUser?.gender
-    val colors = listOf(
-        colorScheme.primary,
-        colorScheme.secondary
-    )
+    val name = buildString {
+        append(currentUser?.lastName?.takeIf { it.isNotBlank() } ?: "there")
+    }
+    val role = currentUser?.currentRole ?: currentUser?.activeRoles?.firstOrNull()
+    val scheme = MaterialTheme.colorScheme
 
-    val textColor = colorScheme.primary
-
-    Box(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .clip(MaterialTheme.shapes.extraLarge)
-            .background(Color.Transparent)
+            .height(210.dp),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        // 1️⃣ Background Image
-        Image(
-            painter = painterResource(id = R.drawable.ic_bridge),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(500.dp)
-                .offset(x = (-60).dp, y = (-40).dp)
-                .alpha(0.08f)
-        )
-
-        // 2️⃣ Glowy Circles
-        listOf(300.dp, 200.dp, 260.dp).forEachIndexed { i, size ->
-            Box(
-                modifier = Modifier
-                    .size(size)
-                    .blur(120.dp)
-                    .graphicsLayer { alpha = 0.55f }
-                    .offset(x = (-40 + i * 80).dp, y = (-20 + i * 60).dp)
-                    .background(
-                        Brush.radialGradient(colors + Color.Transparent),
-                        shape = CircleShape
-                    )
-            )
-        }
-
-        // 3️⃣ 🟣 Gradient overlay for text readability
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(100.dp)
+                .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
+                    Brush.linearGradient(
                         colors = listOf(
-                            colorScheme.surface.copy(alpha = 0.8f),
-                            colorScheme.surface.copy(alpha = 0.0f)
+                            scheme.surface,
+                            scheme.surfaceContainerHigh,
+                            scheme.primary.copy(alpha = 0.12f)
                         ),
-                        startY = Float.POSITIVE_INFINITY,
-                        endY = 0f
+                        start = Offset.Zero,
+                        end = Offset(900f, 700f)
                     )
                 )
-        )
-
-        // 4️⃣ Welcome Text
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Bottom
+                .padding(24.dp)
         ) {
-            val genderPrefix = when (gender?.name) {
-                "MALE" -> "Mr."
-                "FEMALE" -> "Ms."
-                else -> ""
-            }
-            val userP = if (name.isBlank()) "there" else "$genderPrefix $name"
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(132.dp)
+                    .blur(28.dp)
+                    .background(
+                        scheme.primary.copy(alpha = 0.16f),
+                        CircleShape
+                    )
+            )
 
-            Text(
-                text = "Hey $userP 👋",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    color = textColor,
-                    fontWeight = FontWeight.SemiBold
-                )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(116.dp)
+                    .background(
+                        scheme.secondary.copy(alpha = 0.10f),
+                        RoundedCornerShape(topStart = 36.dp, bottomStart = 56.dp, topEnd = 36.dp, bottomEnd = 18.dp)
+                    )
             )
-            SpacerS()
-            Text(
-                text = "Welcome to SchoolBridge",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = textColor.copy(alpha = 0.85f)
-                )
-            )
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = scheme.primary.copy(alpha = 0.10f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.School,
+                                contentDescription = null,
+                                tint = scheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = role?.humanLabel ?: "SchoolBridge",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = scheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    if (currentUser?.isVerified == true) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = Color(0xFF1E8E5A).copy(alpha = 0.12f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Verified,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1E8E5A),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Verified",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF1E8E5A),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Hello, $name",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = scheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = when (role) {
+                            UserRole.STUDENT -> "Stay on top of classes, marks, discipline, and what needs your attention today."
+                            UserRole.PARENT -> "Track your children, school messages, fee reminders, and academic progress from one place."
+                            UserRole.TEACHER -> "See your teaching load, grading pressure, and key classroom actions before the day picks up."
+                            UserRole.SCHOOL_ADMIN -> "Keep a close eye on approvals, discipline, finance, and academic operations."
+                            else -> "Welcome back to a calmer, clearer SchoolBridge home."
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = scheme.onSurfaceVariant,
+                        lineHeight = 22.sp
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HeroMetaChip(
+                            label = "${currentUser?.activeRoles?.size ?: 0} active roles",
+                            tint = scheme.secondary
+                        )
+                        HeroMetaChip(
+                            label = if (currentUser?.email?.isNotBlank() == true) "Account ready" else "Profile in progress",
+                            tint = scheme.tertiary
+                        )
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun HeroMetaChip(label: String, tint: Color) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = tint.copy(alpha = 0.10f)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = tint,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -396,11 +468,6 @@ private fun HomeUI(
                 SpacerL()
                 GradesSummarySection()
                 SpacerL()
-                AlertsSection(
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onAlertClick = onAlertClick
-                )
-                SpacerL()
                 CourseListSection()
             }
 
@@ -492,19 +559,7 @@ private fun HomeUI(
                     }
                 }
 
-                // 3️⃣ Alerts and Events
-                AlertsSection(
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onAlertClick = onAlertClick
-                )
-                SpacerL()
-
-                EventsSection(
-                    onViewAllEventsClick = onViewAllEventsClick,
-                    onEventClick = onEventClick
-                )
-
-                // 4️⃣ Timetable for Parent's Children
+                // 3️⃣ Timetable for Parent's Children
                 val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
 
                 LaunchedEffect(Unit) {
@@ -530,11 +585,6 @@ private fun HomeUI(
                 SpacerL()
                 TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
                 SpacerL()
-                AlertsSection(
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onAlertClick = onAlertClick
-                )
-                SpacerL()
                 CourseListSection()
             }
             UserRole.SCHOOL_ADMIN -> {
@@ -551,16 +601,6 @@ private fun HomeUI(
                 StudentExplorerSection()
                 SpacerM()
                 AcademicCalendarSection()
-                SpacerL()
-                AlertsSection(
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onAlertClick = onAlertClick
-                )
-                SpacerL()
-                EventsSection(
-                    onViewAllEventsClick = onViewAllEventsClick,
-                    onEventClick = onEventClick
-                )
             }
             else -> {}
         }
@@ -975,11 +1015,17 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            "👥 Class Attendance",
+            "Class Attendance",
             style = MaterialTheme.typography.titleMedium,
             color = colorScheme.primary
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "See attendance health by class and quickly spot where follow-up is needed.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -987,62 +1033,140 @@ fun StudentExplorerSection(modifier: Modifier = Modifier) {
         ) {
             items(classes.size){index->
                 AnimatedVisibility(visible = true) {
+                    val classInfo = classes[index]
+                    val attendanceRate = ((classInfo.present.toFloat() / classInfo.total.toFloat()) * 100).toInt()
+                    val attendanceColor = when {
+                        attendanceRate >= 95 -> Color(0xFF1E8E5A)
+                        attendanceRate >= 85 -> colorScheme.primary
+                        else -> colorScheme.error
+                    }
                     Card(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(18.dp),
                         modifier = Modifier
-                            .width(160.dp)
-                            .heightIn(min = 120.dp),
+                            .width(184.dp)
+                            .height(196.dp),
                         //.animateItemPlacement(),
                         colors = CardDefaults.cardColors(
-                            containerColor = colorScheme.surface,
+                            containerColor = colorScheme.surfaceContainerLow,
                             contentColor = colorScheme.onSurface
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             Modifier
-                                .padding(12.dp)
-                                .fillMaxWidth(),
+                                .padding(14.dp)
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
                             horizontalAlignment = Alignment.Start
                         ) {
-                            Text(
-                                "${classes[index].level} ${classes[index].stream}",
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(
+                                    "${classInfo.level} ${classInfo.stream}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = attendanceColor.copy(alpha = 0.12f)
+                                ) {
+                                    Text(
+                                        text = "$attendanceRate%",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = attendanceColor
+                                    )
+                                }
+                            }
 
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(8.dp))
 
                             Text(
-                                "${classes[index].present}/${classes[index].total} present",
+                                "${classInfo.present}/${classInfo.total} learners present",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colorScheme.onSurfaceVariant
                             )
 
                             Spacer(Modifier.height(6.dp))
 
-                            if (classes[index].absentReasons.isNotEmpty()) {
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    classes[index].absentReasons.forEach { (reason, count) ->
-                                        Text(
-                                            text = "$reason: $count",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = colorScheme.secondary
-                                        )
-                                    }
-                                }
-                            } else {
+                            LinearProgressIndicator(
+                                progress = { classInfo.present.toFloat() / classInfo.total.toFloat() },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = attendanceColor,
+                                trackColor = colorScheme.surfaceVariant
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+
+                            Text(
+                                "$attendanceRate% attendance",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurface
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            Spacer(Modifier.height(10.dp))
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(58.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Text(
-                                    "✅ Full attendance",
+                                    text = if (classInfo.absentReasons.isNotEmpty()) "Absence reasons" else "Attendance status",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF4CAF50)
+                                    color = colorScheme.onSurfaceVariant
                                 )
+
+                                if (classInfo.absentReasons.isNotEmpty()) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        classInfo.absentReasons.forEach { (reason, count) ->
+                                            AttendanceReasonChip(
+                                                label = "$reason $count",
+                                                tint = when (reason) {
+                                                    "Medical" -> colorScheme.primary
+                                                    "Permission" -> colorScheme.secondary
+                                                    else -> colorScheme.error
+                                                }
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    AttendanceReasonChip(
+                                        label = "Full attendance",
+                                        tint = Color(0xFF1E8E5A)
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AttendanceReasonChip(label: String, tint: Color) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = tint.copy(alpha = 0.12f)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = tint
+        )
     }
 }
 
@@ -1069,14 +1193,37 @@ fun AcademicCalendarSection(modifier: Modifier = Modifier) {
         )
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📅 Important Dates", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
-        Spacer(Modifier.height(8.dp))
+        Text("Important Dates", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Key academic checkpoints that should stay visible even when alerts move into messaging.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
         dates.forEach { d ->
-            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Row(Modifier.padding(12.dp)) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow)
+            ) {
+                Row(
+                    Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(colorScheme.primary.copy(alpha = 0.10f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Schedule, contentDescription = null, tint = colorScheme.primary)
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(d.title, fontWeight = FontWeight.SemiBold)
-                        Text(d.date, style = MaterialTheme.typography.labelSmall)
+                        Text(d.date, style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
                     }
                     Icon(Icons.Default.ArrowForward, null)
                 }
@@ -1097,17 +1244,59 @@ fun AcademicOverviewSection(modifier: Modifier = Modifier) {
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("📊 Academic Summary", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
-        Spacer(Modifier.height(8.dp))
+        Text("Academic Summary", style = MaterialTheme.typography.titleMedium, color = colorScheme.primary)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "A quick picture of class performance, strongest results, and where academic support may be needed.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(classSummaries.size){index->
-                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.width(180.dp)) {
+                val item = classSummaries[index]
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.width(200.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainerLow)
+                ) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(classSummaries[index].className, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Avg: ${classSummaries[index].avg}%", style = MaterialTheme.typography.labelSmall)
-                        Text("Top: ${classSummaries[index].topScore}%", style = MaterialTheme.typography.labelSmall)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.className, fontWeight = FontWeight.SemiBold)
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = when {
+                                    item.avg >= 70 -> Color(0xFF1E8E5A).copy(alpha = 0.12f)
+                                    item.avg >= 60 -> colorScheme.primary.copy(alpha = 0.12f)
+                                    else -> colorScheme.error.copy(alpha = 0.12f)
+                                }
+                            ) {
+                                Text(
+                                    text = when {
+                                        item.avg >= 70 -> "Stable"
+                                        item.avg >= 60 -> "Watch"
+                                        else -> "Support"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = when {
+                                        item.avg >= 70 -> Color(0xFF1E8E5A)
+                                        item.avg >= 60 -> colorScheme.primary
+                                        else -> colorScheme.error
+                                    }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text("Class average", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
+                        Text("${item.avg}%", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        Text("Top score: ${item.topScore}%", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
