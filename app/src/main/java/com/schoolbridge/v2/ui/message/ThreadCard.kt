@@ -1,49 +1,38 @@
 package com.schoolbridge.v2.ui.message
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Badge
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.messaging.MessageThread
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun ThreadCard(
     thread: MessageThread,
-    onClick: (MessageThread) -> Unit ,
+    onClick: (MessageThread) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accent = if (thread.getUnreadCount() > 0)
-        MaterialTheme.colorScheme.primary
-    else
-        MaterialTheme.colorScheme.outlineVariant
+    val unreadCount = thread.getUnreadCount()
+    val isUnread = unreadCount > 0
 
     ElevatedCard(
         onClick = { onClick(thread) },
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             Modifier
@@ -51,58 +40,81 @@ fun ThreadCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Leading coloured bar (unread indicator)
+            // Department Avatar (Simple Circle with Initial or Icon)
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(accent)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = thread.topic,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                val icon: ImageVector = if (thread.participantsLabel.contains("Finance")) 
+                    Icons.Default.Business else Icons.Default.School
+                
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
                 )
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = thread.participantsLabel, // "Finance Office", "Academic Office"
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    thread.getLatestMessage()?.let { message ->
+                        Text(
+                            text = message.timestamp.split(", ").lastOrNull() ?: "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isUnread) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.height(2.dp))
+
                 thread.getLatestMessage()?.let { message ->
                     Text(
                         text = message.content,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isUnread) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isUnread) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = "participants here", // Placeholder for participants
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                thread.getLatestMessage()?.let { message ->
-                    // Convert timestamp to LocalDateTime and format
-                    val instant = Instant.ofEpochMilli(message.timestamp.toLong())
-                    val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
-                    val formatter = DateTimeFormatter.ofPattern("MMM d, HH:mm")
-                    Text(
-                        text = dateTime.format(formatter),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (thread.getUnreadCount() > 0) {
-                    Spacer(Modifier.height(4.dp))
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) { Text("${thread.getUnreadCount()}") }
+
+            if (isUnread) {
+                Spacer(Modifier.width(8.dp))
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                ) { 
+                    Text("$unreadCount") 
                 }
             }
         }
+        
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 82.dp),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
