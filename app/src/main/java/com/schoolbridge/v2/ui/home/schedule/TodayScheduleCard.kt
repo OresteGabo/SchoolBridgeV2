@@ -93,6 +93,14 @@ fun TodayScheduleCard(
                     text = course.subject,
                     style = MaterialTheme.typography.titleMedium
                 )
+                if (!course.studentName.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = course.studentName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
