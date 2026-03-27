@@ -10,4 +10,12 @@ class MessagingRepositoryImpl(
     override suspend fun getMessageThreads(): List<MobileMessageThreadDto> {
         return messageApiService.getMessageThreads()
     }
+
+    override suspend fun sendMessage(conversationId: Long, senderId: Long, content: String) {
+        messageApiService.sendMessage(conversationId, senderId, content)
+    }
+
+    override suspend fun markMessageAsRead(messageId: Long, userId: Long) {
+        messageApiService.markMessageAsRead(messageId, userId)
+    }
 }
