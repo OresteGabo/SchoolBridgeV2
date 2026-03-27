@@ -7,13 +7,18 @@ import java.util.UUID
  */
 data class Message(
     val id: String = UUID.randomUUID().toString(),
-    val title: String? = null, // Optional title for the message card
-    val sender: String, // E.g., "Finance Office", "Head Teacher"
+    val title: String? = null,
+    val sender: String,
     val content: String,
     val timestamp: String,
     var isUnread: Boolean = false,
     val actions: List<MessageAction> = emptyList(),
-    val status: String? = null // E.g., "Confirmed", "Marked as paid"
+    val status: String? = null,
+
+    // --- NEW FIELDS FOR REPLY LOGIC ---
+    val replyToId: String? = null,      // The ID of the message being replied to
+    val replyToContent: String? = null, // The text snippet to show in the preview
+    val replyToSender: String? = null   // The name of the person being replied to
 )
 
 data class MessageAction(
