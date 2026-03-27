@@ -8,6 +8,14 @@
     <string name="finance_label">Imari</string>
     <string name="schedule_label">Gahunda</string>
     <string name="alerts_label">Amatangazo</string>
+    <string name="alerts_search_placeholder">Shakisha amakuru mashya...</string>
+    <string name="alerts_empty_search">Nta makuru y’ishuri ajyanye n’ayo washakishije.</string>
+    <string name="alerts_source_label">Inkomoko</string>
+    <string name="alerts_student_label">Umunyeshuri</string>
+    <string name="alerts_type_label">Ubwoko</string>
+    <string name="alerts_publisher_type_label">Ubwoko bw’uwabitangaje</string>
+    <string name="alerts_not_linked_student">Nta munyeshuri uhujweho</string>
+    <string name="mark_all_read">Shyira byose ko byasomwe</string>
     <string name="settings_label">Igenamiterere</string>
     <string name="messages_title">Ubutumwa</string>
     <string name="messages_subtitle">Komeza ubone amakuru y’ishuri n’itumanaho ryaryo</string>
