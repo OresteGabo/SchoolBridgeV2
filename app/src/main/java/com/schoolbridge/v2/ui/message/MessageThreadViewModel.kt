@@ -1,225 +1,280 @@
 package com.schoolbridge.v2.ui.message
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.schoolbridge.v2.data.dto.message.MobileMessageActionDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
+import com.schoolbridge.v2.data.dto.message.MobileThreadCallSummaryDto
+import com.schoolbridge.v2.data.repository.interfaces.MessagingRepository
 import com.schoolbridge.v2.domain.messaging.Message
 import com.schoolbridge.v2.domain.messaging.MessageAction
 import com.schoolbridge.v2.domain.messaging.MessageThread
+import com.schoolbridge.v2.domain.messaging.ThreadCallInfo
+import com.schoolbridge.v2.domain.messaging.ThreadCallPurpose
+import com.schoolbridge.v2.domain.messaging.ThreadCallStatus
+import com.schoolbridge.v2.domain.messaging.ThreadCallType
 import com.schoolbridge.v2.domain.messaging.ThreadMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class MessageThreadViewModel : ViewModel() {
+data class MessageThreadsUiState(
+    val isLoading: Boolean = false,
+    val threads: List<MessageThread> = emptyList(),
+    val errorMessage: String? = null
+)
 
-    private val _messageThreads = MutableStateFlow(defaultThreads())
-    val messageThreads: StateFlow<List<MessageThread>> = _messageThreads
+class MessageThreadViewModel(
+    private val messagingRepository: MessagingRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(MessageThreadsUiState(isLoading = true))
+    val uiState: StateFlow<MessageThreadsUiState> = _uiState.asStateFlow()
+
+    fun loadThreads(currentUserId: String) {
+        if (_uiState.value.isLoading && _uiState.value.threads.isNotEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            runCatching {
+                messagingRepository.getMessageThreads()
+            }.onSuccess { response ->
+                _uiState.value = MessageThreadsUiState(
+                    isLoading = false,
+                    threads = response.toDomainThreads(currentUserId),
+                    errorMessage = null
+                )
+            }.onFailure { throwable ->
+                _uiState.value = MessageThreadsUiState(
+                    isLoading = false,
+                    threads = emptyList(),
+                    errorMessage = throwable.message ?: "Could not load messages"
+                )
+            }
+        }
+    }
 
     fun addUserMessage(
         threadId: String,
         content: String,
         replyToId: String? = null,
         replyToContent: String? = null,
-        replyToSender: String? = null
+        replyToSender: String? = null,
+        callInfo: ThreadCallInfo? = null
     ) {
         viewModelScope.launch {
             val newMessage = Message(
                 id = UUID.randomUUID().toString(),
+                senderUserId = null,
                 sender = "You",
                 content = formatUserReply(content),
-                timestamp = now(),
+                timestamp = "Now",
                 title = null,
                 status = null,
+                callInfo = callInfo,
+                isFromCurrentUser = true,
                 actions = emptyList(),
                 isUnread = false,
-                // These are the magic fields for the WhatsApp effect
                 replyToId = replyToId,
                 replyToContent = replyToContent,
                 replyToSender = replyToSender
             )
 
-            val updatedThreads = _messageThreads.value.map { thread ->
-                if (thread.id == threadId) {
-                    thread.copy(
-                        messages = (thread.messages + newMessage).toMutableList()
-                    )
-                } else thread
-            }
-
-            _messageThreads.value = updatedThreads
+            _uiState.value = _uiState.value.copy(
+                threads = _uiState.value.threads.map { thread ->
+                    if (thread.id == threadId) {
+                        thread.copy(messages = (thread.messages + newMessage).toMutableList())
+                    } else {
+                        thread
+                    }
+                }
+            )
         }
     }
 
-    /**
-     * IMPROVED ACTION HANDLING
-     * Note: We don't call addUserMessage here anymore because it's handled
-     * by the UI navigation shell to ensure proper context passing.
-     */
     fun performAction(threadId: String, messageId: String, actionId: String) {
         viewModelScope.launch {
-            val updatedThreads = _messageThreads.value.map { thread ->
-                if (thread.id == threadId) {
-                    val updatedMessages = thread.messages.map { msg ->
-                        if (msg.id == messageId) {
-                            // Determine the new status based on actionId
-                            val newStatus = when (actionId) {
-                                "mark_paid" -> "Marked as Paid"
-                                "acknowledge" -> "Acknowledged"
-                                "yes" -> "Confirmed"
-                                "no" -> "Declined"
-                                "not_sure" -> "Pending"
-                                "pay_bill" -> msg.status // Don't change status yet; wait for payment success
-                                else -> "Updated"
+            _uiState.value = _uiState.value.copy(
+                threads = _uiState.value.threads.map { thread ->
+                    if (thread.id == threadId) {
+                        val updatedMessages = thread.messages.map { msg ->
+                            if (msg.id == messageId) {
+                                val newStatus = when (actionId) {
+                                    "mark_paid" -> "Marked as Paid"
+                                    "acknowledge" -> "Acknowledged"
+                                    "yes" -> "Confirmed"
+                                    "no" -> "Declined"
+                                    "not_sure" -> "Pending"
+                                    "pay_bill" -> msg.status
+                                    else -> "Updated"
+                                }
+                                msg.copy(status = newStatus)
+                            } else {
+                                msg
                             }
-                            msg.copy(status = newStatus)
-                        } else msg
+                        }
+                        thread.copy(messages = updatedMessages.toMutableList())
+                    } else {
+                        thread
                     }
-                    thread.copy(messages = updatedMessages.toMutableList())
-                } else thread
-            }
-            _messageThreads.value = updatedThreads
+                }
+            )
         }
     }
 
     fun markAsRead(threadId: String) {
         viewModelScope.launch {
-            val updated = _messageThreads.value.map { thread ->
-                if (thread.id == threadId) {
-                    thread.copy(
-                        messages = thread.messages.map {
-                            it.copy(isUnread = false)
-                        }.toMutableList()
-                    )
-                } else thread
-            }
-            _messageThreads.value = updated
+            _uiState.value = _uiState.value.copy(
+                threads = _uiState.value.threads.map { thread ->
+                    if (thread.id == threadId) {
+                        thread.copy(messages = thread.messages.map { it.copy(isUnread = false) }.toMutableList())
+                    } else {
+                        thread
+                    }
+                }
+            )
         }
     }
 
-    private fun formatUserReply(actionLabel: String): String {
-        return when (actionLabel.lowercase()) {
-            "yes" -> "Yes, I'll be there"
-            "no" -> "No, I can't make it"
-            "not sure" -> "I am not sure yet"
-            "mark as paid" -> "I've completed the payment"
-            "acknowledge" -> "I have seen this notice"
-            else -> actionLabel
+    fun addThreadCall(
+        threadId: String,
+        title: String,
+        content: String,
+        callInfo: ThreadCallInfo,
+        actions: List<MessageAction>
+    ) {
+        viewModelScope.launch {
+            val callMessage = Message(
+                id = UUID.randomUUID().toString(),
+                senderUserId = null,
+                sender = "SchoolBridge Call",
+                title = title,
+                content = content,
+                timestamp = "Now",
+                callInfo = callInfo,
+                isFromCurrentUser = false,
+                actions = actions
+            )
+
+            _uiState.value = _uiState.value.copy(
+                threads = _uiState.value.threads.map { thread ->
+                    if (thread.id == threadId) {
+                        thread.copy(messages = (thread.messages + callMessage).toMutableList())
+                    } else {
+                        thread
+                    }
+                }
+            )
         }
     }
 
-    private companion object {
-        // UPDATED: Now accepts an optional long to subtract minutes for variety
-        fun now(minusMinutes: Long = 0): String =
-            LocalDateTime.now()
-                .minusMinutes(minusMinutes)
-                .format(DateTimeFormatter.ofPattern("HH:mm, MMM d"))
+    private fun formatUserReply(actionLabel: String): String = when (actionLabel.lowercase()) {
+        "yes" -> "Yes, I'll be there"
+        "no" -> "No, I can't make it"
+        "not sure" -> "I am not sure yet"
+        "mark as paid" -> "I've completed the payment"
+        "acknowledge" -> "I have seen this notice"
+        else -> actionLabel
+    }
+}
 
-        fun defaultThreads(): List<MessageThread> {
-            val threads = mutableListOf<MessageThread>()
+class MessageThreadViewModelFactory(
+    private val messagingRepository: MessagingRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(MessageThreadViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MessageThreadViewModel(messagingRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+    }
+}
 
-            // 1. FINANCE: The "Payment & Invoice" Scenario
-            threads.add(MessageThread(
-                id = "fin_001",
-                topic = "Tuition & Transport",
-                participantsLabel = "Finance Office",
-                mode = ThreadMode.ACTION_REQUIRED,
-                messages = mutableListOf(
-                    Message(
-                        id = "m1",
-                        title = "Quarterly Invoice",
-                        sender = "Finance Office",
-                        content = "Invoice #882 for Term 3 is ready. Total: 250,000 RWF.",
-                        timestamp = now(1440),
-                        actions = listOf(
-                            // UPDATED: Generic label, specific "pay_bill" ID for the UI logic
-                            MessageAction("Pay Fees", "pay_bill"),
-                            MessageAction("Already Paid", "mark_paid")
-                        )
-                    ),
-                    Message(
-                        id = "m2",
-                        sender = "You",
-                        content = "I've completed the payment via Momo.",
-                        timestamp = now(1300), // ~21 hours ago
-                        replyToId = "m1",
-                        replyToContent = "Invoice #882 for Term 3 is ready...",
-                        replyToSender = "Finance Office",
-                        status = "Confirmed"
-                    ),
-                    Message(
-                        id = "m3",
-                        title = "Receipt Confirmation",
-                        sender = "Finance Office",
-                        content = "Payment received for Invoice #882. Thank you!",
-                        timestamp = now(1200)
-                    )
-                )
-            ))
+private fun List<MobileMessageThreadDto>.toDomainThreads(currentUserId: String): List<MessageThread> = map { thread ->
+    val mappedMessages = thread.messages
+        .map { it.toDomainMessage(currentUserId) }
+        .associateBy { it.id }
+        .toMutableMap()
 
-            // 2. LOGISTICS: The "Field Trip Permission" Scenario
-            threads.add(MessageThread(
-                id = "log_002",
-                topic = "School Trip: Akagera Park",
-                participantsLabel = "Grade 5 Coordinator",
-                mode = ThreadMode.ANNOUNCEMENT,
-                messages = mutableListOf(
-                    Message(
-                        id = "trip_1",
-                        title = "Permission Required",
-                        sender = "Grade 5 Coordinator",
-                        content = "We are visiting Akagera National Park this Friday. Does your child have permission to join the bus?",
-                        timestamp = now(600),
-                        actions = listOf(
-                            MessageAction("Yes, Permission Granted", "yes"),
-                            MessageAction("No, Stay Home", "no")
-                        )
-                    )
-                )
-            ))
-
-            // 3. DISCIPLINE: The "Attendance Alert" Scenario
-            threads.add(MessageThread(
-                id = "disc_003",
-                topic = "Attendance Notification",
-                participantsLabel = "Dean of Students",
-                mode = ThreadMode.ACTION_REQUIRED,
-                messages = mutableListOf(
-                    Message(
-                        id = "att_1",
-                        title = "Late Arrival",
-                        sender = "System",
-                        content = "Your child arrived at 8:45 AM today (30 mins late). Please acknowledge this notice.",
-                        timestamp = now(120),
-                        actions = listOf(MessageAction("Acknowledge", "acknowledge"))
-                    )
-                )
-            ))
-
-            // 4. GENERATING 30+ RANDOM NOTICES FOR SCROLL TESTING
-            for (i in 1..30) {
-                val dept = listOf("Sports", "Library", "Cafeteria", "IT Lab").random()
-                threads.add(MessageThread(
-                    id = "gen_$i",
-                    topic = "$dept Update #$i",
-                    participantsLabel = "$dept Dept",
-                    mode = ThreadMode.CONVERSATION,
-                    messages = mutableListOf(
-                        Message(
-                            id = "msg_gen_$i",
-                            sender = "Staff",
-                            content = "This is a routine update regarding $dept equipment and schedules for the upcoming week.",
-                            timestamp = now((i * 45).toLong()), // Spaced out by 45 mins each
-                            isUnread = i < 5
-                        )
-                    )
-                ))
-            }
-
-            return threads
+    thread.calls.forEach { call ->
+        val callInfo = call.toCallInfo()
+        val relatedMessageId = call.relatedMessageId
+        if (relatedMessageId != null && mappedMessages.containsKey(relatedMessageId)) {
+            mappedMessages[relatedMessageId] = mappedMessages.getValue(relatedMessageId).copy(callInfo = callInfo)
+        } else {
+            val syntheticMessageId = "call_${call.id}"
+            mappedMessages[syntheticMessageId] = Message(
+                id = syntheticMessageId,
+                title = call.title,
+                senderUserId = null,
+                sender = call.hostLabel.ifBlank { "SchoolBridge Call" },
+                content = call.note ?: "${call.type.lowercase().replace('_', ' ')} invitation attached to this thread.",
+                timestamp = call.scheduledLabel ?: call.startedAt ?: "Scheduled",
+                isUnread = false,
+                isFromCurrentUser = false,
+                actions = call.defaultActions(),
+                callInfo = callInfo
+            )
         }
     }
 
+    MessageThread(
+        id = thread.id,
+        topic = thread.topic,
+        participantsLabel = thread.participantsLabel,
+        mode = thread.mode.toThreadMode(),
+        messages = mappedMessages.values.toMutableList()
+    )
+}
+
+private fun MobileMessageDto.toDomainMessage(currentUserId: String): Message = Message(
+    id = id,
+    title = title,
+    senderUserId = senderUserId,
+    sender = sender,
+    content = content,
+    timestamp = timestamp,
+    isUnread = isUnread,
+    isFromCurrentUser = senderUserId != null && senderUserId == currentUserId,
+    actions = actions.map { it.toDomainAction() },
+    status = status,
+    replyToId = replyToId,
+    replyToContent = replyToContent,
+    replyToSender = replyToSender
+)
+
+private fun MobileMessageActionDto.toDomainAction(): MessageAction = MessageAction(
+    label = label,
+    actionId = actionId
+)
+
+private fun MobileThreadCallSummaryDto.toCallInfo(): ThreadCallInfo = ThreadCallInfo(
+    type = runCatching { ThreadCallType.valueOf(type) }.getOrDefault(ThreadCallType.AUDIO),
+    purpose = runCatching { ThreadCallPurpose.valueOf(purpose) }.getOrDefault(ThreadCallPurpose.GENERAL),
+    status = runCatching { ThreadCallStatus.valueOf(status) }.getOrDefault(ThreadCallStatus.REQUESTED),
+    hostLabel = hostLabel,
+    participantSummary = participantSummary ?: hostLabel,
+    scheduledLabel = scheduledLabel,
+    durationLabel = durationLabel,
+    note = note
+)
+
+private fun MobileThreadCallSummaryDto.defaultActions(): List<MessageAction> {
+    val primaryAction = when (type) {
+        "VIDEO" -> MessageAction("Join Verification", "start_video_call")
+        "LIVE_ANNOUNCEMENT" -> MessageAction("Join Briefing", "join_live_announcement")
+        else -> MessageAction("Join Audio Call", "start_audio_call")
+    }
+    return listOf(primaryAction)
+}
+
+private fun String.toThreadMode(): ThreadMode = when (uppercase()) {
+    "ACTION_REQUIRED" -> ThreadMode.ACTION_REQUIRED
+    "CONVERSATION" -> ThreadMode.CONVERSATION
+    "DIRECT_CONTACT" -> ThreadMode.DIRECT_CONTACT
+    else -> ThreadMode.ANNOUNCEMENT
 }
