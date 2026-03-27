@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,55 +32,55 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.AlertRepositoryImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
-import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.home.common.SeverityChip
-import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertsScreen(
-    viewModel: AlertsViewModel = viewModel(),
+    userSessionManager: UserSessionManager,
     onBack: (() -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val viewModel: AlertsViewModel = viewModel(
+        factory = AlertsViewModelFactory(
+            AlertRepositoryImpl(
+                messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager)),
+                userSessionManager = userSessionManager
+            )
+        )
+    )
     val isExpanded = isExpandedLayout()
-    val alerts by viewModel.alerts.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val alerts = uiState.alerts
+    val hasUnreadAlerts = remember(alerts) { alerts.any { !it.isRead } }
 
     var searchQuery by remember { mutableStateOf("") }
-    var isRefreshing by remember { mutableStateOf(false) }
+    var selectedAlert by remember { mutableStateOf<Alert?>(null) }
 
-    // Filter alerts based on search query (case-insensitive)
     val filteredAlerts = remember(searchQuery, alerts) {
         if (searchQuery.isBlank()) alerts
-        else alerts.filter { it.message.contains(searchQuery, ignoreCase = true) }
-    }
-    LaunchedEffect(Unit) {
-        viewModel.markAllAsRead()
-    }
-
-
-
-    // Trigger refresh effect when isRefreshing becomes true
-    LaunchedEffect(isRefreshing) {
-        if (isRefreshing) {
-            delay(1000)  // Simulate refresh delay
-            isRefreshing = false
+        else alerts.filter {
+            it.title.contains(searchQuery, ignoreCase = true) ||
+                it.message.contains(searchQuery, ignoreCase = true) ||
+                it.source.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -87,6 +88,13 @@ fun AlertsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(t(R.string.alerts_label)) },
+                actions = {
+                    if (hasUnreadAlerts) {
+                        TextButton(onClick = viewModel::markAllAsRead) {
+                            Text(t(R.string.mark_all_read))
+                        }
+                    }
+                },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
@@ -119,16 +127,16 @@ fun AlertsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        placeholder = { Text("Search alerts...") },
+                        placeholder = { Text(t(R.string.alerts_search_placeholder)) },
                         singleLine = true,
                         keyboardActions = KeyboardActions(onSearch = { }),
                         colors = TextFieldDefaults.colors()
                     )
 
                     SwipeRefresh(
-                        state = rememberSwipeRefreshState(isRefreshing),
+                        state = rememberSwipeRefreshState(uiState.isLoading),
                         onRefresh = {
-                            isRefreshing = true
+                            viewModel.refresh()
                         },
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -140,7 +148,7 @@ fun AlertsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "No alerts found matching your search.",
+                                    t(R.string.alerts_empty_search),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -153,7 +161,10 @@ fun AlertsScreen(
                                     AlertCardDetailed(
                                         alert = filteredAlerts[alertIndex],
                                         index = alertIndex,
-                                        onClick = {},
+                                        onClick = { alert ->
+                                            viewModel.markAsRead(alert.id)
+                                            selectedAlert = alert
+                                        },
                                         modifier = Modifier
                                     )
                                 }
@@ -161,6 +172,17 @@ fun AlertsScreen(
                         }
                     }
                 }
+            }
+        }
+
+        selectedAlert?.let { alert ->
+            ModalBottomSheet(
+                onDismissRequest = { selectedAlert = null }
+            ) {
+                AlertDetailsBottomSheetContent(
+                    alertId = alert.id,
+                    userSessionManager = userSessionManager
+                )
             }
         }
     }
@@ -299,12 +321,4 @@ fun AlertCardDetailed(alert: Alert,
             }
         }
     }
-}
-
-@Preview
-@Composable
-private fun AlertsScreenPrev() {
-    AlertsScreen(
-        onBack = {}
-    )
 }
