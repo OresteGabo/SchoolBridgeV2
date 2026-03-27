@@ -2,9 +2,25 @@
     <string name="app_name" translatable="false">SchoolBridgeV2</string>
     <string name="title_activity_parent" translatable="false">ParentActivity</string>
     <string name="message_label">Message</string>
-    <string name="home_label">home</string>
-    <string name="finance_label">finance</string>
+    <string name="home_label">Home</string>
+    <string name="finance_label">Finance</string>
+    <string name="schedule_label">Schedule</string>
+    <string name="alerts_label">Alerts</string>
     <string name="settings_label">Settings</string>
+    <string name="messages_title">Messages</string>
+    <string name="messages_subtitle">Stay updated with school notices</string>
+    <string name="finance_title">Finance</string>
+    <string name="finance_subtitle">All school payments in one place</string>
+    <string name="teaching_desk_title">Teaching desk</string>
+    <string name="teaching_desk_subtitle">A better use of this tab for teachers without billing responsibilities</string>
+    <string name="teacher_desk_empty_title">This account does not currently need school billing tools.</string>
+    <string name="teacher_desk_empty_description">Instead of showing an empty finance ledger to teachers, this tab can evolve into a teaching workspace with grade entry, attendance, quiz review, and parent follow-up tools.</string>
+    <string name="teacher_desk_actions_title">Useful next actions</string>
+    <string name="teacher_desk_footer_note">If you prefer, we can later turn this route into a real teacher tab with assigned quizzes, marking queues, and class communication shortcuts.</string>
+    <string name="teacher_action_attendance">Mark attendance</string>
+    <string name="teacher_action_grades">Enter grades</string>
+    <string name="teacher_action_message_parents">Message parents</string>
+    <string name="teacher_action_upload_quiz">Upload quiz</string>
     <string name="read_messages_notice">Read messages are kept for 300 days and then automatically deleted.</string>
     <string name="transaction_retention_notice">Transactions are kept for 1 year after a student leaves the school.</string>
     <string name="notice_payment_pending">Pending payments may take up to 24 hours to be validated.</string>
@@ -203,4 +219,3 @@
 
 
 </resources>
-
