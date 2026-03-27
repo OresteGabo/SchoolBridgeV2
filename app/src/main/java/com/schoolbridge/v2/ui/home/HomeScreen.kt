@@ -78,15 +78,12 @@ import com.schoolbridge.v2.ui.home.common.ActionCard
 import com.schoolbridge.v2.ui.home.common.AddressCard
 import com.schoolbridge.v2.ui.home.common.GenderTag
 import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
-import com.schoolbridge.v2.ui.home.common.LocalTimetableRepo
-import com.schoolbridge.v2.ui.home.common.TimetableBoard
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
 import com.schoolbridge.v2.ui.home.role.RoleSelectorBottomSheet
-import com.schoolbridge.v2.ui.home.schedule.TodayScheduleCard
 import com.schoolbridge.v2.ui.home.schedule.TodayScheduleSection
 import com.schoolbridge.v2.ui.home.student.StudentListSection
 import com.schoolbridge.v2.ui.home.teacher.TeacherQuickActionsSection
@@ -94,7 +91,6 @@ import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.launch
 import com.schoolbridge.v2.ui.home.decoration.GlowingTopBarBackground
 import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
-import com.schoolbridge.v2.util.dummyCourses
 
 
 @Composable
@@ -477,70 +473,15 @@ private fun HomeUI(
             UserRole.STUDENT -> {
                 StudentOverviewSection(currentUser = currentUser)
                 SpacerL()
-                TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                TodayScheduleSection(
+                    userSessionManager = userSessionManager,
+                    onWeeklyViewClick = onWeeklyViewClick
+                )
                 SpacerL()
                 GradesSummarySection()
                 SpacerL()
                 CourseListSection()
             }
-
-
-            /*UserRole.PARENT -> {
-                val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
-
-                LaunchedEffect(Unit) {
-                    LocalTimetableRepo.loadMockDataForTesting() // Temporary for demo
-                }
-
-                if (timetable.isNotEmpty()) {
-                    SpacerL()
-                    Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
-                    TimetableBoard(entries = timetable)
-                }
-               currentUser?.let {
-                   // 1️⃣ Address and Gender
-                   if (it.address != null) {
-                       //AddressCard(address = it.address)
-                       SpacerS()
-                   }
-                   if (it.gender != null) {
-                       GenderTag(gender = it.gender)
-                       SpacerS()
-                   }
-
-                   // 2️⃣ Linked Students
-                   if (!it.linkedStudents.isNullOrEmpty()) {
-                       Text(
-                           text = "Linked Students",
-                           style = MaterialTheme.typography.titleMedium,
-                           modifier = Modifier.padding(vertical = 8.dp)
-                       )
-                       LinkedStudentRow(list = it.linkedStudents!!)
-                       SpacerL()
-                   }
-               }
-
-               // 3️⃣ Alerts and Events
-               AlertsSection(
-                   userSessionManager = userSessionManager,
-                   onViewAllAlertsClick = onViewAllAlertsClick,
-                   onAlertClick = onAlertClick
-               )
-               SpacerL()
-
-               EventsSection(
-                   onViewAllEventsClick = onViewAllEventsClick,
-                   onEventClick = onEventClick
-               )
-
-               // 4️⃣ Timetable for Parent's Children
-               val timetable by LocalTimetableRepo.current.cachedTimetable.collectAsState()
-               if (timetable.isNotEmpty()) {
-                   SpacerL()
-                   Text("Today's Timetable", style = MaterialTheme.typography.titleMedium)
-                   TimetableBoard(entries = timetable)
-               }
-           }*/
             UserRole.PARENT -> {
                 ParentOverviewSection(currentUser = currentUser)
                 SpacerL()
@@ -573,23 +514,11 @@ private fun HomeUI(
                     }
                 }
 
-                // 3️⃣ Timetable for Parent's Children
-                val timetable by LocalTimetableRepo.cachedTimetable.collectAsState()
-
-                LaunchedEffect(Unit) {
-                    // In production, you'd load timetable for selected child
-                    LocalTimetableRepo.loadMockDataForTesting()
-                }
-
-                if (timetable.isNotEmpty()) {
-                    SpacerL()
-                    Text(
-                        text = "Today's Timetable",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    TimetableBoard(entries = timetable)
-                }
+                SpacerL()
+                TodayScheduleSection(
+                    userSessionManager = userSessionManager,
+                    onWeeklyViewClick = onWeeklyViewClick
+                )
             }
 
             UserRole.TEACHER -> {
@@ -597,7 +526,10 @@ private fun HomeUI(
                 SpacerL()
                 TeacherQuickActionsSection()
                 SpacerL()
-                TodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                TodayScheduleSection(
+                    userSessionManager = userSessionManager,
+                    onWeeklyViewClick = onWeeklyViewClick
+                )
                 SpacerL()
                 CourseListSection()
             }
@@ -606,7 +538,10 @@ private fun HomeUI(
                 SpacerL()
                 AdminQuickActionsSection()
                 SpacerL()
-                AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
+                AdminTodayScheduleSection(
+                    userSessionManager = userSessionManager,
+                    onWeeklyViewClick = onWeeklyViewClick
+                )
                 SpacerL()
                 AdminOperationsBoard()
                 SpacerM()
@@ -798,56 +733,15 @@ val adminQuickActions = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminTodayScheduleSection(
+    userSessionManager: UserSessionManager,
     onWeeklyViewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    /* simple filter state – replace with ViewModel later */
-    var selectedFilter by remember { mutableStateOf("All Levels") }
-    val levels = listOf("All Levels", "S1", "S2", "S3", "S4 Science", "S4 Arts")
-
-
-    Column(modifier = modifier.fillMaxWidth()) {
-
-        /* header + weekly view */
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppSubHeader("📅 Today’s Schedule")
-            TextButton(onClick = onWeeklyViewClick) {
-                Text("Weekly View", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-
-        /* level / stream filter */
-        Spacer(Modifier.height(4.dp))
-        ExposedDropdownMenuBox(
-            expanded = false,
-            onExpandedChange = {}        // implement if full dropdown needed
-        ) {
-            Text(
-                text = selectedFilter,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier
-                    .background(
-                        colorScheme.primary.copy(alpha = 0.12f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            )
-            /* – implement real menu later – */
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        /* schedule list */
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(dummyCourses.size){ index ->
-                TodayScheduleCard(dummyCourses[index])
-            }
-        }
-    }
+    TodayScheduleSection(
+        userSessionManager = userSessionManager,
+        onWeeklyViewClick = onWeeklyViewClick,
+        modifier = modifier
+    )
 }
 // -----------------------------------------------------------------------------
 //  💡  Dummy domain models (replace with real ones or ViewModel flows later)
