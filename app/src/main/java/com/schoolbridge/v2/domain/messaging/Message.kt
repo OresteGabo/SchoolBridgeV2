@@ -8,12 +8,15 @@ import java.util.UUID
 data class Message(
     val id: String = UUID.randomUUID().toString(),
     val title: String? = null,
+    val senderUserId: String? = null,
     val sender: String,
     val content: String,
     val timestamp: String,
     var isUnread: Boolean = false,
+    val isFromCurrentUser: Boolean = false,
     val actions: List<MessageAction> = emptyList(),
     val status: String? = null,
+    val callInfo: ThreadCallInfo? = null,
 
     // --- NEW FIELDS FOR REPLY LOGIC ---
     val replyToId: String? = null,      // The ID of the message being replied to
