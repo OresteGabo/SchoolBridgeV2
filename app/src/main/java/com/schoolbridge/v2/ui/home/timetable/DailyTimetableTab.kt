@@ -48,14 +48,11 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyTimetableTab(
+    dailyEvents: List<TimetableEntry>,
+    nextDateWithEvent: LocalDate?,
     selectedDate: LocalDate,
     onDateChange: (LocalDate) -> Unit
 ) {
-    val dailyEvents = remember(selectedDate) {
-        generateSampleEventsForWeek()
-            .filter { it.start.toLocalDate() == selectedDate }
-            .sortedBy { it.start }
-    }
     var showParticipantsSheet by remember { mutableStateOf(false) }
     var selectedParticipants by remember { mutableStateOf<List<String>>(emptyList()) }
 
@@ -71,6 +68,7 @@ fun DailyTimetableTab(
         if (dailyEvents.isEmpty()) {
             NoEventsPlaceholder(
                 selectedDate = selectedDate,
+                nextDateWithEvent = nextDateWithEvent,
                 onDateChange = onDateChange
             )
         } else {
@@ -155,15 +153,9 @@ private fun TimetableContent(dailyEvents: List<TimetableEntry>, selectedDate: Lo
 fun NoEventsPlaceholder(
     modifier: Modifier = Modifier,
     selectedDate: LocalDate,
+    nextDateWithEvent: LocalDate?,
     onDateChange: (LocalDate) -> Unit
 ) {
-    val nextDateWithEvent = remember(selectedDate) {
-        (1..30).map { selectedDate.plusDays(it.toLong()) }
-            .firstOrNull { date ->
-                generateSampleEventsForWeek().any { it.start.toLocalDate() == date }
-            }
-    }
-
     Box(
         modifier = modifier
             .fillMaxSize()
