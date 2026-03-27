@@ -35,13 +35,11 @@ val BASE_URL: String
         return when {
             configuredBaseUrl.isNotBlank() -> configuredBaseUrl
             isRunningOnEmulator() -> {
-            "http://10.0.2.2:8080"
+                "http://10.0.2.2:8080"
             }
-            else -> {
-                // Real devices cannot reach your laptop through 127.0.0.1.
-                // Set api.baseUrl in local.properties to your computer's reachable LAN IP.
-                "http://172.20.10.4:8080"
-            }
+            else -> throw IllegalStateException(
+                "API base URL is not configured for this device. Add schoolbridge.apiBaseUrl to local.properties."
+            )
         }
     }
 
