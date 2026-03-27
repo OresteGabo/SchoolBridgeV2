@@ -45,7 +45,6 @@ import com.schoolbridge.v2.ui.settings.help.HelpFAQScreen
 import com.schoolbridge.v2.ui.settings.notifications.NotificationSettingsScreen
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
 import androidx.compose.runtime.getValue
-import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.home.ParentRoleRequestScreen
 import com.schoolbridge.v2.ui.home.RequestRoleScreen
@@ -88,7 +87,6 @@ fun AppNavHost(
     val currentUser = userSessionManager.currentUser
     val roleRequestApiService = remember(userSessionManager) { RoleRequestApiServiceImpl(userSessionManager) }
     val roleLookupApiService = remember(userSessionManager) { RoleLookupApiServiceImpl(userSessionManager) }
-    val navigationScope = remember { CoroutineScope(Dispatchers.Main) }
 
     NavHost(
         navController = navController,
@@ -237,29 +235,22 @@ fun AppNavHost(
                 alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.STUDENT) == true,
                 onSearchSchools = { query -> roleLookupApiService.searchSchools(query) },
                 onSubmit = { school, level, dob ->
-                    navigationScope.launch {
-                        runCatching {
-                            roleRequestApiService.submitRoleRequest(
-                                RoleRequestDto(
-                                    requestedRole = UserRole.STUDENT.name,
-                                    schoolId = school.id,
-                                    schoolName = school.name,
-                                    justification = if (level.isBlank()) null else "Student access request for $level",
-                                    supportingDocumentsUrls = emptyList(),
-                                    childStudentId = null,
-                                    childNationalId = null,
-                                    parentNationalId = null,
-                                    familyCardDocumentUrl = null,
-                                    academicLevel = level,
-                                    childDateOfBirth = dob
-                                )
-                            )
-                        }.onSuccess {
-                            navController.navigateUp()
-                        }.onFailure {
-                            Log.e("RoleRequest", "Failed to submit student role request", it)
-                        }
-                    }
+                    roleRequestApiService.submitRoleRequest(
+                        RoleRequestDto(
+                            requestedRole = UserRole.STUDENT.name,
+                            schoolId = school.id,
+                            schoolName = school.name,
+                            justification = if (level.isBlank()) null else "Student access request for $level",
+                            supportingDocumentsUrls = emptyList(),
+                            childStudentId = null,
+                            childNationalId = null,
+                            parentNationalId = null,
+                            familyCardDocumentUrl = null,
+                            academicLevel = level,
+                            childDateOfBirth = dob
+                        )
+                    )
+                    navController.navigateUp()
                 },
                 onCancel = {
                     navController.navigateUp()
@@ -274,30 +265,23 @@ fun AppNavHost(
                 linkedStudentNames = currentUser?.linkedStudents?.map { "${it.firstName} ${it.lastName}".trim() } ?: emptyList(),
                 onSearchStudents = { query, schoolId -> roleLookupApiService.searchStudents(query, schoolId) },
                 onSubmit = { student, relationship ->
-                    navigationScope.launch {
-                        runCatching {
-                            roleRequestApiService.submitRoleRequest(
-                                RoleRequestDto(
-                                    requestedRole = UserRole.PARENT.name,
-                                    schoolId = student.schoolId,
-                                    schoolName = student.schoolName,
-                                    studentUserId = student.studentUserId,
-                                    justification = "Parent link request for ${student.fullName}",
-                                    supportingDocumentsUrls = emptyList(),
-                                    childStudentId = student.studentUserId.toString(),
-                                    childNationalId = null,
-                                    parentNationalId = null,
-                                    familyCardDocumentUrl = null,
-                                    childName = student.fullName,
-                                    relationshipLabel = relationship.label
-                                )
-                            )
-                        }.onSuccess {
-                            navController.navigateUp()
-                        }.onFailure {
-                            Log.e("RoleRequest", "Failed to submit parent role request", it)
-                        }
-                    }
+                    roleRequestApiService.submitRoleRequest(
+                        RoleRequestDto(
+                            requestedRole = UserRole.PARENT.name,
+                            schoolId = student.schoolId,
+                            schoolName = student.schoolName,
+                            studentUserId = student.studentUserId,
+                            justification = "Parent link request for ${student.fullName}",
+                            supportingDocumentsUrls = emptyList(),
+                            childStudentId = student.studentUserId.toString(),
+                            childNationalId = null,
+                            parentNationalId = null,
+                            familyCardDocumentUrl = null,
+                            childName = student.fullName,
+                            relationshipLabel = relationship.label
+                        )
+                    )
+                    navController.navigateUp()
                 },
                 onCancel = {
                     navController.navigateUp()
@@ -311,28 +295,21 @@ fun AppNavHost(
                 alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.TEACHER) == true,
                 onSearchSchools = { query -> roleLookupApiService.searchSchools(query) },
                 onSubmit = { school, message ->
-                    navigationScope.launch {
-                        runCatching {
-                            roleRequestApiService.submitRoleRequest(
-                                RoleRequestDto(
-                                    requestedRole = UserRole.TEACHER.name,
-                                    schoolId = school.id,
-                                    schoolName = school.name,
-                                    justification = if (message.isBlank()) null else "Teacher access request",
-                                    supportingDocumentsUrls = emptyList(),
-                                    childStudentId = null,
-                                    childNationalId = null,
-                                    parentNationalId = null,
-                                    familyCardDocumentUrl = null,
-                                    roleDescription = message
-                                )
-                            )
-                        }.onSuccess {
-                            navController.navigateUp()
-                        }.onFailure {
-                            Log.e("RoleRequest", "Failed to submit teacher role request", it)
-                        }
-                    }
+                    roleRequestApiService.submitRoleRequest(
+                        RoleRequestDto(
+                            requestedRole = UserRole.TEACHER.name,
+                            schoolId = school.id,
+                            schoolName = school.name,
+                            justification = if (message.isBlank()) null else "Teacher access request",
+                            supportingDocumentsUrls = emptyList(),
+                            childStudentId = null,
+                            childNationalId = null,
+                            parentNationalId = null,
+                            familyCardDocumentUrl = null,
+                            roleDescription = message
+                        )
+                    )
+                    navController.navigateUp()
                 },
                 onCancel = {
                     navController.navigateUp()
@@ -346,28 +323,21 @@ fun AppNavHost(
                 alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.SCHOOL_ADMIN) == true,
                 onSearchSchools = { query -> roleLookupApiService.searchSchools(query) },
                 onSubmit = { school, responsibility ->
-                    navigationScope.launch {
-                        runCatching {
-                            roleRequestApiService.submitRoleRequest(
-                                RoleRequestDto(
-                                    requestedRole = UserRole.SCHOOL_ADMIN.name,
-                                    schoolId = school.id,
-                                    schoolName = school.name,
-                                    justification = if (responsibility.isBlank()) null else "School admin access request",
-                                    supportingDocumentsUrls = emptyList(),
-                                    childStudentId = null,
-                                    childNationalId = null,
-                                    parentNationalId = null,
-                                    familyCardDocumentUrl = null,
-                                    responsibilityScope = responsibility
-                                )
-                            )
-                        }.onSuccess {
-                            navController.navigateUp()
-                        }.onFailure {
-                            Log.e("RoleRequest", "Failed to submit school admin role request", it)
-                        }
-                    }
+                    roleRequestApiService.submitRoleRequest(
+                        RoleRequestDto(
+                            requestedRole = UserRole.SCHOOL_ADMIN.name,
+                            schoolId = school.id,
+                            schoolName = school.name,
+                            justification = if (responsibility.isBlank()) null else "School admin access request",
+                            supportingDocumentsUrls = emptyList(),
+                            childStudentId = null,
+                            childNationalId = null,
+                            parentNationalId = null,
+                            familyCardDocumentUrl = null,
+                            responsibilityScope = responsibility
+                        )
+                    )
+                    navController.navigateUp()
                 },
                 onCancel = {
                     navController.navigateUp()
