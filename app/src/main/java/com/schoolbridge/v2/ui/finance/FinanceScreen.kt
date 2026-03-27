@@ -79,7 +79,7 @@ fun FinanceScreen(
     val financeViewModel: FinanceViewModel = viewModel(
         factory = remember(userSessionManager) {
             FinanceViewModelFactory(
-                financeRepository = FinanceRepositoryImpl(FinanceApiServiceImpl()),
+                financeRepository = FinanceRepositoryImpl(FinanceApiServiceImpl(userSessionManager)),
                 userSessionManager = userSessionManager
             )
         }
