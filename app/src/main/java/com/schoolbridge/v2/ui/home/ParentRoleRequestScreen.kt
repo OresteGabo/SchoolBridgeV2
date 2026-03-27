@@ -19,22 +19,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.schoolbridge.v2.data.dto.user.StudentLookupDto
 import com.schoolbridge.v2.domain.user.RelationshipType
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParentRoleRequestScreen(
     alreadyHasRole: Boolean = false,
     linkedStudentNames: List<String> = emptyList(),
-    onSubmit: (school: String, childName: String, dob: String, relationship: RelationshipType) -> Unit,
+    onSearchStudents: suspend (String, Long?) -> List<StudentLookupDto>,
+    onSubmit: (student: StudentLookupDto, relationship: RelationshipType) -> Unit,
     onCancel: () -> Unit
 ) {
-    var selectedSchool by remember { mutableStateOf("") }
-    var childName by remember { mutableStateOf("") }
-    var dob by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    var studentQuery by remember { mutableStateOf("") }
+    var studentLookupMode by remember { mutableStateOf(LookupMode.ID) }
+    var studentResults by remember { mutableStateOf(emptyList<StudentLookupDto>()) }
+    var selectedStudent by remember { mutableStateOf<StudentLookupDto?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
     var selectedRelationship by remember { mutableStateOf(RelationshipType.FATHER) }
     RoleRequestFormScaffold(
         title = if (alreadyHasRole) "Add Another Parent Link" else "Request Parent Access",
@@ -44,9 +52,10 @@ fun ParentRoleRequestScreen(
             "Ask the school to link you to a child profile so you can follow attendance, fees, messages, and academic updates."
         },
         actionLabel = if (alreadyHasRole) "Request New Child Link" else "Send Request",
+        submitEnabled = selectedStudent != null,
         onBack = onCancel,
         onSubmit = {
-            onSubmit(selectedSchool, childName, dob, selectedRelationship)
+            selectedStudent?.let { onSubmit(it, selectedRelationship) }
         }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -82,27 +91,35 @@ fun ParentRoleRequestScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = selectedSchool,
-                onValueChange = { selectedSchool = it },
-                label = { Text("School Name") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = childName,
-                onValueChange = { childName = it },
-                label = { Text("Child’s Full Name") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = dob,
-                onValueChange = { dob = it },
-                label = { Text("Child’s Date of Birth") },
-                modifier = Modifier.fillMaxWidth()
+            StudentLookupSection(
+                title = "1. Find the student",
+                query = studentQuery,
+                mode = studentLookupMode,
+                isSearching = isSearching,
+                selectedStudent = selectedStudent,
+                results = studentResults,
+                errorMessage = searchError,
+                helperText = "Search by student ID when you know it, or by name when you do not.",
+                onQueryChange = {
+                    studentQuery = it
+                    searchError = null
+                },
+                onModeSelected = { studentLookupMode = it },
+                onSearch = {
+                    scope.launch {
+                        isSearching = true
+                        searchError = null
+                        runCatching { onSearchStudents(studentQuery, null) }
+                            .onSuccess { studentResults = it }
+                            .onFailure { searchError = it.message ?: "Student search failed" }
+                        isSearching = false
+                    }
+                },
+                onSelect = { selectedStudent = it }
             )
 
             Text(
-                text = "Relationship",
+                text = "2. Confirm relationship",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
