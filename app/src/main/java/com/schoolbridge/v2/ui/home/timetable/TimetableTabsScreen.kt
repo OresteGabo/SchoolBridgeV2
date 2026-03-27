@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import java.time.temporal.WeekFields
 import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 
@@ -178,18 +180,32 @@ fun TimetableTabsScreen(
 
                     Spacer(Modifier.height(8.dp))
 
-                    when (selectedTabIndex) {
-                        0->WeeklyTimetableTab(
-                            events = weeklyEvents,
-                            initialStartOfWeek = selectedWeekDate,
-                            onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
-                        )
-                        1 -> DailyTimetableTab(
-                            dailyEvents = dailyEvents,
-                            nextDateWithEvent = nextDateWithEvent,
-                            selectedDate = selectedDate,
-                            onDateChange = { selectedDate = it },
-                        )
+                    if (uiState.errorMessage != null && uiState.templates.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            FriendlyNetworkErrorCard(
+                                rawMessage = uiState.errorMessage,
+                                onRetry = viewModel::refresh
+                            )
+                        }
+                    } else {
+                        when (selectedTabIndex) {
+                            0->WeeklyTimetableTab(
+                                events = weeklyEvents,
+                                initialStartOfWeek = selectedWeekDate,
+                                onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
+                            )
+                            1 -> DailyTimetableTab(
+                                dailyEvents = dailyEvents,
+                                nextDateWithEvent = nextDateWithEvent,
+                                selectedDate = selectedDate,
+                                onDateChange = { selectedDate = it },
+                            )
+                        }
                     }
                 }
             }
