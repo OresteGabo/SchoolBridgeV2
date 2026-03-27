@@ -1,7 +1,6 @@
 package com.schoolbridge.v2.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,33 +21,24 @@ import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,23 +66,15 @@ private data class DashboardInsight(
     val tint: Color
 )
 
-private enum class ApprovalState(val label: String) {
-    Pending("Pending"),
-    NeedsInfo("Need Info"),
-    Approved("Approved"),
-    Rejected("Rejected")
-}
-
-private data class AdminApprovalRequest(
+private data class AdminRequestInboxItem(
     val id: String,
     val title: String,
-    val requester: String,
-    val detail: String,
-    val evidence: String,
+    val requesterLabel: String,
+    val threadHint: String,
+    val statusLabel: String,
     val icon: ImageVector,
     val tint: Color,
-    val state: ApprovalState = ApprovalState.Pending,
-    val nextStep: String = "Review the evidence and decide the next action."
+    val note: String
 )
 
 @Composable
@@ -309,204 +291,106 @@ fun AdminOperationsBoard(modifier: Modifier = Modifier) {
 @Composable
 fun AdminPendingRequestsSection(modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val requests = remember {
-        mutableStateListOf(
-            AdminApprovalRequest(
+    val inboxItems = remember {
+        listOf(
+            AdminRequestInboxItem(
                 id = "req_teacher_role",
                 title = "Teacher role request",
-                requester = "Niyonzima Claude",
-                detail = "Requested teacher access for Senior 3 Maths and Physics at Kigali High School.",
-                evidence = "Submitted school email, timetable excerpt, and staff ID snapshot.",
+                requesterLabel = "Niyonzima Claude",
+                threadHint = "Teacher access verification thread",
+                statusLabel = "Need review",
                 icon = Icons.Default.School,
                 tint = scheme.primary,
-                nextStep = "Approve if the staff ID and subject load match the school records."
+                note = "Documents, clarifications, and the verification call should continue in the same thread."
             ),
-            AdminApprovalRequest(
+            AdminRequestInboxItem(
                 id = "req_parent_link",
                 title = "Trusted adult child link",
-                requester = "Mukamana Alice",
-                detail = "Asked to link Uwase Clarisse as an additional trusted adult for student Sandrine Uwase.",
-                evidence = "Relationship note says aunt and emergency pickup helper; school card copy still missing.",
-                icon = Icons.Default.PersonAdd,
+                requesterLabel = "Mukamana Alice",
+                threadHint = "Guardian consent thread",
+                statusLabel = "Need documents",
+                icon = Icons.Default.Groups,
                 tint = scheme.secondary,
-                nextStep = "Request guardian consent and at least one supporting document before approval."
+                note = "Request guardian consent and supporting evidence inside the request thread."
             ),
-            AdminApprovalRequest(
+            AdminRequestInboxItem(
                 id = "req_school_admin",
                 title = "School admin access",
-                requester = "Habimana Eric",
-                detail = "Requested operations access for Nyagatare campus finance and approvals desk.",
-                evidence = "Uploaded appointment letter, but no signed authorization from current head teacher yet.",
+                requesterLabel = "Habimana Eric",
+                threadHint = "Campus authorization thread",
+                statusLabel = "Waiting reply",
                 icon = Icons.Default.Badge,
                 tint = Color(0xFFC77700),
-                nextStep = "Ask for the signed authorization letter and route a chat thread for document upload."
+                note = "Use the thread to request the signed authorization and track uploads."
             )
         )
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        AppSubHeader("Approval Desk")
+        AppSubHeader("Requests Inbox")
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "School admins should be able to approve, reject, or request more info without leaving the dashboard.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        requests.forEachIndexed { index, request ->
-            AdminApprovalCard(
-                request = request,
-                onApprove = {
-                    val i = requests.indexOfFirst { item -> item.id == request.id }
-                    if (i >= 0) {
-                        requests[i] = requests[i].copy(
-                            state = ApprovalState.Approved,
-                            nextStep = "Access can now be granted and the requester should receive a confirmation notice."
-                        )
-                    }
-                },
-                onReject = {
-                    val i = requests.indexOfFirst { item -> item.id == request.id }
-                    if (i >= 0) {
-                        requests[i] = requests[i].copy(
-                            state = ApprovalState.Rejected,
-                            nextStep = "A rejection note should explain what failed and whether the requester may reapply."
-                        )
-                    }
-                },
-                onRequestInfo = {
-                    val i = requests.indexOfFirst { item -> item.id == request.id }
-                    if (i >= 0) {
-                        requests[i] = requests[i].copy(
-                            state = ApprovalState.NeedsInfo,
-                            nextStep = "Open a chat thread with upload actions so the requester can send the missing documents."
-                        )
-                    }
-                }
-            )
-            if (index != requests.lastIndex) {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun AdminApprovalCard(
-    request: AdminApprovalRequest,
-    onApprove: () -> Unit,
-    onReject: () -> Unit,
-    onRequestInfo: () -> Unit
-) {
-    val scheme = MaterialTheme.colorScheme
-    val stateTint = when (request.state) {
-        ApprovalState.Pending -> request.tint
-        ApprovalState.NeedsInfo -> scheme.tertiary
-        ApprovalState.Approved -> Color(0xFF1E8E5A)
-        ApprovalState.Rejected -> scheme.error
-    }
-
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = scheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = scheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(request.tint.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = request.icon,
-                            contentDescription = null,
-                            tint = request.tint
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = request.title,
+                            text = "Keep approvals inside request threads",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = request.requester,
+                            text = "Home only shows what needs attention. The real approve, reject, ask-for-documents, and verification flow should live in the thread history.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = scheme.onSurfaceVariant
                         )
                     }
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .background(scheme.primary.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null,
+                            tint = scheme.primary
+                        )
+                    }
                 }
-                AssistChip(
-                    onClick = {},
-                    label = { Text(request.state.label) },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = stateTint.copy(alpha = 0.12f),
-                        labelColor = stateTint
-                    )
-                )
-            }
 
-            Text(
-                text = request.detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant
-            )
-
-            MetaCallout(
-                icon = Icons.Default.Description,
-                title = "Evidence",
-                body = request.evidence,
-                tint = scheme.secondary
-            )
-
-            MetaCallout(
-                icon = Icons.Default.Info,
-                title = "Next step",
-                body = request.nextStep,
-                tint = stateTint
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Button(
-                    onClick = onApprove,
-                    enabled = request.state != ApprovalState.Approved,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E8E5A)),
-                    modifier = Modifier.weight(1f)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Approve")
+                    InboxStatPill(label = "Pending", value = "3", tint = scheme.primary)
+                    InboxStatPill(label = "Need docs", value = "2", tint = scheme.tertiary)
+                    InboxStatPill(label = "Call today", value = "1", tint = scheme.secondary)
                 }
-                OutlinedButton(
-                    onClick = onRequestInfo,
-                    enabled = request.state != ApprovalState.NeedsInfo,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Ask Info")
-                }
-                OutlinedButton(
-                    onClick = onReject,
-                    enabled = request.state != ApprovalState.Rejected,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.error)
-                ) {
-                    Text("Reject")
+
+                if (inboxItems.isEmpty()) {
+                    EmptyRequestInboxState()
+                } else {
+                    inboxItems.forEachIndexed { index, item ->
+                        RequestThreadPreview(item = item)
+                        if (index != inboxItems.lastIndex) {
+                            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
+                        }
+                    }
                 }
             }
         }
@@ -514,36 +398,117 @@ private fun AdminApprovalCard(
 }
 
 @Composable
-private fun MetaCallout(
-    icon: ImageVector,
-    title: String,
-    body: String,
-    tint: Color
-) {
+private fun InboxStatPill(label: String, value: String, tint: Color) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, tint.copy(alpha = 0.18f), RoundedCornerShape(16.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .background(tint.copy(alpha = 0.10f), RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = tint
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint
+        )
+    }
+}
+
+@Composable
+private fun RequestThreadPreview(item: AdminRequestInboxItem) {
+    val scheme = MaterialTheme.colorScheme
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(18.dp)
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(item.tint.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = null,
+                tint = item.tint
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = item.statusLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = item.tint
+                )
+            }
             Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+                text = item.requesterLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant
             )
             Text(
-                text = body,
+                text = item.threadHint,
+                style = MaterialTheme.typography.labelLarge,
+                color = scheme.primary
+            )
+            Text(
+                text = item.note,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = scheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyRequestInboxState() {
+    val scheme = MaterialTheme.colorScheme
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Default.HourglassEmpty, null, tint = scheme.outline.copy(alpha = 0.24f), modifier = Modifier.size(26.dp))
+                Icon(Icons.AutoMirrored.Filled.Chat, null, tint = scheme.outline.copy(alpha = 0.24f), modifier = Modifier.size(26.dp))
+                Icon(Icons.Default.Verified, null, tint = scheme.outline.copy(alpha = 0.24f), modifier = Modifier.size(26.dp))
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "No request threads need attention",
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.outline
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "When a role request, document follow-up, or verification call is pending, it should appear here as a thread to open.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.outline,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
         }
     }
