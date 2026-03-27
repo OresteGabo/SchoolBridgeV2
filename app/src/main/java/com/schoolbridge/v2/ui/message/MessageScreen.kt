@@ -24,6 +24,7 @@ fun MessageScreen(
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -72,7 +73,8 @@ fun MessageScreen(
         bottomBar = {
             CustomBottomNavBar(
                 currentScreen = currentScreen,
-                onTabSelected = onTabSelected
+                onTabSelected = onTabSelected,
+                currentUser = currentUser
             )
         }
     ) { innerPadding ->
