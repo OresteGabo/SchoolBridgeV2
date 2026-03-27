@@ -4,8 +4,24 @@
     <string name="title_activity_parent" translatable="false">ParentActivity</string>
     <string name="message_label">Message</string>
     <string name="home_label">Accueil</string>
-    <string name="finance_label">finances</string>
+    <string name="finance_label">Finances</string>
+    <string name="schedule_label">Planning</string>
+    <string name="alerts_label">Alertes</string>
     <string name="settings_label">Paramètres</string>
+    <string name="messages_title">Messages</string>
+    <string name="messages_subtitle">Restez informé des communications de l’école</string>
+    <string name="finance_title">Finances</string>
+    <string name="finance_subtitle">Tous les paiements scolaires au même endroit</string>
+    <string name="teaching_desk_title">Espace enseignant</string>
+    <string name="teaching_desk_subtitle">Une meilleure utilisation de cet onglet pour les enseignants sans responsabilité de paiement</string>
+    <string name="teacher_desk_empty_title">Ce compte n’a actuellement pas besoin d’outils de facturation scolaire.</string>
+    <string name="teacher_desk_empty_description">Au lieu d’afficher un relevé financier vide aux enseignants, cet onglet peut devenir un espace de travail pédagogique avec saisie des notes, présence, revue des quiz et suivi des parents.</string>
+    <string name="teacher_desk_actions_title">Actions utiles</string>
+    <string name="teacher_desk_footer_note">Si vous préférez, nous pourrons transformer plus tard cette page en véritable onglet enseignant avec quiz attribués, files de correction et raccourcis de communication avec les classes.</string>
+    <string name="teacher_action_attendance">Faire l’appel</string>
+    <string name="teacher_action_grades">Saisir les notes</string>
+    <string name="teacher_action_message_parents">Écrire aux parents</string>
+    <string name="teacher_action_upload_quiz">Déposer un quiz</string>
     <string name="read_messages_notice">Les messages lus sont conservés pendant 300 jours, puis supprimés automatiquement.</string>
     <string name="transaction_retention_notice">Les transactions sont conservées pendant un an après le départ d\'un élève de l\'école.</string>
     <string name="notice_payment_pending">Les paiements en attente peuvent prendre jusqu\'à 24 heures pour être validés.</string>
