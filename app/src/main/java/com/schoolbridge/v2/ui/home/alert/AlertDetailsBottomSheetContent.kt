@@ -1,12 +1,7 @@
 package com.schoolbridge.v2.ui.home.alert
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.School
@@ -28,7 +22,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,19 +32,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.schoolbridge.v2.domain.messaging.AlertsViewModel
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.AlertRepositoryImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
+import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.R
+import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.components.InfoRowWithIcon
-import java.time.format.DateTimeFormatter
 import com.schoolbridge.v2.ui.home.common.NewBadge
 import com.schoolbridge.v2.ui.home.common.SeverityChip
+import java.time.format.DateTimeFormatter
 
 /* ------------ MAIN BOTTOM‑SHEET CONTENT ------------ */
 @Composable
 fun AlertDetailsBottomSheetContent(
     alertId: String,
-    viewModel: AlertsViewModel = viewModel(),
+    userSessionManager: UserSessionManager,
 ) {
-    val alerts by viewModel.alerts.collectAsState()
+    val viewModel: AlertsViewModel = viewModel(
+        factory = AlertsViewModelFactory(
+            AlertRepositoryImpl(
+                messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager)),
+                userSessionManager = userSessionManager
+            )
+        )
+    )
+    val uiState by viewModel.uiState.collectAsState()
+    val alerts = uiState.alerts
     val alert = alerts.find { it.id == alertId } ?: return
 
     val dateText = remember(alert.timestamp) {
@@ -129,35 +136,17 @@ fun AlertDetailsBottomSheetContent(
             colors = CardDefaults.elevatedCardColors(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             Column(Modifier.padding(16.dp)) {
-                InfoRowWithIcon(Icons.Default.AccountBalance, "Source",
+                InfoRowWithIcon(Icons.Default.AccountBalance, t(R.string.alerts_source_label),
                     alert.sourceOrganization ?: "—")
-                InfoRowWithIcon(Icons.Default.School, "Student",
-                    alert.studentName ?: "Not linked to a student")
-                InfoRowWithIcon(Icons.Default.Notifications, "Type",
+                InfoRowWithIcon(Icons.Default.School, t(R.string.alerts_student_label),
+                    alert.studentName ?: t(R.string.alerts_not_linked_student))
+                InfoRowWithIcon(Icons.Default.Notifications, t(R.string.alerts_type_label),
                     alert.type.name.replaceFirstChar { it.uppercase() })
-                InfoRowWithIcon(Icons.Default.People, "Publisher Type",
+                InfoRowWithIcon(Icons.Default.People, t(R.string.alerts_publisher_type_label),
                     alert.publisherType.name.lowercase()
                         .replaceFirstChar { it.uppercase() })
             }
         }
 
-        /* ---------- MARK‑AS‑UNREAD BUTTON (animated) ---------- */
-        AnimatedVisibility(
-            visible = alert.isRead,               // ⬅ reacts to live state
-            enter = fadeIn() + expandVertically(),
-            exit  = fadeOut() + shrinkVertically()
-        ) {
-            Column {                        // keep a Spacer with the button so both animate
-                Spacer(Modifier.height(20.dp))
-                OutlinedButton(
-                    onClick = { viewModel.markAsUnread(alert.id) },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(Icons.Default.MarkEmailUnread, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Mark as Unread")
-                }
-            }
-        }
     }
 }
