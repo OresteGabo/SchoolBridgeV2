@@ -26,9 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.AlertRepositoryImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.messaging.Alert
-import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.components.SpacerS
@@ -41,14 +44,23 @@ import com.schoolbridge.v2.ui.components.SpacerS
  */
 @Composable
 fun AlertsSection(
-    viewModel: AlertsViewModel = viewModel(),
+    userSessionManager: UserSessionManager,
     onViewAllAlertsClick: () -> Unit,
-    onAlertClick: (Alert) -> Unit,  // New callback
+    onAlertClick: (Alert) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val viewModel: AlertsViewModel = viewModel(
+        factory = AlertsViewModelFactory(
+            AlertRepositoryImpl(
+                messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager)),
+                userSessionManager = userSessionManager
+            )
+        )
+    )
     var expanded by remember { mutableStateOf(false) }
     val maxInitialAlerts = 3
-    val alerts by viewModel.alerts.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val alerts = uiState.alerts
     val rotationState by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(durationMillis = 300),
@@ -81,7 +93,7 @@ fun AlertsSection(
                 onClick = {
                     viewModel.markAsRead(alert.id)
                     // Wait until recomposition happens
-                    val updatedAlert = viewModel.alerts.value.find { it.id == alert.id } ?: alert
+                    val updatedAlert = viewModel.uiState.value.alerts.find { it.id == alert.id } ?: alert
                     onAlertClick(updatedAlert)
                 }
             )
