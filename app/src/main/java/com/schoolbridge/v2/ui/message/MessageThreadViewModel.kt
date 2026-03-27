@@ -7,6 +7,7 @@ import com.schoolbridge.v2.data.dto.message.MobileMessageActionDto
 import com.schoolbridge.v2.data.dto.message.MobileMessageDto
 import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
 import com.schoolbridge.v2.data.dto.message.MobileThreadCallSummaryDto
+import com.schoolbridge.v2.data.remote.MessageRealtimeService
 import com.schoolbridge.v2.data.repository.interfaces.MessagingRepository
 import com.schoolbridge.v2.domain.messaging.Message
 import com.schoolbridge.v2.domain.messaging.MessageAction
@@ -19,6 +20,8 @@ import com.schoolbridge.v2.domain.messaging.ThreadMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -29,13 +32,17 @@ data class MessageThreadsUiState(
 )
 
 class MessageThreadViewModel(
-    private val messagingRepository: MessagingRepository
+    private val messagingRepository: MessagingRepository,
+    private val messageRealtimeService: MessageRealtimeService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MessageThreadsUiState(isLoading = true))
     val uiState: StateFlow<MessageThreadsUiState> = _uiState.asStateFlow()
+    private var activeUserId: String? = null
+    private var realtimeJob: Job? = null
 
     fun loadThreads(currentUserId: String) {
+        activeUserId = currentUserId
         if (_uiState.value.isLoading && _uiState.value.threads.isNotEmpty()) return
 
         viewModelScope.launch {
@@ -58,6 +65,17 @@ class MessageThreadViewModel(
         }
     }
 
+    fun observeRealtime(currentUserId: String) {
+        activeUserId = currentUserId
+        if (realtimeJob?.isActive == true) return
+
+        realtimeJob = viewModelScope.launch {
+            messageRealtimeService.observeEvents().collectLatest {
+                loadThreads(currentUserId)
+            }
+        }
+    }
+
     fun addUserMessage(
         threadId: String,
         content: String,
@@ -67,32 +85,25 @@ class MessageThreadViewModel(
         callInfo: ThreadCallInfo? = null
     ) {
         viewModelScope.launch {
-            val newMessage = Message(
-                id = UUID.randomUUID().toString(),
-                senderUserId = null,
-                sender = "You",
-                content = formatUserReply(content),
-                timestamp = "Now",
-                title = null,
-                status = null,
-                callInfo = callInfo,
-                isFromCurrentUser = true,
-                actions = emptyList(),
-                isUnread = false,
-                replyToId = replyToId,
-                replyToContent = replyToContent,
-                replyToSender = replyToSender
-            )
+            replyToId
+            replyToContent
+            replyToSender
+            callInfo
+            val currentUserId = activeUserId?.toLongOrNull() ?: return@launch
+            val thread = _uiState.value.threads.find { it.id == threadId } ?: return@launch
+            val conversationId = thread.backendConversationId ?: thread.id.toLongOrNull() ?: return@launch
 
-            _uiState.value = _uiState.value.copy(
-                threads = _uiState.value.threads.map { thread ->
-                    if (thread.id == threadId) {
-                        thread.copy(messages = (thread.messages + newMessage).toMutableList())
-                    } else {
-                        thread
-                    }
-                }
-            )
+            runCatching {
+                messagingRepository.sendMessage(
+                    conversationId = conversationId,
+                    senderId = currentUserId,
+                    content = formatUserReply(content)
+                )
+            }.onSuccess {
+                loadThreads(activeUserId ?: return@onSuccess)
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(errorMessage = throwable.message ?: "Could not send response")
+            }
         }
     }
 
@@ -128,15 +139,27 @@ class MessageThreadViewModel(
 
     fun markAsRead(threadId: String) {
         viewModelScope.launch {
+            val currentUserId = activeUserId?.toLongOrNull() ?: return@launch
+            val thread = _uiState.value.threads.find { it.id == threadId } ?: return@launch
+            val unreadMessages = thread.messages.filter { it.isUnread && !it.isFromCurrentUser }
+
             _uiState.value = _uiState.value.copy(
-                threads = _uiState.value.threads.map { thread ->
-                    if (thread.id == threadId) {
-                        thread.copy(messages = thread.messages.map { it.copy(isUnread = false) }.toMutableList())
+                threads = _uiState.value.threads.map { existing ->
+                    if (existing.id == threadId) {
+                        existing.copy(messages = existing.messages.map { it.copy(isUnread = false) }.toMutableList())
                     } else {
-                        thread
+                        existing
                     }
                 }
             )
+
+            unreadMessages.forEach { message ->
+                message.id.toLongOrNull()?.let { messageId ->
+                    runCatching {
+                        messagingRepository.markMessageAsRead(messageId = messageId, userId = currentUserId)
+                    }
+                }
+            }
         }
     }
 
@@ -183,12 +206,13 @@ class MessageThreadViewModel(
 }
 
 class MessageThreadViewModelFactory(
-    private val messagingRepository: MessagingRepository
+    private val messagingRepository: MessagingRepository,
+    private val messageRealtimeService: MessageRealtimeService
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MessageThreadViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MessageThreadViewModel(messagingRepository) as T
+            return MessageThreadViewModel(messagingRepository, messageRealtimeService) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -224,6 +248,7 @@ private fun List<MobileMessageThreadDto>.toDomainThreads(currentUserId: String):
 
     MessageThread(
         id = thread.id,
+        backendConversationId = thread.id.toLongOrNull(),
         topic = thread.topic,
         participantsLabel = thread.participantsLabel,
         mode = thread.mode.toThreadMode(),
