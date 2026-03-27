@@ -56,16 +56,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.style.TextAlign
-import androidx.lifecycle.ViewModel
-import com.schoolbridge.v2.domain.messaging.Alert
-import com.schoolbridge.v2.domain.messaging.AlertSeverity
-import com.schoolbridge.v2.domain.messaging.AlertSourceType
-import com.schoolbridge.v2.domain.messaging.AlertType
-import com.schoolbridge.v2.ui.AlertRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 import java.time.LocalDateTime
 
 @Deprecated("Use DailyCourseCard instead")
