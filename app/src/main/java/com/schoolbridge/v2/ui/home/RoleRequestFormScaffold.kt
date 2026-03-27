@@ -35,6 +35,7 @@ fun RoleRequestFormScaffold(
     title: String,
     subtitle: String,
     actionLabel: String,
+    submitEnabled: Boolean = true,
     onBack: () -> Unit,
     onSubmit: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
@@ -63,6 +64,7 @@ fun RoleRequestFormScaffold(
                     Divider()
                     Button(
                         onClick = onSubmit,
+                        enabled = submitEnabled,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(actionLabel)
