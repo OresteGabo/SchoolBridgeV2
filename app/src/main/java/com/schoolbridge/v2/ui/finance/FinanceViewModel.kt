@@ -58,6 +58,12 @@ class FinanceViewModel(
     }
 
     private suspend fun syncLinkedStudents(response: MobileFinanceDashboardDto) {
+        val currentUser = userSessionManager.currentUser.value
+        if (currentUser?.isParent() != true) {
+            userSessionManager.updateLinkedStudents(emptyList())
+            return
+        }
+
         val linkedStudents = response.students
             .filterNot { it.id == ALL_STUDENTS_ID }
             .map { student ->
