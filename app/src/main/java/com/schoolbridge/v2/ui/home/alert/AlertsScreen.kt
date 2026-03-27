@@ -43,6 +43,9 @@ import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.home.common.SeverityChip
 import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
@@ -55,6 +58,7 @@ fun AlertsScreen(
     bottomBar: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isExpanded = isExpandedLayout()
     val alerts by viewModel.alerts.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
@@ -97,55 +101,63 @@ fun AlertsScreen(
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .fillMaxSize()
+        AdaptivePageFrame(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = paddingValues,
+            maxContentWidth = if (isExpanded) 1200.dp else 1240.dp
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                placeholder = { Text("Search alerts...") },
-                singleLine = true,
-                keyboardActions = KeyboardActions(onSearch = { /* optionally hide keyboard */ }),
-                colors = TextFieldDefaults.colors()
-            )
-
-            SwipeRefresh(
-                state = rememberSwipeRefreshState(isRefreshing),
-                onRefresh = {
-                    isRefreshing = true
-                },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (filteredAlerts.isEmpty()) {
-                    Box(
+            Box(modifier = Modifier.fillMaxSize()) {
+                SchoolBridgePatternBackground(dotAlpha = 0.016f, gradientAlpha = 0.035f)
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxSize()
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "No alerts found matching your search.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        placeholder = { Text("Search alerts...") },
+                        singleLine = true,
+                        keyboardActions = KeyboardActions(onSearch = { }),
+                        colors = TextFieldDefaults.colors()
+                    )
+
+                    SwipeRefresh(
+                        state = rememberSwipeRefreshState(isRefreshing),
+                        onRefresh = {
+                            isRefreshing = true
+                        },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredAlerts.size) { alertIndex ->
-                            AlertCardDetailed(
-                                alert = filteredAlerts[alertIndex],
-                                index = alertIndex,
-                                onClick = {},
+                        if (filteredAlerts.isEmpty()) {
+                            Box(
                                 modifier = Modifier
-                            )
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No alerts found matching your search.",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(filteredAlerts.size) { alertIndex ->
+                                    AlertCardDetailed(
+                                        alert = filteredAlerts[alertIndex],
+                                        index = alertIndex,
+                                        onClick = {},
+                                        modifier = Modifier
+                                    )
+                                }
+                            }
                         }
                     }
                 }
