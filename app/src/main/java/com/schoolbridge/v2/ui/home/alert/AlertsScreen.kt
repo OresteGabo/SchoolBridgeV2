@@ -36,11 +36,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.R
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.domain.messaging.AlertsViewModel
+import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.home.common.SeverityChip
 import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
@@ -80,7 +82,7 @@ fun AlertsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Alerts") },
+                title = { Text(t(R.string.alerts_label)) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
