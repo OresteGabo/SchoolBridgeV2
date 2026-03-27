@@ -37,9 +37,11 @@ class TimetableApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for timetable request")
 
-        return client.get("$BASE_URL/mobile/timetable") {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-        }.body()
+        return runApiCall(defaultMessage = "Could not load timetable.") {
+            client.get("$BASE_URL/mobile/timetable") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }.body()
+        }
     }
 }
