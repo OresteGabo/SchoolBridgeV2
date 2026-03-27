@@ -44,27 +44,31 @@ class MessageApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        return client.get("$BASE_URL/mobile/messages") {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-        }.body()
+        return runApiCall(defaultMessage = "Could not load messages.") {
+            client.get("$BASE_URL/mobile/messages") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }.body()
+        }
     }
 
     override suspend fun sendMessage(conversationId: Long, senderId: Long, content: String) {
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        client.post("$BASE_URL/messages") {
-            accept(ContentType.Application.Json)
-            contentType(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            setBody(
-                CreateMessageRequestDto(
-                    conversationId = conversationId,
-                    senderId = senderId,
-                    content = content
+        runApiCall(defaultMessage = "Could not send your message.") {
+            client.post("$BASE_URL/messages") {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(
+                    CreateMessageRequestDto(
+                        conversationId = conversationId,
+                        senderId = senderId,
+                        content = content
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -72,11 +76,13 @@ class MessageApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        client.post("$BASE_URL/messages/$messageId/read") {
-            accept(ContentType.Application.Json)
-            contentType(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            setBody(MarkMessageReadRequestDto(userId = userId))
+        runApiCall(defaultMessage = "Could not update the message status.") {
+            client.post("$BASE_URL/messages/$messageId/read") {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(MarkMessageReadRequestDto(userId = userId))
+            }
         }
     }
 }
