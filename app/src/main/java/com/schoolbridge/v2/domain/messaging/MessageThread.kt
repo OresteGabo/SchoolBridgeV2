@@ -10,6 +10,7 @@ import java.util.UUID
  */
 data class MessageThread(
     val id: String = UUID.randomUUID().toString(),
+    val backendConversationId: Long? = null,
     val topic: String,
     val participantsLabel: String,
     val mode: ThreadMode = ThreadMode.ANNOUNCEMENT,
