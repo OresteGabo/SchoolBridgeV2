@@ -33,7 +33,7 @@ fun ParentRoleRequestScreen(
     alreadyHasRole: Boolean = false,
     linkedStudentNames: List<String> = emptyList(),
     onSearchStudents: suspend (String, Long?) -> List<StudentLookupDto>,
-    onSubmit: (student: StudentLookupDto, relationship: RelationshipType) -> Unit,
+    onSubmit: suspend (student: StudentLookupDto, relationship: RelationshipType) -> Unit,
     onCancel: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -44,6 +44,8 @@ fun ParentRoleRequestScreen(
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var selectedRelationship by remember { mutableStateOf(RelationshipType.FATHER) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitError by remember { mutableStateOf<String?>(null) }
     RoleRequestFormScaffold(
         title = if (alreadyHasRole) "Add Another Parent Link" else "Request Parent Access",
         subtitle = if (alreadyHasRole) {
@@ -53,9 +55,18 @@ fun ParentRoleRequestScreen(
         },
         actionLabel = if (alreadyHasRole) "Request New Child Link" else "Send Request",
         submitEnabled = selectedStudent != null,
+        isSubmitting = isSubmitting,
+        submitErrorMessage = submitError,
         onBack = onCancel,
         onSubmit = {
-            selectedStudent?.let { onSubmit(it, selectedRelationship) }
+            val student = selectedStudent ?: return@RoleRequestFormScaffold
+            scope.launch {
+                isSubmitting = true
+                submitError = null
+                runCatching { onSubmit(student, selectedRelationship) }
+                    .onFailure { submitError = it.message ?: "Could not submit your request" }
+                isSubmitting = false
+            }
         }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
