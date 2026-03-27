@@ -13,6 +13,7 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,13 +81,10 @@ fun MessageScreen(
             )
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+        AdaptivePageFrame(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = innerPadding
         ) {
-            ImigongoBackground()
-
             MessageThreadScreen(
                 userSessionManager = userSessionManager,
                 initialThreadId  = null,
