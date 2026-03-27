@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
+import com.schoolbridge.v2.data.remote.MessageRealtimeServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
@@ -65,15 +66,21 @@ fun MessageThreadScreen(
     val messagingRepository = remember(userSessionManager) {
         MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
     }
+    val messageRealtimeService = remember(userSessionManager) {
+        MessageRealtimeServiceImpl(userSessionManager)
+    }
     val viewModel: MessageThreadViewModel = viewModel(
-        factory = MessageThreadViewModelFactory(messagingRepository)
+        factory = MessageThreadViewModelFactory(messagingRepository, messageRealtimeService)
     )
     val uiState by viewModel.uiState.collectAsState()
     val messageThreads = uiState.threads
     val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
 
     LaunchedEffect(currentUser?.userId) {
-        currentUser?.userId?.let(viewModel::loadThreads)
+        currentUser?.userId?.let { userId ->
+            viewModel.loadThreads(userId)
+            viewModel.observeRealtime(userId)
+        }
     }
 
     var internalSelectedThreadId by remember { mutableStateOf<String?>(null) }
