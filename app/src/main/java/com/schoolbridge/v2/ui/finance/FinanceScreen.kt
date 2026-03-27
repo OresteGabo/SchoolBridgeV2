@@ -71,6 +71,7 @@ import com.schoolbridge.v2.data.remote.FinanceApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.FinanceRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,12 +132,15 @@ fun FinanceScreen(
             TopAppBar(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(if (showTeacherDesk) "Teaching desk" else "Finance")
+                        Text(
+                            if (showTeacherDesk) t(R.string.teaching_desk_title)
+                            else t(R.string.finance_title)
+                        )
                         Text(
                             text = if (showTeacherDesk) {
-                                "A better use of this tab for teachers without billing responsibilities"
+                                t(R.string.teaching_desk_subtitle)
                             } else {
-                                "All school payments in one place"
+                                t(R.string.finance_subtitle)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -293,10 +297,10 @@ fun FinanceScreen(
 private fun TeacherDeskPlaceholder() {
     val colors = MaterialTheme.colorScheme
     val quickActions = listOf(
-        "Mark attendance",
-        "Enter grades",
-        "Message parents",
-        "Upload quiz"
+        t(R.string.teacher_action_attendance),
+        t(R.string.teacher_action_grades),
+        t(R.string.teacher_action_message_parents),
+        t(R.string.teacher_action_upload_quiz)
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -309,13 +313,13 @@ private fun TeacherDeskPlaceholder() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "This account does not currently need school billing tools.",
+                    text = t(R.string.teacher_desk_empty_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.onSecondaryContainer
                 )
                 Text(
-                    text = "Instead of showing an empty finance ledger to teachers, this tab can evolve into a teaching workspace with grade entry, attendance, quiz review, and parent follow-up tools.",
+                    text = t(R.string.teacher_desk_empty_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSecondaryContainer.copy(alpha = 0.86f)
                 )
@@ -331,7 +335,7 @@ private fun TeacherDeskPlaceholder() {
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Useful next actions",
+                    text = t(R.string.teacher_desk_actions_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -354,7 +358,7 @@ private fun TeacherDeskPlaceholder() {
                     }
                 }
                 Text(
-                    text = "If you prefer, we can later turn this route into a real teacher tab with assigned quizzes, marking queues, and class communication shortcuts.",
+                    text = t(R.string.teacher_desk_footer_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
