@@ -3,17 +3,21 @@ package com.schoolbridge.v2.domain.messaging
 import java.util.UUID
 
 /**
- * A conversation that groups messages by subject and participants.
- * new audience = new thread
- * same audience + same topic = same thread
+ * A topic-scoped interaction stream for school communication.
+ *
+ * This is intentionally not a free-chat model: each item can be read-only,
+ * action-based, or conversational depending on [ThreadMode].
  */
 data class MessageThread(
     val id: String = UUID.randomUUID().toString(),
     val topic: String,
-    val participantsLabel: String, // E.g., "All Parents", "S4 Parents"
+    val participantsLabel: String,
     val mode: ThreadMode = ThreadMode.ANNOUNCEMENT,
     val messages: MutableList<Message> = mutableListOf()
 ) {
     fun getUnreadCount(): Int = messages.count { it.isUnread }
     fun getLatestMessage(): Message? = messages.lastOrNull()
 }
+
+// Optional semantic alias for future UI copy.
+typealias InteractionStream = MessageThread
