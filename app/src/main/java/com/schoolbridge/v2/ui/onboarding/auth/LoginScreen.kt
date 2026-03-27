@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.schoolbridge.v2.data.remote.AuthApiService // Import AuthApiService
 import com.schoolbridge.v2.data.session.UserSessionManager // Import UserSessionManager
+import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
 import kotlinx.coroutines.delay
 
@@ -181,10 +182,8 @@ fun LoginScreen(
             }
 
             loginError?.let { errorMessage ->
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                FriendlyNetworkErrorCard(
+                    rawMessage = errorMessage,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -201,6 +200,5 @@ fun LoginScreen(
         }
     }
 }
-
 
 
