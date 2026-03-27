@@ -400,6 +400,7 @@ fun AppNavHost(
         composable(MainAppScreen.Alerts.route){
             val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
             AlertsScreen(
+                userSessionManager = userSessionManager,
                 onBack = null,
                 bottomBar = {
                     CustomBottomNavBar(
