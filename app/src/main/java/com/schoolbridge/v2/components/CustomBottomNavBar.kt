@@ -161,9 +161,6 @@ private fun BottomNavItem(
 private fun rememberBottomNavItems(currentUser: CurrentUser?): List<MainAppScreen> {
     val left = buildList {
         add(MainAppScreen.Message)
-        if (currentUser?.isTeacher() == true || currentUser?.isAdmin() == true) {
-            add(MainAppScreen.Alerts)
-        }
     }
 
     val right = buildList {
