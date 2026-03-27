@@ -47,6 +47,7 @@ import com.schoolbridge.v2.data.remote.MessageRealtimeServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
+import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import kotlinx.coroutines.launch
@@ -112,10 +113,16 @@ fun MessageThreadScreen(
                 }
             } else if (uiState.errorMessage != null && messageThreads.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = uiState.errorMessage ?: "Could not load messages",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    FriendlyNetworkErrorCard(
+                        rawMessage = uiState.errorMessage,
+                        onRetry = {
+                            currentUser?.userId?.let { userId ->
+                                viewModel.loadThreads(userId)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
                     )
                 }
             } else if (isViewing && viewingMessage != null) {
