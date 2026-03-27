@@ -1,9 +1,12 @@
 package com.schoolbridge.v2.data.remote
 
+import com.schoolbridge.v2.BuildConfig
+
 object NetworkConfig {
     /**
-     * Set this to the laptop IP address that your Android tablet can reach.
-     * 127.0.0.1 only works from the same machine, not from a physical device.
+     * Override this locally through `local.properties` with:
+     * `schoolbridge.apiBaseUrl=http://<your-machine-ip>:8080`
+     * so physical devices can reach your local backend without hardcoding it in git.
      */
-    const val apiBaseUrl: String = "http://172.20.10.2:8080"
+    val apiBaseUrl: String = BuildConfig.API_BASE_URL
 }
