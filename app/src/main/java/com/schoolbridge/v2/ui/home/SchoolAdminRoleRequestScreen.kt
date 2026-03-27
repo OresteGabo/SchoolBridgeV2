@@ -10,17 +10,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.schoolbridge.v2.data.dto.user.SchoolLookupDto
+import kotlinx.coroutines.launch
 
 @Composable
 fun SchoolAdminRoleRequestScreen(
     alreadyHasRole: Boolean = false,
-    onSubmit: () -> Unit,
+    onSearchSchools: suspend (String) -> List<SchoolLookupDto>,
+    onSubmit: (school: SchoolLookupDto, responsibility: String) -> Unit,
     onCancel: () -> Unit
 ) {
-    var schoolName by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    var schoolQuery by remember { mutableStateOf("") }
+    var schoolLookupMode by remember { mutableStateOf(LookupMode.ID) }
+    var schoolResults by remember { mutableStateOf(emptyList<SchoolLookupDto>()) }
+    var selectedSchool by remember { mutableStateOf<SchoolLookupDto?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
     var responsibility by remember { mutableStateOf("") }
 
     RoleRequestFormScaffold(
@@ -31,15 +41,35 @@ fun SchoolAdminRoleRequestScreen(
             "Provide the school and responsibility details the admin team can use to verify your access."
         },
         actionLabel = if (alreadyHasRole) "Request Additional Access" else "Submit Request",
+        submitEnabled = selectedSchool != null,
         onBack = onCancel,
-        onSubmit = onSubmit
+        onSubmit = { selectedSchool?.let { onSubmit(it, responsibility) } }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = schoolName,
-                onValueChange = { schoolName = it },
-                label = { Text("School or Campus") },
-                modifier = Modifier.fillMaxWidth()
+            SchoolLookupSection(
+                title = "1. Find the school",
+                query = schoolQuery,
+                mode = schoolLookupMode,
+                isSearching = isSearching,
+                selectedSchool = selectedSchool,
+                results = schoolResults,
+                errorMessage = searchError,
+                onQueryChange = {
+                    schoolQuery = it
+                    searchError = null
+                },
+                onModeSelected = { schoolLookupMode = it },
+                onSearch = {
+                    scope.launch {
+                        isSearching = true
+                        searchError = null
+                        runCatching { onSearchSchools(schoolQuery) }
+                            .onSuccess { schoolResults = it }
+                            .onFailure { searchError = it.message ?: "School search failed" }
+                        isSearching = false
+                    }
+                },
+                onSelect = { selectedSchool = it }
             )
             OutlinedTextField(
                 value = responsibility,
@@ -50,7 +80,7 @@ fun SchoolAdminRoleRequestScreen(
                 maxLines = 6
             )
             Text(
-                text = "This request can later connect to document checks and chat-based follow-up from the approving school admin.",
+                text = "Requests should target a real school record so the correct admin team can see and validate them on refresh.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
