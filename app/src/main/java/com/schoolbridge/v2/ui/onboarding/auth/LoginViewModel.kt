@@ -139,11 +139,11 @@ class LoginViewModel(
                 loginError = "Data format error. Please try again."
             } catch (e: IOException) {
                 Log.e(AUTH_TRACE_TAG, "LoginViewModel.login:IOException message=${e.message}", e)
-                loginError = "Network error. Please check your internet connection."
+                loginError = e.message ?: "Unable to reach the server. Please try again."
             } catch (e: Exception) {
                 Log.e(AUTH_TRACE_TAG, "LoginViewModel.login:UnexpectedException message=${e.message}", e)
                 Log.e("LOGIN_FLOW", "Unexpected error", e)
-                loginError = "An unexpected error occurred: ${e.message}"
+                loginError = e.message ?: "An unexpected error occurred. Please try again."
             } finally {
                 isLoading = false
                 Log.d(
