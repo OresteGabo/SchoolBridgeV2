@@ -10,6 +10,33 @@ plugins {
     // id("com.google.devtools.ksp")
 }
 
+fun readLocalProperty(name: String): String? {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return null
+
+    return file.readLines()
+        .firstOrNull { line ->
+            val trimmed = line.trim()
+            trimmed.startsWith("$name=") && !trimmed.startsWith("#")
+        }
+        ?.substringAfter("=")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+}
+
+fun normalizeBuildConfigString(value: String): String =
+    value
+        .replace("\\:", ":")
+        .replace("\\=", "=")
+        .replace("\\\\", "\\")
+        .replace("\"", "\\\"")
+
+val schoolBridgeApiBaseUrl = (
+    readLocalProperty("schoolbridge.apiBaseUrl")
+        ?: System.getenv("SCHOOLBRIDGE_API_BASE_URL")
+        ?: ""
+).trim()
+
 android {
     namespace = "com.schoolbridge.v2"
     compileSdk = 35
@@ -21,6 +48,11 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${normalizeBuildConfigString(schoolBridgeApiBaseUrl)}\""
+        )
     }
 
     buildTypes {
@@ -39,7 +71,10 @@ android {
     }
     kotlinOptions { jvmTarget = "11" }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     composeOptions {
         // MUST align with Kotlin 1.9.23+ for alpha Material 3
