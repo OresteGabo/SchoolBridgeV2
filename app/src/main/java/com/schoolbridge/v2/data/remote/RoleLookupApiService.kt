@@ -47,22 +47,26 @@ class RoleLookupApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for school lookup")
 
-        return client.get("$BASE_URL/api/schools/search") {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            parameter("query", query)
-        }.body()
+        return runApiCall(defaultMessage = "Could not search schools.") {
+            client.get("$BASE_URL/api/schools/search") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                parameter("query", query)
+            }.body()
+        }
     }
 
     override suspend fun searchStudents(query: String, schoolId: Long?): List<StudentLookupDto> {
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for student lookup")
 
-        return client.get("$BASE_URL/api/students/search") {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            parameter("query", query)
-            schoolId?.let { parameter("schoolId", it) }
-        }.body()
+        return runApiCall(defaultMessage = "Could not search students.") {
+            client.get("$BASE_URL/api/students/search") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                parameter("query", query)
+                schoolId?.let { parameter("schoolId", it) }
+            }.body()
+        }
     }
 }
