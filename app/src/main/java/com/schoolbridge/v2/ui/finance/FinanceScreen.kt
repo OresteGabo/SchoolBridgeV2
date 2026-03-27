@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.finance
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -53,14 +54,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.remote.FinanceApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.FinanceRepositoryImpl
@@ -86,6 +91,7 @@ fun FinanceScreen(
     )
     val uiState by financeViewModel.uiState.collectAsStateWithLifecycle()
     val dashboard = uiState.dashboard
+    val currentUserId = currentUser?.userId
 
     LaunchedEffect(currentUser?.userId) {
         currentUser?.userId?.let(financeViewModel::loadFinance)
@@ -144,6 +150,7 @@ fun FinanceScreen(
                 FinanceHeroCard(
                     dashboard = dashboard,
                     selectedStudent = selectedStudent,
+                    currentUserId = currentUserId,
                     selectedFilter = selectedFilter
                 )
             }
@@ -151,6 +158,7 @@ fun FinanceScreen(
             item {
                 StudentSelectorRow(
                     students = dashboard.students,
+                    currentUserId = currentUserId,
                     selectedStudentId = selectedStudentId,
                     onSelected = { selectedStudentId = it }
                 )
@@ -333,10 +341,12 @@ private fun FinanceSectionTabs(
 private fun FinanceHeroCard(
     dashboard: FinanceDashboard,
     selectedStudent: FinanceStudent?,
+    currentUserId: String?,
     selectedFilter: FinanceFilter
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val title = when {
+        selectedStudent?.id == currentUserId -> "Your money flow"
         selectedStudent != null -> "${selectedStudent.name}'s money flow"
         else -> "Family finance overview"
     }
@@ -469,6 +479,7 @@ private fun HeroMetric(
 @Composable
 private fun StudentSelectorRow(
     students: List<FinanceStudent>,
+    currentUserId: String?,
     selectedStudentId: String,
     onSelected: (String) -> Unit
 ) {
@@ -486,10 +497,15 @@ private fun StudentSelectorRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             students.forEach { student ->
+                val label = when {
+                    student.id == ALL_STUDENTS_ID -> student.name
+                    student.id == currentUserId -> "${student.name} (You)"
+                    else -> student.name
+                }
                 FilterChip(
                     selected = selectedStudentId == student.id,
                     onClick = { onSelected(student.id) },
-                    label = { Text(student.name) },
+                    label = { Text(label) },
                     leadingIcon = {
                         if (selectedStudentId == student.id) {
                             Icon(
@@ -824,11 +840,7 @@ private fun TransactionCard(transaction: FinanceTransactionUi) {
                     SourceChip(label = transaction.category.label, tint = MaterialTheme.colorScheme.secondary)
                     SourceChip(label = transaction.source.label, tint = financeSourceColor(transaction.source))
                 }
-                Text(
-                    text = transaction.paymentMethod,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                PaymentMethodBadge(transaction = transaction)
             }
 
             if (transaction.reference.isNotBlank()) {
@@ -856,6 +868,41 @@ private fun TransactionCard(transaction: FinanceTransactionUi) {
                     )
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodBadge(transaction: FinanceTransactionUi) {
+    val brand = financePaymentBrandFor(transaction)
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            brand?.let {
+                Image(
+                    painter = painterResource(id = it.logoRes),
+                    contentDescription = it.label,
+                    modifier = Modifier
+                        .size(width = 26.dp, height = 18.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            Text(
+                text = brand?.label ?: transaction.paymentMethod,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -935,4 +982,24 @@ private fun financeSourceColor(source: FinanceSource): Color = when (source) {
     FinanceSource.Chat -> financeToneColor(FinanceTone.Info)
     FinanceSource.Finance -> financeToneColor(FinanceTone.Positive)
     FinanceSource.Admin -> financeToneColor(FinanceTone.Accent)
+}
+
+private data class FinancePaymentBrand(
+    val label: String,
+    val logoRes: Int
+)
+
+private fun financePaymentBrandFor(transaction: FinanceTransactionUi): FinancePaymentBrand? {
+    val method = transaction.paymentMethod.lowercase()
+    val reference = transaction.reference.lowercase()
+
+    return when {
+        "momo" in method || "mtn" in method -> FinancePaymentBrand("MoMo", R.drawable.momo)
+        "airtel" in method -> FinancePaymentBrand("Airtel", R.drawable.airtel_logo)
+        "equity" in method || reference.startsWith("eq-") -> FinancePaymentBrand("Equity", R.drawable.equity_bank)
+        method == "bank transfer" || reference.startsWith("bk-") -> FinancePaymentBrand("BK", R.drawable.bk_logo)
+        "bk" in method -> FinancePaymentBrand("BK", R.drawable.bk_logo)
+        "irembo" in method || "irembo" in reference -> FinancePaymentBrand("Irembo", R.drawable.irembo_logo)
+        else -> null
+    }
 }
