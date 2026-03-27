@@ -9,8 +9,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,13 +36,13 @@ fun MessageScreen(
                 title = {
                     Column {
                         Text(
-                            text  = "Messages",
+                            text  = t(R.string.messages_title),
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold
                             )
                         )
                         Text(
-                            text  = "Stay updated with school notices",
+                            text  = t(R.string.messages_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
