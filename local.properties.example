@@ -1,0 +1,8 @@
+## Copy this file to `local.properties` on your machine and adjust the values.
+## The real `local.properties` stays private and is ignored by git.
+
+# Android SDK path on your own computer
+sdk.dir=YOUR_ANDROID_SDK_PATH
+
+# Local backend URL for physical devices on your Wi-Fi/LAN
+schoolbridge.apiBaseUrl=YOUR_LOCAL_API_URL
