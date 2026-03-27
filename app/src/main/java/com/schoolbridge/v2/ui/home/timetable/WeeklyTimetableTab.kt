@@ -37,6 +37,7 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyTimetableTab(
+    events: List<TimetableEntry>,
     initialStartOfWeek: LocalDate,
     onStartOfWeekChange: (LocalDate) -> Unit,
 ) {
@@ -44,14 +45,7 @@ fun WeeklyTimetableTab(
     val scope = rememberCoroutineScope()
     var selected by rememberSaveable { mutableStateOf<TimetableEntry?>(null) }
     var selectedDay by rememberSaveable { mutableStateOf<LocalDate?>(null) }
-
-
     var startOfWeek by rememberSaveable { mutableStateOf(initialStartOfWeek) }
-
-    // Generate events dynamically based on current week
-    val events = remember(startOfWeek) {
-        generateSampleEventsForWeek(startOfWeek)
-    }
 
     val baseSlotH = 64.dp
     val baseDayW = 128.dp
@@ -209,5 +203,4 @@ fun WeeklyTimetableTab(
     }
 
 }
-
 
