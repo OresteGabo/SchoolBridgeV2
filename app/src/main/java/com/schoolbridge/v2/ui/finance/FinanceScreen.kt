@@ -70,6 +70,7 @@ import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.remote.FinanceApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.FinanceRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,6 +93,15 @@ fun FinanceScreen(
     val uiState by financeViewModel.uiState.collectAsStateWithLifecycle()
     val dashboard = uiState.dashboard
     val currentUserId = currentUser?.userId
+    val showTeacherDesk = remember(currentUser, dashboard) {
+        val activeRole = currentUser?.currentRole
+        val hasFinanceData = dashboard.transactions.isNotEmpty() || dashboard.outstandingItems.isNotEmpty()
+        activeRole == UserRole.TEACHER &&
+            currentUser?.isParent() != true &&
+            currentUser?.isStudent() != true &&
+            currentUser?.isAdmin() != true &&
+            !hasFinanceData
+    }
 
     LaunchedEffect(currentUser?.userId) {
         currentUser?.userId?.let(financeViewModel::loadFinance)
@@ -121,9 +131,13 @@ fun FinanceScreen(
             TopAppBar(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Finance")
+                        Text(if (showTeacherDesk) "Teaching desk" else "Finance")
                         Text(
-                            text = "All school payments in one place",
+                            text = if (showTeacherDesk) {
+                                "A better use of this tab for teachers without billing responsibilities"
+                            } else {
+                                "All school payments in one place"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -134,7 +148,8 @@ fun FinanceScreen(
         bottomBar = {
             CustomBottomNavBar(
                 currentScreen = currentScreen,
-                onTabSelected = onTabSelected
+                onTabSelected = onTabSelected,
+                currentUser = currentUser
             )
         },
         modifier = modifier
@@ -146,123 +161,203 @@ fun FinanceScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                FinanceHeroCard(
-                    dashboard = dashboard,
-                    selectedStudent = selectedStudent,
-                    currentUserId = currentUserId,
-                    selectedFilter = selectedFilter
-                )
-            }
-
-            item {
-                StudentSelectorRow(
-                    students = dashboard.students,
-                    currentUserId = currentUserId,
-                    selectedStudentId = selectedStudentId,
-                    onSelected = { selectedStudentId = it }
-                )
-            }
-
-            item {
-                FinanceSectionTabs(
-                    selectedSection = selectedSection,
-                    onSectionSelected = { selectedSection = it }
-                )
-            }
-
-            if (uiState.isLoading || uiState.errorMessage != null) {
+            if (showTeacherDesk) {
                 item {
-                    FinanceFeedbackCard(
-                        isLoading = uiState.isLoading,
-                        errorMessage = uiState.errorMessage
+                    TeacherDeskPlaceholder()
+                }
+            } else {
+                item {
+                    FinanceHeroCard(
+                        dashboard = dashboard,
+                        selectedStudent = selectedStudent,
+                        currentUserId = currentUserId,
+                        selectedFilter = selectedFilter
                     )
                 }
+
+                item {
+                    StudentSelectorRow(
+                        students = dashboard.students,
+                        currentUserId = currentUserId,
+                        selectedStudentId = selectedStudentId,
+                        onSelected = { selectedStudentId = it }
+                    )
+                }
+
+                item {
+                    FinanceSectionTabs(
+                        selectedSection = selectedSection,
+                        onSectionSelected = { selectedSection = it }
+                    )
+                }
+
+                if (uiState.isLoading || uiState.errorMessage != null) {
+                    item {
+                        FinanceFeedbackCard(
+                            isLoading = uiState.isLoading,
+                            errorMessage = uiState.errorMessage
+                        )
+                    }
+                }
+
+                when (selectedSection) {
+                    FinanceSection.Overview -> {
+                        item {
+                            OverviewStatsGrid(
+                                stats = dashboard.statsFor(selectedStudentId)
+                            )
+                        }
+
+                        item {
+                            QuickActionsRow()
+                        }
+
+                        item {
+                            SectionTitle(
+                                title = "Urgent items",
+                                subtitle = "The most time-sensitive balances stay close to the summary instead of getting buried in the ledger."
+                            )
+                        }
+
+                        items(
+                            items = dashboard.outstandingItemsFor(selectedStudentId).take(2),
+                            key = { it.id }
+                        ) { item ->
+                            OutstandingChargeCard(item = item)
+                        }
+
+                        if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
+                            item {
+                                FinanceEmptyState("No urgent balances yet. As soon as the backend has due items for this family, they will show up here.")
+                            }
+                        }
+                    }
+
+                    FinanceSection.Due -> {
+                        item {
+                            SectionTitle(
+                                title = "Outstanding items",
+                                subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through threads."
+                            )
+                        }
+
+                        items(
+                            items = dashboard.outstandingItemsFor(selectedStudentId),
+                            key = { it.id }
+                        ) { item ->
+                            OutstandingChargeCard(item = item)
+                        }
+
+                        if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
+                            item {
+                                FinanceEmptyState("No outstanding charges are currently linked to this student selection.")
+                            }
+                        }
+                    }
+
+                    FinanceSection.Activity -> {
+                        item {
+                            FinanceFilterRow(
+                                selectedFilter = selectedFilter,
+                                onFilterSelected = { selectedFilter = it }
+                            )
+                        }
+
+                        item {
+                            SectionTitle(
+                                title = "Transaction timeline",
+                                subtitle = "Every payment, whether started in chat, finance, or by an admin, lands here."
+                            )
+                        }
+
+                        items(
+                            items = visibleTransactions,
+                            key = { it.id }
+                        ) { transaction ->
+                            TransactionCard(transaction = transaction)
+                        }
+
+                        if (visibleTransactions.isEmpty()) {
+                            item {
+                                FinanceEmptyState("No transactions match the current student and filter yet.")
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
 
-            when (selectedSection) {
-                FinanceSection.Overview -> {
-                    item {
-                        OverviewStatsGrid(
-                            stats = dashboard.statsFor(selectedStudentId)
+@Composable
+private fun TeacherDeskPlaceholder() {
+    val colors = MaterialTheme.colorScheme
+    val quickActions = listOf(
+        "Mark attendance",
+        "Enter grades",
+        "Message parents",
+        "Upload quiz"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.secondaryContainer),
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "This account does not currently need school billing tools.",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSecondaryContainer
+                )
+                Text(
+                    text = "Instead of showing an empty finance ledger to teachers, this tab can evolve into a teaching workspace with grade entry, attendance, quiz review, and parent follow-up tools.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSecondaryContainer.copy(alpha = 0.86f)
+                )
+            }
+        }
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Useful next actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    quickActions.forEach { action ->
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(action) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         )
-                    }
-
-                    item {
-                        QuickActionsRow()
-                    }
-
-                    item {
-                        SectionTitle(
-                            title = "Urgent items",
-                            subtitle = "The most time-sensitive balances stay close to the summary instead of getting buried in the ledger."
-                        )
-                    }
-
-                    items(
-                        items = dashboard.outstandingItemsFor(selectedStudentId).take(2),
-                        key = { it.id }
-                    ) { item ->
-                        OutstandingChargeCard(item = item)
-                    }
-
-                    if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
-                        item {
-                            FinanceEmptyState("No urgent balances yet. As soon as the backend has due items for this family, they will show up here.")
-                        }
                     }
                 }
-
-                FinanceSection.Due -> {
-                    item {
-                        SectionTitle(
-                            title = "Outstanding items",
-                            subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through threads."
-                        )
-                    }
-
-                    items(
-                        items = dashboard.outstandingItemsFor(selectedStudentId),
-                        key = { it.id }
-                    ) { item ->
-                        OutstandingChargeCard(item = item)
-                    }
-
-                    if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
-                        item {
-                            FinanceEmptyState("No outstanding charges are currently linked to this student selection.")
-                        }
-                    }
-                }
-
-                FinanceSection.Activity -> {
-                    item {
-                        FinanceFilterRow(
-                            selectedFilter = selectedFilter,
-                            onFilterSelected = { selectedFilter = it }
-                        )
-                    }
-
-                    item {
-                        SectionTitle(
-                            title = "Transaction timeline",
-                            subtitle = "Every payment, whether started in chat, finance, or by an admin, lands here."
-                        )
-                    }
-
-                    items(
-                        items = visibleTransactions,
-                        key = { it.id }
-                    ) { transaction ->
-                        TransactionCard(transaction = transaction)
-                    }
-
-                    if (visibleTransactions.isEmpty()) {
-                        item {
-                            FinanceEmptyState("No transactions match the current student and filter yet.")
-                        }
-                    }
-                }
+                Text(
+                    text = "If you prefer, we can later turn this route into a real teacher tab with assigned quizzes, marking queues, and class communication shortcuts.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
