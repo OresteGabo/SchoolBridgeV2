@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 fun SchoolAdminRoleRequestScreen(
     alreadyHasRole: Boolean = false,
     onSearchSchools: suspend (String) -> List<SchoolLookupDto>,
-    onSubmit: (school: SchoolLookupDto, responsibility: String) -> Unit,
+    onSubmit: suspend (school: SchoolLookupDto, responsibility: String) -> Unit,
     onCancel: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -32,6 +32,8 @@ fun SchoolAdminRoleRequestScreen(
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var responsibility by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitError by remember { mutableStateOf<String?>(null) }
 
     RoleRequestFormScaffold(
         title = if (alreadyHasRole) "Request More Admin Scope" else "Request School Admin Role",
@@ -42,8 +44,19 @@ fun SchoolAdminRoleRequestScreen(
         },
         actionLabel = if (alreadyHasRole) "Request Additional Access" else "Submit Request",
         submitEnabled = selectedSchool != null,
+        isSubmitting = isSubmitting,
+        submitErrorMessage = submitError,
         onBack = onCancel,
-        onSubmit = { selectedSchool?.let { onSubmit(it, responsibility) } }
+        onSubmit = {
+            val school = selectedSchool ?: return@RoleRequestFormScaffold
+            scope.launch {
+                isSubmitting = true
+                submitError = null
+                runCatching { onSubmit(school, responsibility) }
+                    .onFailure { submitError = it.message ?: "Could not submit your request" }
+                isSubmitting = false
+            }
+        }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SchoolLookupSection(
