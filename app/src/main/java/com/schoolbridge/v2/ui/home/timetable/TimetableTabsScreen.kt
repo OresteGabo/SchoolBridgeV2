@@ -22,8 +22,8 @@ import java.time.temporal.TemporalAdjusters
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimetableTabsScreen(
-    onBack: () -> Unit,
-
+    onBack: (() -> Unit)? = null,
+    bottomBar: @Composable (() -> Unit)? = null
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Weekly", "Daily")
@@ -83,8 +83,10 @@ fun TimetableTabsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {
@@ -101,6 +103,9 @@ fun TimetableTabsScreen(
                 },
                 scrollBehavior = scrollBehavior
             )
+        },
+        bottomBar = {
+            bottomBar?.invoke()
         },
         floatingActionButton = {
             if (selectedTabIndex == 1) {
