@@ -3,7 +3,6 @@ package com.schoolbridge.v2.ui.message
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,7 +32,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -49,6 +47,8 @@ import com.schoolbridge.v2.data.remote.MessageRealtimeServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
+import com.schoolbridge.v2.ui.common.isExpandedLayout
+import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -63,6 +63,7 @@ fun MessageThreadScreen(
     onThreadSelected: ((String) -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ) {
+    val isExpanded = isExpandedLayout()
     val messagingRepository = remember(userSessionManager) {
         MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
     }
@@ -88,11 +89,17 @@ fun MessageThreadScreen(
     var activePaymentMessage by remember { mutableStateOf<Message?>(null) }
     var activeCallMessage by remember { mutableStateOf<Message?>(null) }
 
+    LaunchedEffect(isExpanded, messageThreads, initialThreadId) {
+        if (isExpanded && initialThreadId == null && internalSelectedThreadId == null && messageThreads.isNotEmpty()) {
+            internalSelectedThreadId = messageThreads.first().id
+        }
+    }
+
     val effectiveThreadId = initialThreadId ?: internalSelectedThreadId
     val selectedThread = messageThreads.find { it.id == effectiveThreadId }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        ImigongoBackground()
+        SchoolBridgePatternBackground()
 
         // MAIN CONTENT LAYER
         AnimatedContent(
@@ -140,7 +147,36 @@ fun MessageThreadScreen(
                 )
             } else {
                 AnimatedContent(targetState = selectedThread, label = "ThreadTransition") { thread ->
-                    if (thread == null) {
+                    if (isExpanded && initialThreadId == null) {
+                        TabletThreadLayout(
+                            threads = messageThreads,
+                            selectedThread = thread,
+                            onThreadClick = {
+                                internalSelectedThreadId = it.id
+                                viewModel.markAsRead(it.id)
+                            },
+                            onMessageClick = { viewingMessage = it },
+                            onActionClick = { msgId, actionId ->
+                                val actualThread = thread ?: return@TabletThreadLayout
+                                val originalMsg = actualThread.messages.find { it.id == msgId }
+                                if (actionId == "pay_bill") {
+                                    activePaymentMessage = originalMsg
+                                } else if (actionId in callActionIds) {
+                                    activeCallMessage = originalMsg
+                                } else {
+                                    viewModel.performAction(actualThread.id, msgId, actionId)
+                                    val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
+                                    viewModel.addUserMessage(
+                                        threadId = actualThread.id,
+                                        content = actionLabel,
+                                        replyToId = msgId,
+                                        replyToContent = originalMsg?.content,
+                                        replyToSender = originalMsg?.sender
+                                    )
+                                }
+                            }
+                        )
+                    } else if (thread == null) {
                         ThreadListScreen(messageThreads) {
                             internalSelectedThreadId = it.id
                             viewModel.markAsRead(it.id)
@@ -238,18 +274,71 @@ fun MessageThreadScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Subtle dot-grid background
-// ─────────────────────────────────────────────────────────────
-
 @Composable
-fun ImigongoBackground() {
-    val color = MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val step = 60f
-        for (x in 0..size.width.toInt() step step.toInt()) {
-            for (y in 0..size.height.toInt() step step.toInt()) {
-                drawCircle(color, 4f, Offset(x.toFloat(), y.toFloat()))
+private fun TabletThreadLayout(
+    threads: List<MessageThread>,
+    selectedThread: MessageThread?,
+    onThreadClick: (MessageThread) -> Unit,
+    onMessageClick: (Message) -> Unit,
+    onActionClick: (String, String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            modifier = Modifier
+                .weight(0.95f)
+                .fillMaxHeight(),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            tonalElevation = 2.dp
+        ) {
+            ThreadListScreen(
+                threads = threads,
+                onThreadClick = onThreadClick
+            )
+        }
+
+        Surface(
+            modifier = Modifier
+                .weight(1.35f)
+                .fillMaxHeight(),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 3.dp
+        ) {
+            if (selectedThread == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Select a thread",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Tablet layouts work better when the conversation list stays visible beside the active discussion.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                ThreadDetailScreen(
+                    thread = selectedThread,
+                    onBack = {},
+                    onMessageClick = onMessageClick,
+                    onActionClick = onActionClick,
+                    showBackButton = false
+                )
             }
         }
     }
@@ -469,7 +558,8 @@ fun ThreadDetailScreen(
     thread: MessageThread,
     onBack: () -> Unit,
     onMessageClick: (Message) -> Unit,
-    onActionClick: (String, String) -> Unit
+    onActionClick: (String, String) -> Unit,
+    showBackButton: Boolean = true
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -484,12 +574,14 @@ fun ThreadDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                if (showBackButton) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
                 Box(
                     contentAlignment = Alignment.Center,
