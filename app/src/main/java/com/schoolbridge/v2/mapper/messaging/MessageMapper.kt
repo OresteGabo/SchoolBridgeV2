@@ -5,10 +5,12 @@ import com.schoolbridge.v2.domain.messaging.Message
 
 fun MessageInThreadDto.toDomain(): Message = Message(
     id = id,
+    senderUserId = null,
     sender = senderId,
     content = content,
     timestamp = sentAt,
     isUnread = false,
+    isFromCurrentUser = false,
     actions = emptyList(),
     status = null
 )
