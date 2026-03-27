@@ -50,10 +50,12 @@ class FinanceApiServiceImpl(
             ?: throw IllegalStateException("Missing auth token for finance request")
         Log.d(FINANCE_TRACE_TAG, "FinanceApiService.getFinanceDashboard userId=$userId url=$url")
 
-        return client.get(url) {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            parameter("userId", userId)
-        }.body()
+        return runApiCall(defaultMessage = "Could not load finance data.") {
+            client.get(url) {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                parameter("userId", userId)
+            }.body()
+        }
     }
 }
