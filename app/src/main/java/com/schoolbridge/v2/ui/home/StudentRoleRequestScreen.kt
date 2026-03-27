@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 fun StudentRoleRequestScreen(
     alreadyHasRole: Boolean = false,
     onSearchSchools: suspend (String) -> List<SchoolLookupDto>,
-    onSubmit: (school: SchoolLookupDto, level: String, dob: String) -> Unit,
+    onSubmit: suspend (school: SchoolLookupDto, level: String, dob: String) -> Unit,
     onCancel: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -33,6 +33,8 @@ fun StudentRoleRequestScreen(
     var searchError by remember { mutableStateOf<String?>(null) }
     var level by remember { mutableStateOf("") }
     var dob by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitError by remember { mutableStateOf<String?>(null) }
     RoleRequestFormScaffold(
         title = if (alreadyHasRole) "Link Another Student Profile" else "Request Student Access",
         subtitle = if (alreadyHasRole) {
@@ -42,8 +44,19 @@ fun StudentRoleRequestScreen(
         },
         actionLabel = if (alreadyHasRole) "Request Another Student Link" else "Send Request",
         submitEnabled = selectedSchool != null,
+        isSubmitting = isSubmitting,
+        submitErrorMessage = submitError,
         onBack = onCancel,
-        onSubmit = { selectedSchool?.let { onSubmit(it, level, dob) } }
+        onSubmit = {
+            val school = selectedSchool ?: return@RoleRequestFormScaffold
+            scope.launch {
+                isSubmitting = true
+                submitError = null
+                runCatching { onSubmit(school, level, dob) }
+                    .onFailure { submitError = it.message ?: "Could not submit your request" }
+                isSubmitting = false
+            }
+        }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SchoolLookupSection(
