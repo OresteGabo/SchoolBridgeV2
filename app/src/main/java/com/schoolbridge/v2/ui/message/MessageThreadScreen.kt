@@ -297,8 +297,9 @@ fun ThreadListScreen(
 private fun ThreadCard(thread: MessageThread, onClick: () -> Unit) {
     val isUnread    = thread.getUnreadCount() > 0
     val latestMsg   = thread.getLatestMessage()
-    val modeColor   = threadModeContainerColor(thread.mode)
-    val modeOnColor = threadModeOnContainerColor(thread.mode)
+    val badgeStyle  = rememberThreadBadgeStyle(thread)
+    val modeColor   = badgeStyle.containerColor
+    val modeOnColor = badgeStyle.onContainerColor
 
     Surface(
         onClick         = onClick,
@@ -319,7 +320,7 @@ private fun ThreadCard(thread: MessageThread, onClick: () -> Unit) {
                     .clip(RoundedCornerShape(12.dp))
                     .background(modeColor)
             ) {
-                Text(threadModeEmoji(thread.mode), fontSize = 20.sp)
+                Text(badgeStyle.emoji, fontSize = 20.sp)
             }
 
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -376,7 +377,7 @@ private fun ThreadCard(thread: MessageThread, onClick: () -> Unit) {
                 ) {
                     Surface(shape = RoundedCornerShape(50), color = modeColor) {
                         Text(
-                            text     = threadModeLabel(thread.mode).uppercase(),
+                            text     = badgeStyle.label.uppercase(),
                             style    = MaterialTheme.typography.labelSmall.copy(
                                 color         = modeOnColor,
                                 fontWeight    = FontWeight.Bold,
@@ -411,6 +412,53 @@ private fun ThreadCard(thread: MessageThread, onClick: () -> Unit) {
         }
     }
 }
+
+@Composable
+private fun rememberThreadBadgeStyle(thread: MessageThread): ThreadBadgeStyle {
+    val latestMessage = thread.getLatestMessage()
+    val latestIncomingActionIndex = thread.messages.indexOfLast { message ->
+        !message.isFromCurrentUser && message.actions.isNotEmpty()
+    }
+    val hasPendingIncomingAction = latestIncomingActionIndex >= 0 &&
+        thread.messages.drop(latestIncomingActionIndex + 1).none { it.isFromCurrentUser }
+
+    return when {
+        hasPendingIncomingAction -> ThreadBadgeStyle(
+            label = "Action needed",
+            emoji = "⚡",
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            onContainerColor = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+
+        thread.mode == ThreadMode.ACTION_REQUIRED && latestMessage?.isFromCurrentUser == true -> ThreadBadgeStyle(
+            label = "Awaiting reply",
+            emoji = "⏳",
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            onContainerColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+
+        thread.mode == ThreadMode.ACTION_REQUIRED -> ThreadBadgeStyle(
+            label = "Updated",
+            emoji = "✓",
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            onContainerColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+
+        else -> ThreadBadgeStyle(
+            label = threadModeLabel(thread.mode),
+            emoji = threadModeEmoji(thread.mode),
+            containerColor = threadModeContainerColor(thread.mode),
+            onContainerColor = threadModeOnContainerColor(thread.mode)
+        )
+    }
+}
+
+private data class ThreadBadgeStyle(
+    val label: String,
+    val emoji: String,
+    val containerColor: Color,
+    val onContainerColor: Color
+)
 
 // ─────────────────────────────────────────────────────────────
 // Thread detail screen
