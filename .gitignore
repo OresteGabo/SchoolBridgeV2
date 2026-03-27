@@ -50,6 +50,7 @@ compose_app_*
 *.keystore
 *.jks
 *.properties
+!local.properties.example
 *.xml
 *.json
 *.md5
