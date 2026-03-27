@@ -7,6 +7,7 @@ data class MobileMessageThreadDto(
     val id: String,
     val topic: String,
     val participantsLabel: String,
+    val conversationType: String = "",
     val mode: String,
     val lastUpdatedAt: String,
     val unreadCount: Int,
