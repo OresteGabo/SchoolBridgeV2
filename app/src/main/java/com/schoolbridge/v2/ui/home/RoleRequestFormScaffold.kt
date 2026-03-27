@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,6 +38,8 @@ fun RoleRequestFormScaffold(
     subtitle: String,
     actionLabel: String,
     submitEnabled: Boolean = true,
+    isSubmitting: Boolean = false,
+    submitErrorMessage: String? = null,
     onBack: () -> Unit,
     onSubmit: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
@@ -62,12 +66,27 @@ fun RoleRequestFormScaffold(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Divider()
+                    submitErrorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     Button(
                         onClick = onSubmit,
-                        enabled = submitEnabled,
+                        enabled = submitEnabled && !isSubmitting,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(actionLabel)
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .size(18.dp)
+                            )
+                        }
+                        Text(if (isSubmitting) "Sending..." else actionLabel)
                     }
                 }
             }
