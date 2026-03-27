@@ -210,6 +210,7 @@ fun AppNavHost(
 
             RequestRoleScreen(
                 activeRoles = currentUser?.activeRoles ?: emptySet(),          // safe fallback
+                linkedStudentNames = currentUser?.linkedStudents?.map { "${it.firstName} ${it.lastName}".trim() } ?: emptyList(),
                 onRoleSelected = { role ->
                     when(role){
                         UserRole.PARENT -> navController.navigate(MainAppScreen.RequestParentRole.route)
@@ -224,7 +225,9 @@ fun AppNavHost(
             )
         }
         composable(MainAppScreen.RequestStudentRole.route) {
+            val currentUser by userSessionManager.currentUser.collectAsState()
             StudentRoleRequestScreen(
+                alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.STUDENT) == true,
                 onSubmit = {_,_,_ ->
                     // TODO: Handle student role request submission
                 },
@@ -235,7 +238,10 @@ fun AppNavHost(
         }
 
         composable(MainAppScreen.RequestParentRole.route) {
+            val currentUser by userSessionManager.currentUser.collectAsState()
             ParentRoleRequestScreen(
+                alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.PARENT) == true,
+                linkedStudentNames = currentUser?.linkedStudents?.map { "${it.firstName} ${it.lastName}".trim() } ?: emptyList(),
                 onSubmit = {_,_,_,_ ->
                     // TODO: Handle parent role request submission
                 },
@@ -246,7 +252,9 @@ fun AppNavHost(
         }
 
         composable(MainAppScreen.RequestTeacherRole.route) {
+            val currentUser by userSessionManager.currentUser.collectAsState()
             TeacherRoleRequestScreen(
+                alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.TEACHER) == true,
                 onSubmit = {_,_ ->
                     // TODO: Handle teacher role request submission
                 },
@@ -257,7 +265,9 @@ fun AppNavHost(
         }
 
         composable(MainAppScreen.RequestSchoolAdminRole.route) {
+            val currentUser by userSessionManager.currentUser.collectAsState()
             SchoolAdminRoleRequestScreen(
+                alreadyHasRole = currentUser?.activeRoles?.contains(UserRole.SCHOOL_ADMIN) == true,
                 onSubmit = {
                     // TODO: Handle school admin role request submission
                 },
