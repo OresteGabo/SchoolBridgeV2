@@ -16,6 +16,9 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
+import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import com.schoolbridge.v2.ui.common.isExpandedLayout
 
 // Assuming AddEventBottomSheet and sampleEvents are defined elsewhere
 
@@ -25,6 +28,7 @@ fun TimetableTabsScreen(
     onBack: (() -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null
 ) {
+    val isExpanded = isExpandedLayout()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Weekly", "Daily")
 
@@ -117,43 +121,49 @@ fun TimetableTabsScreen(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+        AdaptivePageFrame(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = paddingValues,
+            maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
         ) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = {
-                            selectedTabIndex = index
-                            if (index == 0) {
-                                selectedWeekDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                            } else {
-                                selectedDate = today
-                            }
-                        },
-                        text = { Text(title) }
-                    )
+            Box(modifier = Modifier.fillMaxSize()) {
+                SchoolBridgePatternBackground(dotAlpha = 0.018f, gradientAlpha = 0.04f)
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = {
+                                    selectedTabIndex = index
+                                    if (index == 0) {
+                                        selectedWeekDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                                    } else {
+                                        selectedDate = today
+                                    }
+                                },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    when (selectedTabIndex) {
+                        0->WeeklyTimetableTab(
+                            initialStartOfWeek = selectedWeekDate,
+                            onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
+                        )
+                        1 -> DailyTimetableTab(
+                            selectedDate = selectedDate,
+                            onDateChange = { selectedDate = it },
+                        )
+                    }
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            when (selectedTabIndex) {
-                0->WeeklyTimetableTab(
-                    initialStartOfWeek = selectedWeekDate,
-                    onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
-                )
-                1 -> DailyTimetableTab(
-                    selectedDate = selectedDate,
-                    onDateChange = { selectedDate = it },
-                    //dailyEvents = dailyEvents
-                )
             }
         }
     }
