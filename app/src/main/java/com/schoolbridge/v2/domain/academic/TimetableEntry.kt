@@ -20,7 +20,10 @@ data class TimetableEntry(
     val title: String,
     val room: String,
     val teacher: String = "",
-    val type: TimetableEntryType
+    val type: TimetableEntryType,
+    val studentId: String? = null,
+    val studentName: String? = null,
+    val note: String? = null
 )
 
 
@@ -55,4 +58,3 @@ fun timetableEntryColor(type: TimetableEntryType): Color {
         TimetableEntryType.LAB -> MaterialTheme.colorScheme.surfaceVariant
     }
 }
-
