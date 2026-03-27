@@ -28,6 +28,9 @@ import com.google.gson.annotations.SerializedName
  */
 data class RoleRequestDto(
     @SerializedName("requestedRole") val requestedRole: String,
+    @SerializedName("schoolId") val schoolId: Long? = null,
+    @SerializedName("schoolName") val schoolName: String? = null,
+    @SerializedName("studentUserId") val studentUserId: Long? = null,
     @SerializedName("justification") val justification: String?,
     @SerializedName("supportingDocumentsUrls") val supportingDocumentsUrls: List<String>?,
 
@@ -35,5 +38,11 @@ data class RoleRequestDto(
     @SerializedName("childStudentId") val childStudentId: String?,
     @SerializedName("childNationalId") val childNationalId: String?,
     @SerializedName("parentNationalId") val parentNationalId: String?,
-    @SerializedName("familyCardDocumentUrl") val familyCardDocumentUrl: String?
+    @SerializedName("familyCardDocumentUrl") val familyCardDocumentUrl: String?,
+    @SerializedName("childName") val childName: String? = null,
+    @SerializedName("childDateOfBirth") val childDateOfBirth: String? = null,
+    @SerializedName("relationshipLabel") val relationshipLabel: String? = null,
+    @SerializedName("academicLevel") val academicLevel: String? = null,
+    @SerializedName("roleDescription") val roleDescription: String? = null,
+    @SerializedName("responsibilityScope") val responsibilityScope: String? = null
 )
