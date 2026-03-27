@@ -10,11 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import com.schoolbridge.v2.components.CustomBottomNavBar
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageScreen(
+    userSessionManager: UserSessionManager,
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
     onBack: () -> Unit,
@@ -82,6 +84,7 @@ fun MessageScreen(
             ImigongoBackground()
 
             MessageThreadScreen(
+                userSessionManager = userSessionManager,
                 initialThreadId  = null,
                 onThreadSelected = onMessageThreadClick
             )
