@@ -49,7 +49,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun AlertsScreen(
     viewModel: AlertsViewModel = viewModel(),
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
+    bottomBar: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val alerts by viewModel.alerts.collectAsState()
@@ -81,11 +82,16 @@ fun AlertsScreen(
             TopAppBar(
                 title = { Text("Alerts") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )
+        },
+        bottomBar = {
+            bottomBar?.invoke()
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
