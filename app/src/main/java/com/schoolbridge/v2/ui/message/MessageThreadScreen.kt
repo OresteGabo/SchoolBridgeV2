@@ -20,8 +20,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CallMissed
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -48,16 +57,29 @@ import java.util.UUID
 
 @Composable
 fun MessageThreadScreen(
+    userSessionManager: UserSessionManager,
     initialThreadId: String? = null,
     onThreadSelected: ((String) -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ) {
-    val viewModel: MessageThreadViewModel = viewModel()
-    val messageThreads by viewModel.messageThreads.collectAsState()
+    val messagingRepository = remember(userSessionManager) {
+        MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
+    }
+    val viewModel: MessageThreadViewModel = viewModel(
+        factory = MessageThreadViewModelFactory(messagingRepository)
+    )
+    val uiState by viewModel.uiState.collectAsState()
+    val messageThreads = uiState.threads
+    val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
+
+    LaunchedEffect(currentUser?.userId) {
+        currentUser?.userId?.let(viewModel::loadThreads)
+    }
 
     var internalSelectedThreadId by remember { mutableStateOf<String?>(null) }
     var viewingMessage by remember { mutableStateOf<Message?>(null) }
     var activePaymentMessage by remember { mutableStateOf<Message?>(null) }
+    var activeCallMessage by remember { mutableStateOf<Message?>(null) }
 
     val effectiveThreadId = initialThreadId ?: internalSelectedThreadId
     val selectedThread = messageThreads.find { it.id == effectiveThreadId }
@@ -70,7 +92,19 @@ fun MessageThreadScreen(
             targetState = viewingMessage != null,
             label = "ScreenTransition"
         ) { isViewing ->
-            if (isViewing && viewingMessage != null) {
+            if (uiState.isLoading && messageThreads.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.errorMessage != null && messageThreads.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = uiState.errorMessage ?: "Could not load messages",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (isViewing && viewingMessage != null) {
                 MessageDetailsScreen(
                     message = viewingMessage!!,
                     onBack = { viewingMessage = null },
@@ -80,6 +114,8 @@ fun MessageThreadScreen(
                             val originalMsg = viewingMessage!!
                             if (actionId == "pay_bill") {
                                 activePaymentMessage = originalMsg
+                            } else if (actionId in callActionIds) {
+                                activeCallMessage = originalMsg
                             } else {
                                 viewModel.performAction(thread.id, originalMsg.id, actionId)
                                 val actionLabel = originalMsg.actions.find { it.actionId == actionId }?.label ?: "Confirmed"
@@ -111,6 +147,8 @@ fun MessageThreadScreen(
                                 val originalMsg = thread.messages.find { it.id == msgId }
                                 if (actionId == "pay_bill") {
                                     activePaymentMessage = originalMsg
+                                } else if (actionId in callActionIds) {
+                                    activeCallMessage = originalMsg
                                 } else {
                                     viewModel.performAction(thread.id, msgId, actionId)
                                     val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
@@ -151,10 +189,41 @@ fun MessageThreadScreen(
                 }
             )
         }
+
+        if (activeCallMessage != null) {
+            ThreadCallPreviewScreen(
+                message = activeCallMessage!!,
+                onDismiss = { activeCallMessage = null },
+                onStart = { type ->
+                    selectedThread?.let { thread ->
+                        val info = activeCallMessage!!.callInfo
+                        viewModel.addThreadCall(
+                            threadId = thread.id,
+                            title = if (type == ThreadCallType.VIDEO) "Video call started" else "Audio call started",
+                            content = "The ${type.name.lowercase()} room was opened from this thread, and the outcome can stay here after the call ends.",
+                            callInfo = ThreadCallInfo(
+                                type = type,
+                                purpose = info?.purpose ?: ThreadCallPurpose.GENERAL,
+                                status = ThreadCallStatus.ACTIVE,
+                                hostLabel = "You",
+                                participantSummary = thread.participantsLabel,
+                                note = "This state is ready to be connected to real WebRTC signaling later."
+                            ),
+                            actions = listOf(
+                                MessageAction("End Call", "end_call"),
+                                MessageAction("Ask for Documents", "upload_documents")
+                            )
+                        )
+                    }
+                    activeCallMessage = null
+                }
+            )
+        }
     }
 
-    BackHandler(enabled = viewingMessage != null || internalSelectedThreadId != null || activePaymentMessage != null) {
+    BackHandler(enabled = viewingMessage != null || internalSelectedThreadId != null || activePaymentMessage != null || activeCallMessage != null) {
         when {
+            activeCallMessage != null -> activeCallMessage = null
             activePaymentMessage != null -> activePaymentMessage = null
             viewingMessage != null -> viewingMessage = null
             else -> internalSelectedThreadId = null
@@ -435,7 +504,7 @@ fun MessageCard(
     onReplyClick: (String) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val isSystem = message.sender != "You"
+    val isSystem = !message.isFromCurrentUser
     val primary = MaterialTheme.colorScheme.primary
 
     Column(
@@ -516,6 +585,11 @@ fun MessageCard(
                     }
                 }
 
+                message.callInfo?.let { callInfo ->
+                    Spacer(Modifier.height(10.dp))
+                    ThreadCallCard(callInfo = callInfo)
+                }
+
                 // --- MESSAGE TITLE (Optional) ---
                 message.title?.let {
                     Text(
@@ -565,7 +639,7 @@ fun MessageCard(
                 }
 
                 // --- ACTION BUTTONS (Hidden if status exists) ---
-                if (message.actions.isNotEmpty() && message.status == null) {
+                if (message.actions.isNotEmpty() && message.status == null && !message.isFromCurrentUser) {
                     Spacer(Modifier.height(12.dp))
                     message.actions.forEach { action ->
                         val isPaymentAction = action.actionId == "pay_bill"
@@ -606,6 +680,143 @@ fun MessageCard(
             }
         }
     }
+}
+
+@Composable
+private fun ThreadCallCard(callInfo: ThreadCallInfo) {
+    val scheme = MaterialTheme.colorScheme
+    val (container, content) = when (callInfo.status) {
+        ThreadCallStatus.ACTIVE -> scheme.primaryContainer to scheme.onPrimaryContainer
+        ThreadCallStatus.SCHEDULED -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        ThreadCallStatus.MISSED,
+        ThreadCallStatus.DECLINED -> scheme.errorContainer to scheme.onErrorContainer
+        ThreadCallStatus.NEEDS_DOCUMENTS -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        else -> scheme.surfaceContainerHighest to scheme.onSurface
+    }
+
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = container,
+        border = BorderStroke(1.dp, scheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(shape = CircleShape, color = content.copy(alpha = 0.12f)) {
+                    Icon(
+                        imageVector = when (callInfo.type) {
+                            ThreadCallType.AUDIO -> Icons.Default.Phone
+                            ThreadCallType.VIDEO -> Icons.Default.VideoCall
+                            ThreadCallType.LIVE_ANNOUNCEMENT -> Icons.Default.LiveTv
+                        },
+                        contentDescription = null,
+                        tint = content,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(18.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = threadCallTitle(callInfo),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = content
+                    )
+                    Text(
+                        text = threadCallSubtitle(callInfo),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = content.copy(alpha = 0.86f)
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CallMetaChip(
+                    icon = when (callInfo.status) {
+                        ThreadCallStatus.SCHEDULED -> Icons.Default.Schedule
+                        ThreadCallStatus.MISSED -> Icons.Default.CallMissed
+                        ThreadCallStatus.NEEDS_DOCUMENTS -> Icons.Default.Upload
+                        else -> Icons.Default.Check
+                    },
+                    label = threadCallStatusLabel(callInfo.status)
+                )
+                callInfo.scheduledLabel?.let {
+                    CallMetaChip(icon = Icons.Default.Schedule, label = it)
+                }
+                callInfo.durationLabel?.let {
+                    CallMetaChip(icon = Icons.Default.Info, label = it)
+                }
+            }
+
+            callInfo.note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CallMetaChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(12.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+private val callActionIds = setOf(
+    "start_audio_call",
+    "start_video_call",
+    "join_live_announcement",
+    "schedule_verification_call"
+)
+
+private fun threadCallTitle(callInfo: ThreadCallInfo): String = when (callInfo.purpose) {
+    ThreadCallPurpose.ROLE_VERIFICATION -> "Verification room"
+    ThreadCallPurpose.FINANCE_ESCALATION -> "Finance escalation"
+    ThreadCallPurpose.DISCIPLINE_ESCALATION -> "Discipline follow-up"
+    ThreadCallPurpose.ANNOUNCEMENT -> "Announcement room"
+    ThreadCallPurpose.GENERAL -> "Thread call"
+}
+
+private fun threadCallSubtitle(callInfo: ThreadCallInfo): String = when (callInfo.type) {
+    ThreadCallType.AUDIO -> "Audio with ${callInfo.participantSummary}"
+    ThreadCallType.VIDEO -> "Video with ${callInfo.participantSummary}"
+    ThreadCallType.LIVE_ANNOUNCEMENT -> "Live session for ${callInfo.participantSummary}"
+}
+
+private fun threadCallStatusLabel(status: ThreadCallStatus): String = when (status) {
+    ThreadCallStatus.REQUESTED -> "Requested"
+    ThreadCallStatus.SCHEDULED -> "Scheduled"
+    ThreadCallStatus.RINGING -> "Ringing"
+    ThreadCallStatus.ACTIVE -> "Live now"
+    ThreadCallStatus.ENDED -> "Ended"
+    ThreadCallStatus.MISSED -> "Missed"
+    ThreadCallStatus.DECLINED -> "Declined"
+    ThreadCallStatus.NEEDS_DOCUMENTS -> "Need docs"
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -725,6 +936,103 @@ fun PaymentGatewayScreen(
                     brandColor = Color(0xFF003366), // BK Blue
                     onClick = { onPaymentComplete("BK-REF-${UUID.randomUUID().toString().take(6)}") }
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThreadCallPreviewScreen(
+    message: Message,
+    onDismiss: () -> Unit,
+    onStart: (ThreadCallType) -> Unit
+) {
+    val callInfo = message.callInfo ?: return
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopAppBar(
+                title = { Text("Thread Call Room", style = MaterialTheme.typography.titleMedium) },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = message.title ?: threadCallTitle(callInfo),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = message.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.92f)
+                        )
+                        ThreadCallCard(callInfo = callInfo)
+                    }
+                }
+
+                Text(
+                    text = "This room starts from the thread so the call, uploaded documents, and follow-up stay linked in one place.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Button(
+                    onClick = { onStart(callInfo.type) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = when (callInfo.type) {
+                            ThreadCallType.AUDIO -> Icons.Default.Phone
+                            ThreadCallType.VIDEO -> Icons.Default.VideoCall
+                            ThreadCallType.LIVE_ANNOUNCEMENT -> Icons.Default.LiveTv
+                        },
+                        contentDescription = null
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when (callInfo.type) {
+                            ThreadCallType.AUDIO -> "Start Audio Call"
+                            ThreadCallType.VIDEO -> "Start Video Call"
+                            ThreadCallType.LIVE_ANNOUNCEMENT -> "Open Live Room"
+                        }
+                    )
+                }
+
+                if (callInfo.purpose == ThreadCallPurpose.ROLE_VERIFICATION) {
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Default.Upload, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Request or Upload Documents")
+                    }
+                }
             }
         }
     }
