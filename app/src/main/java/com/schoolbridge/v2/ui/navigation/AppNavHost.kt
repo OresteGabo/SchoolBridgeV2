@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.schoolbridge.v2.components.CustomBottomNavBar
 import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
 import com.schoolbridge.v2.data.dto.user.RoleRequestDto
 import com.schoolbridge.v2.data.remote.RoleLookupApiServiceImpl
@@ -374,16 +375,48 @@ fun AppNavHost(
             )
         }
 
-
-
         composable(MainAppScreen.WeeklySchedule.route){
+            val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
             TimetableTabsScreen(
-                onBack = { navController.navigateUp() },
+                onBack = null,
+                bottomBar = {
+                    CustomBottomNavBar(
+                        currentScreen = MainAppScreen.WeeklySchedule,
+                        onTabSelected = { screen ->
+                            navController.navigate(screen.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                            }
+                        },
+                        currentUser = currentUser
+                    )
+                }
             )
         }
 
         composable(MainAppScreen.Alerts.route){
-            AlertsScreen(onBack = { navController.navigateUp() })
+            val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
+            AlertsScreen(
+                onBack = null,
+                bottomBar = {
+                    CustomBottomNavBar(
+                        currentScreen = MainAppScreen.Alerts,
+                        onTabSelected = { screen ->
+                            navController.navigate(screen.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                            }
+                        },
+                        currentUser = currentUser
+                    )
+                }
+            )
         }
         composable(MainAppScreen.Events.route){
             EventsScreen(
