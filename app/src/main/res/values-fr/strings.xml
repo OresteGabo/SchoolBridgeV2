@@ -7,6 +7,14 @@
     <string name="finance_label">Finances</string>
     <string name="schedule_label">Planning</string>
     <string name="alerts_label">Alertes</string>
+    <string name="alerts_search_placeholder">Rechercher des mises à jour...</string>
+    <string name="alerts_empty_search">Aucune mise à jour scolaire ne correspond à votre recherche.</string>
+    <string name="alerts_source_label">Source</string>
+    <string name="alerts_student_label">Élève</string>
+    <string name="alerts_type_label">Type</string>
+    <string name="alerts_publisher_type_label">Type d’émetteur</string>
+    <string name="alerts_not_linked_student">Aucun élève lié</string>
+    <string name="mark_all_read">Tout marquer comme lu</string>
     <string name="settings_label">Paramètres</string>
     <string name="messages_title">Messages</string>
     <string name="messages_subtitle">Restez informé des communications de l’école</string>
