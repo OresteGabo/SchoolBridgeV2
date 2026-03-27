@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
@@ -157,30 +158,33 @@ private fun BottomNavItem(
     }
 }
 
-private fun rememberBottomNavItems(currentUser: CurrentUser?): List<MainAppScreen> = buildList {
-    add(MainAppScreen.Message)
-    add(MainAppScreen.Home)
-
-    if (currentUser == null || currentUser.isTeacher() || currentUser.isStudent() || currentUser.isParent() || currentUser.isAdmin()) {
-        add(MainAppScreen.WeeklySchedule)
+private fun rememberBottomNavItems(currentUser: CurrentUser?): List<MainAppScreen> {
+    val left = buildList {
+        add(MainAppScreen.Message)
+        if (currentUser?.isTeacher() == true || currentUser?.isAdmin() == true) {
+            add(MainAppScreen.Alerts)
+        }
     }
 
-    if (currentUser == null || currentUser.isParent() || currentUser.isStudent() || currentUser.isAdmin()) {
-        add(MainAppScreen.Finance)
+    val right = buildList {
+        if (currentUser == null || currentUser.isTeacher() || currentUser.isStudent() || currentUser.isParent() || currentUser.isAdmin()) {
+            add(MainAppScreen.WeeklySchedule)
+        }
+        if (currentUser == null || currentUser.isParent() || currentUser.isStudent() || currentUser.isAdmin()) {
+            add(MainAppScreen.Finance)
+        }
     }
 
-    if (currentUser?.isTeacher() == true || currentUser?.isAdmin() == true) {
-        add(MainAppScreen.Alerts)
-    }
-}.distinctBy { it.route }.take(5)
+    return (left + MainAppScreen.Home + right).distinctBy { it.route }.take(5)
+}
 
 @Composable
 private fun navLabel(screen: MainAppScreen): String = when (screen) {
     MainAppScreen.Message -> t(screen.title ?: error("Missing title"))
     MainAppScreen.Home -> t(screen.title ?: error("Missing title"))
     MainAppScreen.Finance -> t(screen.title ?: error("Missing title"))
-    MainAppScreen.WeeklySchedule -> "Schedule"
-    MainAppScreen.Alerts -> "Alerts"
+    MainAppScreen.WeeklySchedule -> t(R.string.schedule_label)
+    MainAppScreen.Alerts -> t(R.string.alerts_label)
     else -> screen.route
 }
 
