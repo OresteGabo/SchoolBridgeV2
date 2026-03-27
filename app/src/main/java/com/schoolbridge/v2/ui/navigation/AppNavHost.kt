@@ -378,6 +378,7 @@ fun AppNavHost(
         composable(MainAppScreen.WeeklySchedule.route){
             val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
             TimetableTabsScreen(
+                userSessionManager = userSessionManager,
                 onBack = null,
                 bottomBar = {
                     CustomBottomNavBar(
