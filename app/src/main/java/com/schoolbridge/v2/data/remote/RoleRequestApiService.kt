@@ -69,10 +69,12 @@ class RoleRequestApiServiceImpl(
             put("supportingDocumentsUrls", json.encodeToJsonElement(docs))
         }
 
-        client.post("$BASE_URL/api/users/me/roles/request") {
-            accept(ContentType.Application.Json)
-            header(HttpHeaders.Authorization, "Bearer $token")
-            setBody(TextContent(json.encodeToString(payload), ContentType.Application.Json))
+        runApiCall(defaultMessage = "Could not submit your request.") {
+            client.post("$BASE_URL/api/users/me/roles/request") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(TextContent(json.encodeToString(payload), ContentType.Application.Json))
+            }
         }
     }
 }
