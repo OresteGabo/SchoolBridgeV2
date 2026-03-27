@@ -307,10 +307,10 @@ fun HomeTopBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AnimatedVisibility(
-                        visible = availableRoles.size > 1 && currentRole != null
+                        visible = currentRole != null || availableRoles.isNotEmpty()
                     ) {
                         TextButton(onClick = { showRoleSheet.value = true }) {
-                            Text(currentRole?.humanLabel ?: "")
+                            Text(currentRole?.humanLabel ?: "Role & Requests")
                             Icon(
                                 Icons.Default.ArrowDropDown,
                                 contentDescription = "Change role"
@@ -595,6 +595,8 @@ private fun HomeUI(
                 AdminTodayScheduleSection(onWeeklyViewClick = onWeeklyViewClick)
                 SpacerL()
                 AdminOperationsBoard()
+                SpacerM()
+                AdminPendingRequestsSection()
                 SpacerM()
                 AcademicOverviewSection()
                 SpacerM()
