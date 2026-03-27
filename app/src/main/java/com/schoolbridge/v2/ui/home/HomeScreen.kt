@@ -383,7 +383,8 @@ fun HomeRoute(
             bottomBar = {
                 CustomBottomNavBar(
                     currentScreen = currentScreen,
-                    onTabSelected = onTabSelected
+                    onTabSelected = onTabSelected,
+                    currentUser = currentUser
                 )
             },
             modifier = modifier
