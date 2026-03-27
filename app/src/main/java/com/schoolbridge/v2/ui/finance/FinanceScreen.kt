@@ -73,6 +73,7 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
@@ -232,7 +233,10 @@ fun FinanceScreen(
                             item {
                                 FinanceFeedbackCard(
                                     isLoading = uiState.isLoading,
-                                    errorMessage = uiState.errorMessage
+                                    errorMessage = uiState.errorMessage,
+                                    onRetry = currentUserId?.let { userId ->
+                                        { financeViewModel.loadFinance(userId) }
+                                    }
                                 )
                             }
                         }
@@ -453,27 +457,32 @@ private fun TeacherDeskPlaceholder() {
 @Composable
 private fun FinanceFeedbackCard(
     isLoading: Boolean,
-    errorMessage: String?
+    errorMessage: String?,
+    onRetry: (() -> Unit)? = null
 ) {
-    val message = when {
-        isLoading -> "Loading finance records from the backend."
-        !errorMessage.isNullOrBlank() -> errorMessage
-        else -> return
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
-        Text(
-            text = message,
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    when {
+        isLoading -> {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Text(
+                    text = "Loading finance records from the school server.",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        !errorMessage.isNullOrBlank() -> {
+            FriendlyNetworkErrorCard(
+                rawMessage = errorMessage,
+                onRetry = onRetry
+            )
+        }
     }
 }
 
