@@ -426,7 +426,10 @@ fun HomeRoute(
                 sheetState = sheetState
             ) {
                 selectedAlert?.let { alert ->
-                    AlertDetailsBottomSheetContent(alertId = alert.id)
+                    AlertDetailsBottomSheetContent(
+                        alertId = alert.id,
+                        userSessionManager = userSessionManager
+                    )
                 }
             }
         }
@@ -519,6 +522,7 @@ private fun HomeUI(
 
                // 3️⃣ Alerts and Events
                AlertsSection(
+                   userSessionManager = userSessionManager,
                    onViewAllAlertsClick = onViewAllAlertsClick,
                    onAlertClick = onAlertClick
                )
