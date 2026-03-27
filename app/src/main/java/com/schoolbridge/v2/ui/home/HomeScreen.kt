@@ -80,6 +80,9 @@ import com.schoolbridge.v2.ui.home.common.GenderTag
 import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
 import com.schoolbridge.v2.ui.home.common.LocalTimetableRepo
 import com.schoolbridge.v2.ui.home.common.TimetableBoard
+import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
 import com.schoolbridge.v2.ui.home.role.RoleSelectorBottomSheet
@@ -359,6 +362,7 @@ fun HomeRoute(
     modifier: Modifier = Modifier
 ) {
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
+    val isExpanded = isExpandedLayout()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var selectedAlert by remember { mutableStateOf<Alert?>(null) }
@@ -367,6 +371,7 @@ fun HomeRoute(
         // ✨ Place the glow gradient behind everything
 
         GlowingGradientBackground(currentRole = currentUser?.currentRole)
+        SchoolBridgePatternBackground(dotAlpha = 0.022f, gradientAlpha = 0.045f)
         Scaffold(
             topBar = {
                 HomeTopBar(
@@ -389,21 +394,25 @@ fun HomeRoute(
             },
             modifier = modifier
         ) { paddingValues ->
-            HomeUI(
-                currentUser = currentUser,
-                onViewAllAlertsClick = onViewAllAlertsClick,
-                onViewAllEventsClick = onViewAllEventsClick,
-                onEventClick = onEventClick,
-                onAlertClick = { alert ->
-                    selectedAlert = alert
-                    scope.launch { sheetState.show() }
-                },
-                onWeeklyViewClick = onWeeklyViewClick,
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
-                userSessionManager = userSessionManager
-            )
+            AdaptivePageFrame(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = paddingValues,
+                maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
+            ) {
+                HomeUI(
+                    currentUser = currentUser,
+                    onViewAllAlertsClick = onViewAllAlertsClick,
+                    onViewAllEventsClick = onViewAllEventsClick,
+                    onEventClick = onEventClick,
+                    onAlertClick = { alert ->
+                        selectedAlert = alert
+                        scope.launch { sheetState.show() }
+                    },
+                    onWeeklyViewClick = onWeeklyViewClick,
+                    modifier = Modifier.fillMaxSize(),
+                    userSessionManager = userSessionManager
+                )
+            }
         }
 
         if (selectedAlert != null) {
