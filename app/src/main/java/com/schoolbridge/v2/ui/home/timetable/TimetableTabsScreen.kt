@@ -1,7 +1,9 @@
 package com.schoolbridge.v2.ui.home.timetable
 
 import AddEventBottomSheet
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +14,10 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.data.remote.TimetableApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.TimetableRepositoryImpl
+import com.schoolbridge.v2.data.session.UserSessionManager
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.time.DayOfWeek
@@ -25,9 +31,16 @@ import com.schoolbridge.v2.ui.common.isExpandedLayout
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimetableTabsScreen(
+    userSessionManager: UserSessionManager,
     onBack: (() -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null
 ) {
+    val viewModel: TimetableViewModel = viewModel(
+        factory = TimetableViewModelFactory(
+            TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager))
+        )
+    )
+    val uiState by viewModel.uiState.collectAsState()
     val isExpanded = isExpandedLayout()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Weekly", "Daily")
@@ -38,19 +51,12 @@ fun TimetableTabsScreen(
     val today = LocalDate.now()
 
     var selectedDate by remember { mutableStateOf(today) }
-/*
-    var selectedWeekDate by remember {
-        mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
-    }*/
-
     var selectedWeekDate by rememberSaveable {
         mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
     }
-    val dailyEvents = remember(selectedDate) {
-            generateSampleEventsForWeek()
-                .filter { it.start.toLocalDate() == selectedDate }
-                .sortedBy { it.start }
-        }
+    val weeklyEvents = remember(uiState, selectedWeekDate) { uiState.weeklyEntries(selectedWeekDate) }
+    val dailyEvents = remember(uiState, selectedDate) { uiState.dailyEntries(selectedDate) }
+    val nextDateWithEvent = remember(uiState, selectedDate) { uiState.nextDateWithEvent(selectedDate.plusDays(1)) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -151,14 +157,36 @@ fun TimetableTabsScreen(
                         }
                     }
 
+                    if (uiState.students.size > 1) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            uiState.students.forEach { student ->
+                                FilterChip(
+                                    selected = uiState.selectedStudentId == student.id,
+                                    onClick = { viewModel.selectStudent(student.id) },
+                                    label = { Text(student.name) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
                     Spacer(Modifier.height(8.dp))
 
                     when (selectedTabIndex) {
                         0->WeeklyTimetableTab(
+                            events = weeklyEvents,
                             initialStartOfWeek = selectedWeekDate,
                             onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
                         )
                         1 -> DailyTimetableTab(
+                            dailyEvents = dailyEvents,
+                            nextDateWithEvent = nextDateWithEvent,
                             selectedDate = selectedDate,
                             onDateChange = { selectedDate = it },
                         )
