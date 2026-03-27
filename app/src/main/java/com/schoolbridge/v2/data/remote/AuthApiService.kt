@@ -6,8 +6,6 @@ import com.schoolbridge.v2.data.dto.auth.LoginRequestDto
 import com.schoolbridge.v2.data.dto.auth.LoginResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
@@ -24,11 +22,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import java.io.IOException
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 private const val AUTH_TRACE_TAG = "AUTH_TRACE"
 
@@ -161,64 +156,23 @@ class AuthApiServiceImpl : AuthApiService {
                 LoginResult.Success(body)
             } else {
                 Log.w(TAG, "Login refused. Status=${response.status}, Body=$responseBody")
-                val extractedMessage = extractErrorMessage(responseBody)
-                Log.d(
-                    AUTH_TRACE_TAG,
-                    "AuthApiService.login:failure parsedMessage=${extractedMessage ?: "<null>"} status=${response.status.value}"
+                val mappedError = fromStatus(
+                    statusCode = response.status.value,
+                    responseBody = responseBody,
+                    defaultMessage = "Could not sign you in."
                 )
                 LoginResult.Failure(
-                    message = extractedMessage
-                        ?: "Login failed with status ${response.status.value}",
-                    statusCode = response.status.value
+                    message = mappedError.message,
+                    statusCode = mappedError.statusCode
                 )
             }
 
-        } catch (e: ClientRequestException) {
-            val errorBody = runCatching { e.response.bodyAsText() }.getOrNull()
-            Log.w(
-                AUTH_TRACE_TAG,
-                "AuthApiService.login:ClientRequestException status=${e.response.status.value} body=${sanitizeResponseBody(errorBody)} message=${e.message}"
-            )
-            Log.w(TAG, "ClientRequestException: ${e.message}, body=$errorBody")
-            LoginResult.Failure(
-                message = extractErrorMessage(errorBody) ?: "Client error (${e.response.status.value})",
-                statusCode = e.response.status.value
-            )
-
-        } catch (e: ServerResponseException) {
-            val errorBody = runCatching { e.response.bodyAsText() }.getOrNull()
-            Log.e(
-                AUTH_TRACE_TAG,
-                "AuthApiService.login:ServerResponseException status=${e.response.status.value} body=${sanitizeResponseBody(errorBody)} message=${e.message}",
-                e
-            )
-            Log.e(TAG, "ServerResponseException: ${e.message}, body=$errorBody", e)
-            LoginResult.Failure(
-                message = extractErrorMessage(errorBody) ?: "Server error (${e.response.status.value})",
-                statusCode = e.response.status.value
-            )
-
-        } catch (e: IOException) {
-            Log.e(AUTH_TRACE_TAG, "AuthApiService.login:IOException message=${e.message}", e)
-            Log.e(TAG, "IOException: ${e.message}", e)
-            throw IOException("Network error. Please check your connection.", e)
-
         } catch (e: Exception) {
-            Log.e(AUTH_TRACE_TAG, "AuthApiService.login:UnexpectedException message=${e.message}", e)
-            Log.e(TAG, "Unexpected exception: ${e.message}", e)
-            throw Exception("Unexpected error: ${e.message}", e)
+            val mappedError = e.toUserReadableHttpException("Could not sign you in.")
+            Log.e(AUTH_TRACE_TAG, "AuthApiService.login:Exception message=${mappedError.message}", e)
+            Log.e(TAG, "Exception: ${mappedError.message}", e)
+            throw mappedError
         }
-    }
-
-    private fun extractErrorMessage(errorBody: String?): String? {
-        if (errorBody.isNullOrBlank()) return null
-
-        return runCatching {
-            json.parseToJsonElement(errorBody)
-                .jsonObject["message"]
-                ?.jsonPrimitive
-                ?.content
-        }.getOrNull()
     }
 
     private fun formatHeaders(headers: Headers): String =
