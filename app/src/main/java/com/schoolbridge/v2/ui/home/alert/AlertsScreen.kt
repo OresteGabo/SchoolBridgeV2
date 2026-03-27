@@ -46,6 +46,7 @@ import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.home.common.SeverityChip
@@ -140,7 +141,19 @@ fun AlertsScreen(
                         },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (filteredAlerts.isEmpty()) {
+                        if (uiState.errorMessage != null && alerts.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                FriendlyNetworkErrorCard(
+                                    rawMessage = uiState.errorMessage,
+                                    onRetry = viewModel::refresh
+                                )
+                            }
+                        } else if (filteredAlerts.isEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
