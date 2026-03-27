@@ -6,5 +6,7 @@ data class TodayCourse(
     val endTime: String,
     val teacher: String,
     val location: String,
-    val attendanceStatus: AttendanceStatus = AttendanceStatus.UNMARKED
+    val attendanceStatus: AttendanceStatus = AttendanceStatus.UNMARKED,
+    val studentId: String? = null,
+    val studentName: String? = null
 )
