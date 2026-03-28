@@ -1,206 +1,236 @@
 package com.schoolbridge.v2.ui.home.timetable
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.schoolbridge.v2.domain.academic.DayHeaders
-import com.schoolbridge.v2.domain.academic.HourRange
-import com.schoolbridge.v2.domain.academic.TimetableEntry
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyTimetableTab(
-    events: List<TimetableEntry>,
-    initialStartOfWeek: LocalDate,
-    onStartOfWeekChange: (LocalDate) -> Unit,
+    uiState: TimetableUiState,
+    startOfWeek: LocalDate,
+    selectedDate: LocalDate,
+    includedKinds: Set<AgendaItemKind>,
+    density: AgendaDensity,
+    emptyDayMessage: String,
+    onSelectedDateChange: (LocalDate) -> Unit,
+    onStartOfWeekChange: (LocalDate) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+    val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var selected by rememberSaveable { mutableStateOf<TimetableEntry?>(null) }
-    var selectedDay by rememberSaveable { mutableStateOf<LocalDate?>(null) }
-    var startOfWeek by rememberSaveable { mutableStateOf(initialStartOfWeek) }
-
-    val baseSlotH = 64.dp
-    val baseDayW = 128.dp
-    val baseTimeW = 56.dp
-
-    var scale by remember { mutableFloatStateOf(1f) }
-    val minScale = 0.3f
-    val maxScale = 3f
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val constraints = this.constraints
-            val density = LocalDensity.current
-
-            val totalHours = HourRange.count()
-            val totalDays = DayHeaders.size
-
-            val minScaleFit = run {
-                val totalWidthPx = with(density) { (baseTimeW + baseDayW * totalDays).toPx() }
-                val totalHeightPx = with(density) { (baseSlotH * totalHours).toPx() }
-                val wFit = constraints.maxWidth.toFloat() / totalWidthPx
-                val hFit = constraints.maxHeight.toFloat() / totalHeightPx
-                minOf(wFit, hFit).coerceAtMost(maxScale)
-            }
-
-            scale = scale.coerceIn(minScaleFit, maxScale)
-
-            val dayW = baseDayW * scale
-            val timeW = baseTimeW * scale
-
-            val minSlotHeight = with(density) {
-                (constraints.maxHeight.toFloat() / totalHours).toDp()
-            }
-            val slotH = (baseSlotH * scale).coerceAtLeast(minSlotHeight)
-
-            TimetableScreen(
-                events = events,
-                slotHeight = slotH,
-                dayWidth = dayW,
-                timeColWidth = timeW,
-                onEventClick = {
-                    selected = it
-                    scope.launch { sheetState.show() }
-                },
-                startOfWeek = startOfWeek,
-                days = DayHeaders, // ✅ Replace TODO(): This is the standard Mon-Sat list.
-                hourRange = HourRange, // ✅ Replace TODO(): Standard hour range (7..20 or whatever you've defined)
-                onDayHeaderClick = { day -> // ✅ Replace TODO(): Set selected day and open bottom sheet
-                    selectedDay = day
-                    selected = null // in case an event was selected, clear it
-                    scope.launch { sheetState.show() }
-                }
-            )
-
+    val today = LocalDate.now()
+    val effectiveSelectedDate = remember(weekDays, selectedDate, today) {
+        when {
+            weekDays.contains(selectedDate) -> selectedDate
+            weekDays.contains(today) -> today
+            else -> weekDays.first()
         }
+    }
+    val visibleDate by remember(weekDays, listState) {
+        derivedStateOf {
+            weekDays.getOrNull(listState.firstVisibleItemIndex) ?: effectiveSelectedDate
+        }
+    }
 
-        FloatingTimetableControls(
-            onZoomIn = { scale = (scale * 1.12f).coerceIn(minScale, maxScale) },
-            onZoomOut = { scale = (scale / 1.12f).coerceIn(minScale, maxScale) },
-            modifier = Modifier.align(Alignment.BottomEnd),
-            onNavigatePreviousWeek = {
-                val newWeek = startOfWeek.minusWeeks(1)
-                startOfWeek = newWeek
-                onStartOfWeekChange(newWeek)
-            },
-            onNavigateNextWeek = {
-                val newWeek = startOfWeek.plusWeeks(1)
-                startOfWeek = newWeek
-                onStartOfWeekChange(newWeek)
+    LaunchedEffect(startOfWeek, effectiveSelectedDate) {
+        val selectedIndex = weekDays.indexOf(effectiveSelectedDate)
+        if (selectedIndex >= 0) {
+            listState.scrollToItem(selectedIndex)
+        } else {
+            listState.scrollToItem(0)
+        }
+    }
+
+    LaunchedEffect(visibleDate) {
+        visibleDate?.let(onSelectedDateChange)
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        WeeklyDayStrip(
+            weekDays = weekDays,
+            uiState = uiState,
+            includedKinds = includedKinds,
+            selectedDate = visibleDate ?: effectiveSelectedDate,
+            onDaySelected = { date ->
+                val index = weekDays.indexOf(date).coerceAtLeast(0)
+                onSelectedDateChange(date)
+                scope.launch { listState.animateScrollToItem(index) }
             }
         )
-    }
 
-    if (selected != null) {
-        ModalBottomSheet(
-            sheetState = sheetState,
-            onDismissRequest = {
-                scope.launch { sheetState.hide() }
-                selected = null
-            }
+        Spacer(Modifier.height(12.dp))
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            val e = selected!!
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    e.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+            items(weekDays, key = { it.toString() }) { date ->
+                val dayAgenda = uiState.dailyAgenda(date, includedKinds)
+                WeeklyDayCard(
+                    date = date,
+                    agendaItems = dayAgenda,
+                    density = density,
+                    emptyDayMessage = emptyDayMessage
                 )
-                Spacer(Modifier.height(8.dp))
-                Text("Teacher: ${e.teacher.ifBlank { "N/A" }}")
-                Text("Room: ${e.room}")
-                Text("Date: ${e.start.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))}")
-                Text("Time: ${e.start.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${e.end.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        scope.launch { sheetState.hide() }
-                        selected = null
-                    },
-                    modifier = Modifier.align(Alignment.End)
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Close")
-                }
-            }
-        }
-    }
-
-    if (selectedDay != null) {
-        val dayEvents = events.filter { it.start.toLocalDate() == selectedDay }
-
-        ModalBottomSheet(
-            sheetState = sheetState,
-            onDismissRequest = {
-                scope.launch { sheetState.hide() }
-                selectedDay = null
-            }
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    text = selectedDay!!.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                if (dayEvents.isEmpty()) {
-                    Text("No events for this day.")
-                } else {
-                    dayEvents.forEach { e ->
-                        Column(Modifier.padding(vertical = 8.dp)) {
-                            Text("• ${e.title}", fontWeight = FontWeight.SemiBold)
-                            Text("  ${e.start.toLocalTime()} – ${e.end.toLocalTime()}")
-                            Text("  ${e.room} | ${e.teacher}")
-                        }
+                    OutlinedButton(onClick = { onStartOfWeekChange(startOfWeek.minusWeeks(1)) }) {
+                        Text("Previous week")
+                    }
+                    OutlinedButton(onClick = { onStartOfWeekChange(startOfWeek.plusWeeks(1)) }) {
+                        Text("Next week")
                     }
                 }
+            }
+        }
+    }
+}
 
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        scope.launch { sheetState.hide() }
-                        selectedDay = null
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Close")
+@Composable
+private fun WeeklyDayStrip(
+    weekDays: List<LocalDate>,
+    uiState: TimetableUiState,
+    includedKinds: Set<AgendaItemKind>,
+    selectedDate: LocalDate?,
+    onDaySelected: (LocalDate) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        weekDays.forEach { date ->
+            val items = uiState.dailyAgenda(date, includedKinds)
+            val isSelected = date == selectedDate
+            val containerColor by animateColorAsState(
+                targetValue = if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+                label = "week_chip_container"
+            )
+            val contentColor by animateColorAsState(
+                targetValue = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                label = "week_chip_content"
+            )
+            val scale by animateDpAsState(
+                targetValue = if (isSelected) 1.dp else 0.dp,
+                label = "week_chip_scale"
+            )
+
+            AssistChip(
+                onClick = { onDaySelected(date) },
+                label = {
+                    Text(
+                        "${date.shortWeekdayLabel()} ${date.dayOfMonth} • ${items.size}",
+                        color = contentColor
+                    )
+                },
+                colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                    containerColor = containerColor,
+                    labelColor = contentColor
+                ),
+                modifier = Modifier.scale(1f + scale.value * 0.03f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyDayCard(
+    date: LocalDate,
+    agendaItems: List<AgendaItemUi>,
+    density: AgendaDensity,
+    emptyDayMessage: String
+) {
+    var expanded by rememberSaveable(date.toString()) { mutableStateOf(false) }
+    val visibleItems = if (expanded) agendaItems else agendaItems.take(3)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = date.format(DateTimeFormatter.ofPattern("EEEE, MMM d")),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            if (agendaItems.isEmpty()) {
+                Text(
+                    text = emptyDayMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                visibleItems.forEach { item ->
+                    AgendaCard(item = item, density = density)
+                }
+                if (agendaItems.size > 3) {
+                    OutlinedButton(onClick = { expanded = !expanded }) {
+                        Text(
+                            if (expanded) "Show less"
+                            else "+${agendaItems.size - 3} more planned items"
+                        )
+                    }
                 }
             }
         }
     }
-
 }
-
