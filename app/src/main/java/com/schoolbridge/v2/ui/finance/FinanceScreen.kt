@@ -51,9 +51,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -73,10 +75,17 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.BackendConnectionState
+import com.schoolbridge.v2.ui.common.BackendStatusTile
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
+private const val FINANCE_RETRY_INTERVAL_MILLIS = 5_000L
+private const val FINANCE_RECOVERY_TILE_DURATION_MILLIS = 2_500L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,20 +106,51 @@ fun FinanceScreen(
         }
     )
     val uiState by financeViewModel.uiState.collectAsStateWithLifecycle()
+    val latestUiState by rememberUpdatedState(uiState)
     val dashboard = uiState.dashboard
     val currentUserId = currentUser?.userId
-    val showTeacherDesk = remember(currentUser, dashboard) {
+    var showRecoveryTile by remember { mutableStateOf(false) }
+    var hadConnectionIssue by remember { mutableStateOf(false) }
+    val showTeacherDesk = remember(currentUser, dashboard, uiState.hasLoadedOnce) {
         val activeRole = currentUser?.currentRole
         val hasFinanceData = dashboard.transactions.isNotEmpty() || dashboard.outstandingItems.isNotEmpty()
         activeRole == UserRole.TEACHER &&
             currentUser?.isParent() != true &&
             currentUser?.isStudent() != true &&
             currentUser?.isAdmin() != true &&
+            uiState.hasLoadedOnce &&
             !hasFinanceData
     }
 
     LaunchedEffect(currentUser?.userId) {
         currentUser?.userId?.let(financeViewModel::loadFinance)
+    }
+
+    LaunchedEffect(currentUserId, uiState.errorMessage) {
+        val userId = currentUserId ?: return@LaunchedEffect
+        if (uiState.errorMessage.isNullOrBlank()) return@LaunchedEffect
+
+        while (isActive && !latestUiState.errorMessage.isNullOrBlank()) {
+            delay(FINANCE_RETRY_INTERVAL_MILLIS)
+            if (!latestUiState.isLoading) {
+                financeViewModel.retry(userId)
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        if (!uiState.errorMessage.isNullOrBlank()) {
+            hadConnectionIssue = true
+            showRecoveryTile = false
+            return@LaunchedEffect
+        }
+
+        if (hadConnectionIssue && uiState.hasLoadedOnce) {
+            showRecoveryTile = true
+            hadConnectionIssue = false
+            delay(FINANCE_RECOVERY_TILE_DURATION_MILLIS)
+            showRecoveryTile = false
+        }
     }
 
     var selectedStudentId by remember(dashboard) { mutableStateOf(dashboard.selectedStudentId) }
@@ -131,6 +171,13 @@ fun FinanceScreen(
     }
 
     val selectedStudent = dashboard.students.firstOrNull { it.id == selectedStudentId }
+    val hasUsableFinanceData = uiState.hasLoadedOnce
+    val isReconnectAttemptInFlight = hadConnectionIssue && uiState.isLoading
+    val showBlockingOutage =
+        (!uiState.errorMessage.isNullOrBlank() || isReconnectAttemptInFlight) && !hasUsableFinanceData
+    val showPinnedStatusTile =
+        (!uiState.errorMessage.isNullOrBlank() || isReconnectAttemptInFlight || showRecoveryTile) &&
+            hasUsableFinanceData
 
     Scaffold(
         topBar = {
@@ -170,151 +217,207 @@ fun FinanceScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 SchoolBridgePatternBackground(dotAlpha = 0.02f, gradientAlpha = 0.05f)
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (showTeacherDesk) {
-                        item {
-                            TeacherDeskPlaceholder()
-                        }
-                    } else {
-                        if (selectedSection == FinanceSection.Overview && isExpanded) {
+                if (showBlockingOutage) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BackendStatusTile(
+                            title = if (isReconnectAttemptInFlight) "Reconnecting to SchoolBridge" else "SchoolBridge is temporarily down",
+                            message = uiState.errorMessage ?: "Finance is temporarily unavailable while we check the connection again.",
+                            helperText = if (isReconnectAttemptInFlight) {
+                                "Trying again automatically every few seconds."
+                            } else {
+                                "We will keep checking the server so finance data returns as soon as it is available."
+                            },
+                            state = if (isReconnectAttemptInFlight) BackendConnectionState.RECONNECTING else BackendConnectionState.DISCONNECTED,
+                            onRetry = currentUserId?.let { userId -> { financeViewModel.retry(userId) } },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (showTeacherDesk) {
                             item {
-                                ExpandedOverviewSection(
-                                    dashboard = dashboard,
-                                    selectedStudent = selectedStudent,
-                                    currentUserId = currentUserId,
-                                    selectedFilter = selectedFilter,
-                                    selectedStudentId = selectedStudentId
-                                )
+                                TeacherDeskPlaceholder()
                             }
                         } else {
-                            item {
-                                FinanceHeroCard(
-                                    dashboard = dashboard,
-                                    selectedStudent = selectedStudent,
-                                    currentUserId = currentUserId,
-                                    selectedFilter = selectedFilter
-                                )
-                            }
-
-                            if (selectedSection == FinanceSection.Overview) {
+                            if (selectedSection == FinanceSection.Overview && isExpanded) {
                                 item {
-                                    OverviewStatsGrid(
-                                        stats = dashboard.statsFor(selectedStudentId)
-                                    )
-                                }
-
-                                item {
-                                    QuickActionsRow()
-                                }
-                            }
-                        }
-
-                        item {
-                            StudentSelectorRow(
-                                students = dashboard.students,
-                                currentUserId = currentUserId,
-                                selectedStudentId = selectedStudentId,
-                                onSelected = { selectedStudentId = it }
-                            )
-                        }
-
-                        item {
-                            FinanceSectionTabs(
-                                selectedSection = selectedSection,
-                                onSectionSelected = { selectedSection = it }
-                            )
-                        }
-
-                        if (uiState.isLoading || uiState.errorMessage != null) {
-                            item {
-                                FinanceFeedbackCard(
-                                    isLoading = uiState.isLoading,
-                                    errorMessage = uiState.errorMessage,
-                                    onRetry = currentUserId?.let { userId ->
-                                        { financeViewModel.loadFinance(userId) }
-                                    }
-                                )
-                            }
-                        }
-
-                        when (selectedSection) {
-                            FinanceSection.Overview -> {
-                                item {
-                                    SectionTitle(
-                                        title = "Urgent items",
-                                        subtitle = "The most time-sensitive balances stay close to the summary instead of getting buried in the ledger."
-                                    )
-                                }
-
-                                items(
-                                    items = dashboard.outstandingItemsFor(selectedStudentId).take(if (isExpanded) 4 else 2),
-                                    key = { it.id }
-                                ) { item ->
-                                    OutstandingChargeCard(item = item)
-                                }
-
-                                if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
-                                    item {
-                                        FinanceEmptyState("No urgent balances yet. As soon as the backend has due items for this family, they will show up here.")
-                                    }
-                                }
-                            }
-
-                            FinanceSection.Due -> {
-                                item {
-                                    SectionTitle(
-                                        title = "Outstanding items",
-                                        subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through threads."
-                                    )
-                                }
-
-                                items(
-                                    items = dashboard.outstandingItemsFor(selectedStudentId),
-                                    key = { it.id }
-                                ) { item ->
-                                    OutstandingChargeCard(item = item)
-                                }
-
-                                if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
-                                    item {
-                                        FinanceEmptyState("No outstanding charges are currently linked to this student selection.")
-                                    }
-                                }
-                            }
-
-                            FinanceSection.Activity -> {
-                                item {
-                                    FinanceFilterRow(
+                                    ExpandedOverviewSection(
+                                        dashboard = dashboard,
+                                        selectedStudent = selectedStudent,
+                                        currentUserId = currentUserId,
                                         selectedFilter = selectedFilter,
-                                        onFilterSelected = { selectedFilter = it }
+                                        selectedStudentId = selectedStudentId
                                     )
                                 }
-
+                            } else {
                                 item {
-                                    SectionTitle(
-                                        title = "Transaction timeline",
-                                        subtitle = "Every payment, whether started in chat, finance, or by an admin, lands here."
+                                    FinanceHeroCard(
+                                        dashboard = dashboard,
+                                        selectedStudent = selectedStudent,
+                                        currentUserId = currentUserId,
+                                        selectedFilter = selectedFilter
                                     )
                                 }
 
-                                items(
-                                    items = visibleTransactions,
-                                    key = { it.id }
-                                ) { transaction ->
-                                    TransactionCard(transaction = transaction)
+                                if (selectedSection == FinanceSection.Overview) {
+                                    item {
+                                        OverviewStatsGrid(
+                                            stats = dashboard.statsFor(selectedStudentId)
+                                        )
+                                    }
+
+                                    item {
+                                        QuickActionsRow()
+                                    }
+                                }
+                            }
+
+                            item {
+                                StudentSelectorRow(
+                                    students = dashboard.students,
+                                    currentUserId = currentUserId,
+                                    selectedStudentId = selectedStudentId,
+                                    onSelected = { selectedStudentId = it }
+                                )
+                            }
+
+                            item {
+                                FinanceSectionTabs(
+                                    selectedSection = selectedSection,
+                                    onSectionSelected = { selectedSection = it }
+                                )
+                            }
+
+                            if (uiState.isLoading || uiState.errorMessage != null) {
+                                item {
+                                    FinanceFeedbackCard(
+                                        isLoading = uiState.isLoading,
+                                        errorMessage = uiState.errorMessage,
+                                        onRetry = currentUserId?.let { userId ->
+                                            { financeViewModel.retry(userId) }
+                                        }
+                                    )
+                                }
+                            }
+
+                            when (selectedSection) {
+                                FinanceSection.Overview -> {
+                                    item {
+                                        SectionTitle(
+                                            title = "Urgent items",
+                                            subtitle = "The most time-sensitive balances stay close to the summary instead of getting buried in the ledger."
+                                        )
+                                    }
+
+                                    items(
+                                        items = dashboard.outstandingItemsFor(selectedStudentId).take(if (isExpanded) 4 else 2),
+                                        key = { it.id }
+                                    ) { item ->
+                                        OutstandingChargeCard(item = item)
+                                    }
+
+                                    if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
+                                        item {
+                                            FinanceEmptyState("No urgent balances yet. As soon as the backend has due items for this family, they will show up here.")
+                                        }
+                                    }
                                 }
 
-                                if (visibleTransactions.isEmpty()) {
+                                FinanceSection.Due -> {
                                     item {
-                                        FinanceEmptyState("No transactions match the current student and filter yet.")
+                                        SectionTitle(
+                                            title = "Outstanding items",
+                                            subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through threads."
+                                        )
+                                    }
+
+                                    items(
+                                        items = dashboard.outstandingItemsFor(selectedStudentId),
+                                        key = { it.id }
+                                    ) { item ->
+                                        OutstandingChargeCard(item = item)
+                                    }
+
+                                    if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
+                                        item {
+                                            FinanceEmptyState("No outstanding charges are currently linked to this student selection.")
+                                        }
+                                    }
+                                }
+
+                                FinanceSection.Activity -> {
+                                    item {
+                                        FinanceFilterRow(
+                                            selectedFilter = selectedFilter,
+                                            onFilterSelected = { selectedFilter = it }
+                                        )
+                                    }
+
+                                    item {
+                                        SectionTitle(
+                                            title = "Transaction timeline",
+                                            subtitle = "Every payment, whether started in chat, finance, or by an admin, lands here."
+                                        )
+                                    }
+
+                                    items(
+                                        items = visibleTransactions,
+                                        key = { it.id }
+                                    ) { transaction ->
+                                        TransactionCard(transaction = transaction)
+                                    }
+
+                                    if (visibleTransactions.isEmpty()) {
+                                        item {
+                                            FinanceEmptyState("No transactions match the current student and filter yet.")
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
+                }
+
+                if (showPinnedStatusTile) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .align(Alignment.TopCenter)
+                    ) {
+                        BackendStatusTile(
+                            title = when {
+                                showRecoveryTile -> "SchoolBridge is back"
+                                isReconnectAttemptInFlight -> "Reconnecting to SchoolBridge"
+                                else -> "SchoolBridge is temporarily down"
+                            },
+                            message = when {
+                                !uiState.errorMessage.isNullOrBlank() -> uiState.errorMessage ?: "Finance is temporarily unavailable."
+                                isReconnectAttemptInFlight -> "We are checking the server again so the latest finance values can come back."
+                                else -> "Finance values are live again and the dashboard has reconnected successfully."
+                            },
+                            helperText = when {
+                                showRecoveryTile -> "Fresh finance data is available again."
+                                isReconnectAttemptInFlight -> "Trying again automatically every few seconds."
+                                else -> "Current figures may be stale until SchoolBridge comes back."
+                            },
+                            state = when {
+                                showRecoveryTile -> BackendConnectionState.RECOVERED
+                                isReconnectAttemptInFlight -> BackendConnectionState.RECONNECTING
+                                else -> BackendConnectionState.DISCONNECTED
+                            },
+                            onRetry = currentUserId?.let { userId -> { financeViewModel.retry(userId) } },
+                            modifier = Modifier.alpha(0.98f)
+                        )
                     }
                 }
             }
