@@ -1,34 +1,93 @@
 package com.schoolbridge.v2.ui.home.timetable
 
 import AddEventBottomSheet
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import java.time.LocalDate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
 import com.schoolbridge.v2.data.remote.TimetableApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.repository.implementations.TimetableRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
-import java.time.format.DateTimeFormatter
-import java.time.temporal.WeekFields
-import java.time.DayOfWeek
-import java.time.temporal.TemporalAdjusters
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
-// Assuming AddEventBottomSheet and sampleEvents are defined elsewhere
+private enum class TimetablePage(val label: String) {
+    Flow("Flow"),
+    Week("Week")
+}
+
+private val LocalDateSaver = Saver<LocalDate, Long>(
+    save = { it.toEpochDay() },
+    restore = { LocalDate.ofEpochDay(it) }
+)
+
+private val AgendaKindSetSaver = Saver<Set<AgendaItemKind>, List<String>>(
+    save = { kinds -> kinds.map { it.name } },
+    restore = { saved -> saved.mapNotNull { name -> AgendaItemKind.entries.find { it.name == name } }.toSet() }
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,59 +98,66 @@ fun TimetableTabsScreen(
 ) {
     val viewModel: TimetableViewModel = viewModel(
         factory = TimetableViewModelFactory(
-            TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager))
+            timetableRepository = TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager)),
+            messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
         )
     )
     val uiState by viewModel.uiState.collectAsState()
     val isExpanded = isExpandedLayout()
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Weekly", "Daily")
-
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val useCompactHeader = !isExpanded || isLandscape || configuration.screenHeightDp < 760
+    val useWideLandscapeLayout = isExpanded && isLandscape
+    var selectedPage by rememberSaveable { mutableIntStateOf(TimetablePage.Flow.ordinal) }
+    val pages = TimetablePage.entries
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSheet by remember { mutableStateOf(false) }
 
     val today = LocalDate.now()
-
-    var selectedDate by remember { mutableStateOf(today) }
-    var selectedWeekDate by rememberSaveable {
-        mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+    var selectedDate by rememberSaveable(stateSaver = LocalDateSaver) {
+        mutableStateOf(today)
     }
-    val weeklyEvents = remember(uiState, selectedWeekDate) { uiState.weeklyEntries(selectedWeekDate) }
-    val dailyEvents = remember(uiState, selectedDate) { uiState.dailyEntries(selectedDate) }
-    val nextDateWithEvent = remember(uiState, selectedDate) { uiState.nextDateWithEvent(selectedDate.plusDays(1)) }
+    var selectedWeekDate by rememberSaveable(stateSaver = LocalDateSaver) {
+        mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+    }
+    var selectedWeekFocusDate by rememberSaveable(stateSaver = LocalDateSaver) {
+        mutableStateOf(today)
+    }
+    var includedKinds by rememberSaveable(stateSaver = AgendaKindSetSaver) {
+        mutableStateOf(AgendaItemKind.entries.toSet())
+    }
+    var densityName by rememberSaveable { mutableStateOf(AgendaDensity.COMFORTABLE.name) }
+    val density = remember(densityName) { AgendaDensity.valueOf(densityName) }
+
+    val dailyAgenda = remember(uiState, selectedDate, includedKinds) { uiState.dailyAgenda(selectedDate, includedKinds) }
+    val nextDateWithEvent = remember(uiState, selectedDate, includedKinds) { uiState.nextDateWithEvent(selectedDate.plusDays(1), includedKinds) }
+    val highlights = remember(uiState, includedKinds) { uiState.upcomingHighlights(includedKinds = includedKinds) }
+    val nowNext = remember(uiState, includedKinds) { uiState.nowAndNext(includedKinds = includedKinds) }
+    val deadlines = remember(uiState, includedKinds) { uiState.upcomingDeadlines(includedKinds = includedKinds) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val emptyTitle = remember(uiState.audience, selectedDate, includedKinds) {
+        buildEmptyTitle(uiState.audience, selectedDate, includedKinds)
+    }
+    val emptyMessage = remember(uiState.audience, uiState.selectedStudentId, includedKinds) {
+        buildEmptyMessage(uiState.audience, uiState.selectedStudentId != null, includedKinds)
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
-                    when (selectedTabIndex) {
-                        0 -> { // Weekly Tab
-                            val startOfWeek = selectedWeekDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                            val endOfWeek = startOfWeek.plusDays(6)
-
-                            val weekFields = WeekFields.of(DayOfWeek.MONDAY, 1)
-                            val weekNumber = startOfWeek.get(weekFields.weekOfWeekBasedYear())
-
-                            Column {
-                                Text(
-                                    text = "Week $weekNumber, ${startOfWeek.year}",
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                                Text(
-                                    text = "${startOfWeek.format(DateTimeFormatter.ofPattern("MMM d"))} - ${endOfWeek.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        1 -> { // Daily Tab
-                            Text(
-                                text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("School rhythm")
+                        Text(
+                            text = if (selectedPage == TimetablePage.Flow.ordinal) {
+                                selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+                            } else {
+                                "Week of ${selectedWeekDate.format(DateTimeFormatter.ofPattern("MMM d"))}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 navigationIcon = {
@@ -102,28 +168,24 @@ fun TimetableTabsScreen(
                     }
                 },
                 actions = {
-                    if (selectedTabIndex == 0 && selectedWeekDate != today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) {
+                    if (selectedPage == TimetablePage.Week.ordinal && selectedWeekDate != today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) {
                         OutlinedButton(
                             onClick = {
                                 selectedWeekDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                             },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
-                            Text("This Week")
+                            Text("This week")
                         }
                     }
                 },
                 scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
-            bottomBar?.invoke()
-        },
+        bottomBar = { bottomBar?.invoke() },
         floatingActionButton = {
-            if (selectedTabIndex == 1) {
-                FloatingActionButton(onClick = {
-                    showAddSheet = true
-                }) {
+            if (selectedPage == TimetablePage.Flow.ordinal) {
+                FloatingActionButton(onClick = { showAddSheet = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Add Event")
                 }
             }
@@ -132,78 +194,111 @@ fun TimetableTabsScreen(
         AdaptivePageFrame(
             modifier = Modifier.fillMaxSize(),
             contentPadding = paddingValues,
-            maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
+            maxContentWidth = if (isExpanded) 1380.dp else 1240.dp
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 SchoolBridgePatternBackground(dotAlpha = 0.018f, gradientAlpha = 0.04f)
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+
+                if (useWideLandscapeLayout) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = {
-                                    selectedTabIndex = index
-                                    if (index == 0) {
-                                        selectedWeekDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                                    } else {
-                                        selectedDate = today
-                                    }
-                                },
-                                text = { Text(title) }
-                            )
-                        }
-                    }
-
-                    if (uiState.students.size > 1) {
-                        Row(
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            uiState.students.forEach { student ->
-                                FilterChip(
-                                    selected = uiState.selectedStudentId == student.id,
-                                    onClick = { viewModel.selectStudent(student.id) },
-                                    label = { Text(student.name) }
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    if (uiState.errorMessage != null && uiState.templates.isEmpty()) {
-                        Box(
-                            modifier = Modifier
+                                .width(360.dp)
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            contentAlignment = Alignment.Center
                         ) {
-                            FriendlyNetworkErrorCard(
-                                rawMessage = uiState.errorMessage,
-                                onRetry = viewModel::refresh
+                            TimetableSidebar(
+                                highlights = highlights,
+                                audience = uiState.audience,
+                                scopeLabel = uiState.scopeLabel,
+                                compact = true,
+                                wideLayout = true,
+                                uiState = uiState,
+                                onStudentSelected = viewModel::selectStudent,
+                                selectedPage = selectedPage,
+                                pages = pages,
+                                onPageSelected = { selectedPage = it }
                             )
                         }
-                    } else {
-                        when (selectedTabIndex) {
-                            0->WeeklyTimetableTab(
-                                events = weeklyEvents,
-                                initialStartOfWeek = selectedWeekDate,
-                                onStartOfWeekChange = { newWeek -> selectedWeekDate = newWeek }
-                            )
-                            1 -> DailyTimetableTab(
-                                dailyEvents = dailyEvents,
-                                nextDateWithEvent = nextDateWithEvent,
+
+                        TimetableContentPane(
+                            modifier = Modifier.weight(1f),
+                            hasError = uiState.errorMessage != null && uiState.templates.isEmpty() && uiState.plannedItems.isEmpty(),
+                            errorMessage = uiState.errorMessage,
+                            onRetry = viewModel::refresh
+                        ) {
+                            PlannerPageContent(
+                                selectedPage = pages[selectedPage],
+                                uiState = uiState,
+                                today = today,
                                 selectedDate = selectedDate,
-                                onDateChange = { selectedDate = it },
+                                onSelectedDateChange = { selectedDate = it },
+                                selectedWeekDate = selectedWeekDate,
+                                onSelectedWeekDateChange = { selectedWeekDate = it },
+                                selectedWeekFocusDate = selectedWeekFocusDate,
+                                onSelectedWeekFocusDateChange = { selectedWeekFocusDate = it },
+                                agendaItems = dailyAgenda,
+                                nextDateWithEvent = nextDateWithEvent,
+                                nowItem = nowNext.first,
+                                nextItem = nowNext.second,
+                                deadlines = deadlines,
+                                density = density,
+                                onDensityChange = { densityName = it.name },
+                                includedKinds = includedKinds,
+                                onIncludedKindsChange = { includedKinds = it },
+                                emptyTitle = emptyTitle,
+                                emptyMessage = emptyMessage
+                            )
+                        }
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        TimetableSidebar(
+                            highlights = highlights,
+                            audience = uiState.audience,
+                            scopeLabel = uiState.scopeLabel,
+                            compact = useCompactHeader,
+                            wideLayout = false,
+                            uiState = uiState,
+                            onStudentSelected = viewModel::selectStudent,
+                            selectedPage = selectedPage,
+                            pages = pages,
+                            onPageSelected = { selectedPage = it }
+                        )
+
+                        TimetableContentPane(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            hasError = uiState.errorMessage != null && uiState.templates.isEmpty() && uiState.plannedItems.isEmpty(),
+                            errorMessage = uiState.errorMessage,
+                            onRetry = viewModel::refresh
+                        ) {
+                            PlannerPageContent(
+                                selectedPage = pages[selectedPage],
+                                uiState = uiState,
+                                today = today,
+                                selectedDate = selectedDate,
+                                onSelectedDateChange = { selectedDate = it },
+                                selectedWeekDate = selectedWeekDate,
+                                onSelectedWeekDateChange = { selectedWeekDate = it },
+                                selectedWeekFocusDate = selectedWeekFocusDate,
+                                onSelectedWeekFocusDateChange = { selectedWeekFocusDate = it },
+                                agendaItems = dailyAgenda,
+                                nextDateWithEvent = nextDateWithEvent,
+                                nowItem = nowNext.first,
+                                nextItem = nowNext.second,
+                                deadlines = deadlines,
+                                density = density,
+                                onDensityChange = { densityName = it.name },
+                                includedKinds = includedKinds,
+                                onIncludedKindsChange = { includedKinds = it },
+                                emptyTitle = emptyTitle,
+                                emptyMessage = emptyMessage
                             )
                         }
                     }
@@ -220,11 +315,600 @@ fun TimetableTabsScreen(
             AddEventBottomSheet(
                 selectedDate = selectedDate,
                 onDismiss = { showAddSheet = false },
-                onAddEvent = { start, end, description ->
-                    // TODO: Handle adding the event
+                onAddEvent = { _, _, _ ->
                     showAddSheet = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun TimetableSidebar(
+    highlights: List<AgendaItemUi>,
+    audience: String,
+    scopeLabel: String?,
+    compact: Boolean,
+    wideLayout: Boolean,
+    uiState: TimetableUiState,
+    onStudentSelected: (String?) -> Unit,
+    selectedPage: Int,
+    pages: List<TimetablePage>,
+    onPageSelected: (Int) -> Unit
+) {
+    TimetableHero(
+        highlights = highlights,
+        audience = audience,
+        scopeLabel = scopeLabel,
+        compact = compact
+    )
+
+    if (uiState.students.size > 1) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = uiState.selectedStudentId == null,
+                onClick = { onStudentSelected(null) },
+                label = { Text("Family") }
+            )
+            uiState.students.forEach { student ->
+                FilterChip(
+                    selected = uiState.selectedStudentId == student.id,
+                    onClick = { onStudentSelected(student.id) },
+                    label = { Text(student.name) }
+                )
+            }
+        }
+        Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
+    }
+
+    if (wideLayout) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "View mode",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                pages.forEachIndexed { index, page ->
+                    val selected = selectedPage == index
+                    Card(
+                        onClick = { onPageSelected(index) },
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            }
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = page.label,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                            Text(
+                                text = if (page == TimetablePage.Flow) {
+                                    "Follow one day at a time with classes, calls, and meetings together."
+                                } else {
+                                    "Scan the whole week and jump between planned school moments faster."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.84f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        TabRow(
+            selectedTabIndex = selectedPage,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            pages.forEachIndexed { index, page ->
+                Tab(
+                    selected = selectedPage == index,
+                    onClick = { onPageSelected(index) },
+                    text = { Text(page.label) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlannerPageContent(
+    selectedPage: TimetablePage,
+    uiState: TimetableUiState,
+    today: LocalDate,
+    selectedDate: LocalDate,
+    onSelectedDateChange: (LocalDate) -> Unit,
+    selectedWeekDate: LocalDate,
+    onSelectedWeekDateChange: (LocalDate) -> Unit,
+    selectedWeekFocusDate: LocalDate,
+    onSelectedWeekFocusDateChange: (LocalDate) -> Unit,
+    agendaItems: List<AgendaItemUi>,
+    nextDateWithEvent: LocalDate?,
+    nowItem: AgendaItemUi?,
+    nextItem: AgendaItemUi?,
+    deadlines: List<AgendaItemUi>,
+    density: AgendaDensity,
+    onDensityChange: (AgendaDensity) -> Unit,
+    includedKinds: Set<AgendaItemKind>,
+    onIncludedKindsChange: (Set<AgendaItemKind>) -> Unit,
+    emptyTitle: String,
+    emptyMessage: String
+) {
+    var plannerExpanded by rememberSaveable { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        PlannerOverviewPanel(
+            nowItem = nowItem,
+            nextItem = nextItem,
+            deadlines = deadlines,
+            expanded = plannerExpanded,
+            onToggleExpanded = { plannerExpanded = !plannerExpanded },
+            density = density,
+            onDensityChange = onDensityChange,
+            includedKinds = includedKinds,
+            onIncludedKindsChange = onIncludedKindsChange,
+            onJumpToday = {
+                onSelectedDateChange(today)
+                onSelectedWeekFocusDateChange(today)
+                onSelectedWeekDateChange(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+            },
+            onJumpTomorrow = {
+                val tomorrow = today.plusDays(1)
+                onSelectedDateChange(tomorrow)
+                onSelectedWeekFocusDateChange(tomorrow)
+                onSelectedWeekDateChange(tomorrow.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+            },
+            onJumpNextClass = {
+                (nextItem ?: deadlines.firstOrNull())?.start?.toLocalDate()?.let { date ->
+                    onSelectedDateChange(date)
+                    onSelectedWeekFocusDateChange(date)
+                    onSelectedWeekDateChange(date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+                }
+            },
+            onJumpNextMeeting = {
+                (deadlines.firstOrNull { it.kind == AgendaItemKind.MEETING || it.kind == AgendaItemKind.CALL }
+                    ?: nextItem)?.start?.toLocalDate()?.let { date ->
+                    onSelectedDateChange(date)
+                    onSelectedWeekFocusDateChange(date)
+                    onSelectedWeekDateChange(date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+                }
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            when (selectedPage) {
+                TimetablePage.Flow -> DailyTimetableTab(
+                    agendaItems = agendaItems,
+                    nextDateWithEvent = nextDateWithEvent,
+                    selectedDate = selectedDate,
+                    onDateChange = onSelectedDateChange,
+                    density = density,
+                    emptyTitle = emptyTitle,
+                    emptyMessage = emptyMessage
+                )
+
+                TimetablePage.Week -> WeeklyTimetableTab(
+                    uiState = uiState,
+                    startOfWeek = selectedWeekDate,
+                    selectedDate = selectedWeekFocusDate,
+                    includedKinds = includedKinds,
+                    density = density,
+                    emptyDayMessage = emptyMessage,
+                    onSelectedDateChange = onSelectedWeekFocusDateChange,
+                    onStartOfWeekChange = onSelectedWeekDateChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+private fun PlannerOverviewPanel(
+    nowItem: AgendaItemUi?,
+    nextItem: AgendaItemUi?,
+    deadlines: List<AgendaItemUi>,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    density: AgendaDensity,
+    onDensityChange: (AgendaDensity) -> Unit,
+    includedKinds: Set<AgendaItemKind>,
+    onIncludedKindsChange: (Set<AgendaItemKind>) -> Unit,
+    onJumpToday: () -> Unit,
+    onJumpTomorrow: () -> Unit,
+    onJumpNextClass: () -> Unit,
+    onJumpNextMeeting: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PlannerSummaryCard(
+                modifier = Modifier.weight(1f),
+                label = "Now",
+                item = nowItem,
+                emptyText = "No live school moment right now."
+            )
+            PlannerSummaryCard(
+                modifier = Modifier.weight(1f),
+                label = "Next",
+                item = nextItem,
+                emptyText = "Nothing else has been planned yet."
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (expanded) "Planner tools open" else "Planner tools hidden",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FilterChip(
+                selected = expanded,
+                onClick = onToggleExpanded,
+                label = { Text(if (expanded) "Hide tools" else "Show tools") },
+                leadingIcon = {
+                    Icon(Icons.Default.Tune, contentDescription = null)
+                }
+            )
+        }
+
+        if (expanded) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickJumpChip("Today", onJumpToday)
+                QuickJumpChip("Tomorrow", onJumpTomorrow)
+                QuickJumpChip("Next class", onJumpNextClass)
+                QuickJumpChip("Next meeting", onJumpNextMeeting)
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AgendaDensity.entries.forEach { option ->
+                    FilterChip(
+                        selected = density == option,
+                        onClick = { onDensityChange(option) },
+                        label = { Text(if (option == AgendaDensity.COMFORTABLE) "Comfortable" else "Compact") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Tune, contentDescription = null)
+                        }
+                    )
+                }
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AgendaItemKind.entries.forEach { kind ->
+                    FilterChip(
+                        selected = kind in includedKinds,
+                        onClick = {
+                            val next = includedKinds.toMutableSet().apply {
+                                if (kind in this) remove(kind) else add(kind)
+                            }
+                            onIncludedKindsChange(if (next.isEmpty()) AgendaItemKind.entries.toSet() else next)
+                        },
+                        label = { Text(kind.toLabel()) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = when (kind) {
+                                    AgendaItemKind.CALL, AgendaItemKind.MEETING -> Icons.Default.VideoCall
+                                    else -> Icons.Default.CalendarMonth
+                                },
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        if (expanded && deadlines.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Deadlines & moments",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    deadlines.take(3).forEach { item ->
+                        Text(
+                            text = "${item.start.format(DateTimeFormatter.ofPattern("EEE HH:mm"))} • ${item.title}${item.statusLabel?.let { " • $it" } ?: ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlannerSummaryCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    item: AgendaItemUi?,
+    emptyText: String
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            if (item == null) {
+                Text(
+                    text = emptyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "${item.start.format(DateTimeFormatter.ofPattern("EEE HH:mm"))} • ${item.badge}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                item.statusLabel?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun QuickJumpChip(
+    label: String,
+    onClick: () -> Unit
+) {
+    InputChip(
+        selected = false,
+        onClick = onClick,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
+        }
+    )
+}
+
+private fun buildEmptyTitle(
+    audience: String,
+    selectedDate: LocalDate,
+    includedKinds: Set<AgendaItemKind>
+): String {
+    val dayLabel = selectedDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+    return when {
+        includedKinds.size < AgendaItemKind.entries.size -> "No matching plans on $dayLabel"
+        audience.contains("PARENT", ignoreCase = true) -> "No family plans on $dayLabel"
+        audience.contains("TEACHER", ignoreCase = true) -> "No teaching plans on $dayLabel"
+        else -> "Nothing is planned for $dayLabel"
+    }
+}
+
+private fun buildEmptyMessage(
+    audience: String,
+    studentFocused: Boolean,
+    includedKinds: Set<AgendaItemKind>
+): String = when {
+    includedKinds.size < AgendaItemKind.entries.size ->
+        "Try turning on more filters to bring back classes, meetings, calls, or announcements."
+    audience.contains("PARENT", ignoreCase = true) && studentFocused ->
+        "When this learner gets a class, meeting, call invitation, or school announcement, it will show up here."
+    audience.contains("PARENT", ignoreCase = true) ->
+        "Family plans, student classes, school calls, and parent-teacher meetings will gather here once they are scheduled."
+    audience.contains("TEACHER", ignoreCase = true) ->
+        "Classes, invigilation, department meetings, and thread-based calls will appear here once the school plans them."
+    else ->
+        "When a class, meeting, call invitation, or school announcement lands here, it will appear in the same flow."
+}
+
+private fun AgendaItemKind.toLabel(): String = when (this) {
+    AgendaItemKind.CLASS -> "Classes"
+    AgendaItemKind.ASSESSMENT -> "Assessments"
+    AgendaItemKind.MEETING -> "Meetings"
+    AgendaItemKind.CALL -> "Calls"
+    AgendaItemKind.ANNOUNCEMENT -> "Announcements"
+}
+
+@Composable
+private fun TimetableContentPane(
+    modifier: Modifier = Modifier,
+    hasError: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (hasError) {
+        Box(
+            modifier = modifier.padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            FriendlyNetworkErrorCard(
+                rawMessage = errorMessage,
+                onRetry = onRetry
+            )
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .sizeIn(minHeight = 0.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun TimetableHero(
+    highlights: List<AgendaItemUi>,
+    audience: String,
+    scopeLabel: String?,
+    compact: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = if (compact) 10.dp else 16.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.68f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = if (compact) 16.dp else 20.dp, vertical = if (compact) 14.dp else 20.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(audience.lowercase().replaceFirstChar { it.titlecase() }) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Groups, contentDescription = null)
+                    }
+                )
+                scopeLabel?.takeIf { it.isNotBlank() }?.let {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(it) },
+                        leadingIcon = {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                        }
+                    )
+                }
+            }
+
+            Text(
+                text = "A calmer view of school time",
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = if (compact) {
+                    "Classes, meetings, and thread-based plans now stay in one rhythm."
+                } else {
+                    "Classes, planned thread calls, parent-teacher meetings, and live school moments now show up in one place so the schedule feels more like a daily rhythm than a rigid table."
+                },
+                style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (highlights.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Coming up next",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    highlights.take(if (compact) 1 else 3).forEach { item ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (item.kind == AgendaItemKind.CALL || item.kind == AgendaItemKind.MEETING) Icons.Default.VideoCall else Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "${item.start.format(DateTimeFormatter.ofPattern("EEE HH:mm"))} • ${item.title}",
+                                style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
