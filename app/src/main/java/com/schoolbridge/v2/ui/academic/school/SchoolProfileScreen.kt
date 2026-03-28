@@ -36,8 +36,6 @@ import coil.compose.rememberAsyncImagePainter
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.school.School
 import com.schoolbridge.v2.domain.school.SchoolLevel
-
-import com.schoolbridge.v2.util.sampleSchool
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -325,7 +323,7 @@ fun SectionTitle(title: String) {
 @Composable
 private fun SchoolProfilePrev() {
     SchoolProfileScreen(
-        school = sampleSchool
+        school = previewSchoolProfile
     )
 }
 
