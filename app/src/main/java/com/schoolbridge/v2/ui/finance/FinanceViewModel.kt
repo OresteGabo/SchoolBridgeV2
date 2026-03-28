@@ -20,7 +20,8 @@ import java.time.LocalDate
 data class FinanceUiState(
     val isLoading: Boolean = false,
     val dashboard: FinanceDashboard = FinanceDashboard.empty(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val hasLoadedOnce: Boolean = false
 )
 
 class FinanceViewModel(
@@ -46,7 +47,8 @@ class FinanceViewModel(
                 _uiState.value = FinanceUiState(
                     isLoading = false,
                     dashboard = response.toFinanceDashboard(),
-                    errorMessage = null
+                    errorMessage = null,
+                    hasLoadedOnce = true
                 )
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(
@@ -55,6 +57,10 @@ class FinanceViewModel(
                 )
             }
         }
+    }
+
+    fun retry(userId: String) {
+        loadFinance(userId)
     }
 
     private suspend fun syncLinkedStudents(response: MobileFinanceDashboardDto) {
