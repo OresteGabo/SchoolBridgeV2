@@ -28,9 +28,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination // Needed for popUpTo graph ID
 import androidx.navigation.NavType
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.navArgument
 import com.schoolbridge.v2.components.CustomBottomNavBar
-import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
 import com.schoolbridge.v2.data.dto.user.RoleRequestDto
 import com.schoolbridge.v2.data.remote.RoleLookupApiServiceImpl
 import com.schoolbridge.v2.data.remote.RoleRequestApiServiceImpl
@@ -75,15 +75,12 @@ fun AppNavHost(
     startDestination: String,
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
-    themeViewModel: ThemeViewModel,               // Added
-    themePreferenceManager: ThemePreferenceManager, // Added
+    themeViewModel: ThemeViewModel,
     modifier: Modifier = Modifier
 ) {
-    //val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
-    /* ───── theme flows ──────────────────────────────────────────────── */
     val isDarkTheme by themeViewModel.isDark.collectAsState()
-    val palette     by themeViewModel.palette.collectAsState()
-    val contrast    by themeViewModel.contrast.collectAsState()
+    val palette by themeViewModel.palette.collectAsState()
+    val contrast by themeViewModel.contrast.collectAsState()
     val currentUser = userSessionManager.currentUser
     val roleRequestApiService = remember(userSessionManager) { RoleRequestApiServiceImpl(userSessionManager) }
     val roleLookupApiService = remember(userSessionManager) { RoleLookupApiServiceImpl(userSessionManager) }
@@ -95,9 +92,7 @@ fun AppNavHost(
     ) {
         // --- Authentication/Onboarding Flow ---
         composable(AuthScreen.Onboarding.route) {
-            // TODO: Implement your OnboardingScreen composable
-            // OnboardingScreen(onFinishOnboarding = { navController.navigate(AuthScreen.Login.route) })
-            println("Navigated to Onboarding Screen") // Placeholder for OnboardingScreen
+            // TODO: Implement the onboarding destination UI.
         }
 
         composable(AuthScreen.Login.route) {
@@ -122,7 +117,6 @@ fun AppNavHost(
         }
 
         composable(AuthScreen.SignUp.route) {
-            // TODO: Implement your SignUpScreen composable
              SignUpScreen(
                  navController = navController,
                  onContinueAsGuest = {},
@@ -133,7 +127,6 @@ fun AppNavHost(
                  },
                  onPrivacyPolicyClick = {}
              )
-            println("Navigated to Sign Up Screen") // Placeholder for SignUpScreen
         }
 
         composable(AuthScreen.CredentialsSetup.route) {
@@ -145,7 +138,6 @@ fun AppNavHost(
             )
         }
 
-// Accept phone number as nav argument
         composable(
             route = "${MainAppScreen.VerificationScreen.route}/{phoneNumber}",
             arguments = listOf(navArgument("phoneNumber") { defaultValue = "" })
@@ -155,26 +147,19 @@ fun AppNavHost(
             VerificationScreen(
                 phoneNumber = phoneNumber,
                 onVerificationSuccess = {
-                    // Navigate to home screen or next flow
                     navController.navigate(MainAppScreen.Home.route) {
                         popUpTo(AuthScreen.CredentialsSetup.route) { inclusive = true }
                     }
                 },
-                onResendCode = {
-                    // Logic to resend code (maybe ViewModel handles it)
-                }
+                onResendCode = {}
             )
         }
 
         composable(AuthScreen.ForgotPassword.route) {
-            // TODO: Implement your ForgotPasswordScreen composable
-            // ForgotPasswordScreen(onResetSuccess = { navController.navigate(AuthScreen.Login.route) })
-            println("Navigated to Forgot Password Screen") // Placeholder for ForgotPasswordScreen
+            // TODO: Implement the forgot-password destination UI.
         }
 
 
-        // --- Main Application Flow (Post-Login) ---
-        // These use the routes defined in MainAppScreen
         composable(MainAppScreen.Home.route) {
             HomeRoute(
                 userSessionManager = userSessionManager,
@@ -182,7 +167,6 @@ fun AppNavHost(
                     navController.navigate(MainAppScreen.Settings.route)
                 },
                 onEventClick = { eventId ->
-                    // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
                 },
                 modifier = modifier,
@@ -192,16 +176,8 @@ fun AppNavHost(
                 onViewAllEventsClick = {
                     navController.navigate(MainAppScreen.Events.route)
                 },
-                currentScreen = MainAppScreen.Home, // ✅ This is the current tab
-                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
-                    navController.navigate(screen.route) {
-                        launchSingleTop = true      // Prevent multiple copies
-                        restoreState = true         // Restore scroll position, etc.
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true       // Keep previous screen state
-                        }
-                    }
-                },
+                currentScreen = MainAppScreen.Home,
+                onTabSelected = navController::navigateToMainScreen,
                 onWeeklyViewClick = {
                     navController.navigate(MainAppScreen.WeeklySchedule.route)
                 },
@@ -353,15 +329,7 @@ fun AppNavHost(
                 bottomBar = {
                     CustomBottomNavBar(
                         currentScreen = MainAppScreen.WeeklySchedule,
-                        onTabSelected = { screen ->
-                            navController.navigate(screen.route) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                            }
-                        },
+                        onTabSelected = navController::navigateToMainScreen,
                         currentUser = currentUser
                     )
                 }
@@ -376,15 +344,7 @@ fun AppNavHost(
                 bottomBar = {
                     CustomBottomNavBar(
                         currentScreen = MainAppScreen.Alerts,
-                        onTabSelected = { screen ->
-                            navController.navigate(screen.route) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                            }
-                        },
+                        onTabSelected = navController::navigateToMainScreen,
                         currentUser = currentUser
                     )
                 }
@@ -394,53 +354,37 @@ fun AppNavHost(
             EventsScreen(
                 onBack = { navController.navigateUp() },
                 onEventClick = { eventId ->
-                    // Use the createRoute function for type-safe navigation
                     navController.navigate(MainAppScreen.EventDetails.createRoute(eventId))
-                },
-
+                }
             )
         }
 
 
-        // --- Event Details Route (now using MainAppScreen.EventDetails) ---
         composable(
-            route = MainAppScreen.EventDetails.ROUTE_PATTERN, // Use the pattern from the sealed class
+            route = MainAppScreen.EventDetails.ROUTE_PATTERN,
             arguments = listOf(navArgument(MainAppScreen.EventDetails.EVENT_ID_ARG) {
                 type = NavType.StringType
             })
         ) { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString(MainAppScreen.EventDetails.EVENT_ID_ARG)
+            val eventId = backStackEntry.requiredStringArg(
+                navController = navController,
+                argName = MainAppScreen.EventDetails.EVENT_ID_ARG,
+                screenName = "EventDetails"
+            )
             if (eventId != null) {
-                // Your existing EventDetailsRoute logic remains the same
                 EventDetailsRoute(
                     eventId = eventId,
                     onBackClick = { navController.popBackStack() },
-                    eventRepository = remember { EventRepository() } // Or inject via DI
+                    eventRepository = remember { EventRepository() }
                 )
-            } else {
-                // Handle case where eventId is null, e.g., show an error screen or navigate back
-                // For now, let's just log and pop back
-                println("Error: Event ID is missing for EventDetailsRoute")
-                navController.popBackStack()
             }
         }
-
-
-
 
         composable(MainAppScreen.Message.route) {
             MessageScreen(
                 userSessionManager = userSessionManager,
-                currentScreen = MainAppScreen.Message, // ✅ This is the current tab
-                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
-                    navController.navigate(screen.route) {
-                        launchSingleTop = true      // Prevent multiple copies
-                        restoreState = true         // Restore scroll position, etc.
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true       // Keep previous screen state
-                        }
-                    }
-                },
+                currentScreen = MainAppScreen.Message,
+                onTabSelected = navController::navigateToMainScreen,
                 onBack = navController::navigateUp,
                 onMessageThreadClick = { messageThreadId ->
                     navController.navigate(
@@ -448,19 +392,21 @@ fun AppNavHost(
                             messageThreadId
                         )
                     )
-                },
-
+                }
             )
-            println("Navigated to Message Screen") // Placeholder for MessageScreen
         }
 
         composable(
-            route = MainAppScreen.MessageThreadDetails.ROUTE_PATTERN, // Use the pattern from the sealed class
-            arguments = listOf(navArgument(MainAppScreen.MessageThreadDetails.MESSAGETHREAD_ID_ARG) {
+            route = MainAppScreen.MessageThreadDetails.ROUTE_PATTERN,
+            arguments = listOf(navArgument(MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG) {
                 type = NavType.StringType
             })
         ) { backStackEntry ->
-            val messageThreadId = backStackEntry.arguments?.getString(MainAppScreen.MessageThreadDetails.MESSAGETHREAD_ID_ARG)
+            val messageThreadId = backStackEntry.requiredStringArg(
+                navController = navController,
+                argName = MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG,
+                screenName = "MessageThreadDetails"
+            )
             if (messageThreadId != null) {
                 Log.d("MessageThreadID", messageThreadId)
                 MessageThreadScreen(
@@ -468,36 +414,19 @@ fun AppNavHost(
                     initialThreadId = messageThreadId,
                     onBack = { navController.popBackStack() }
                 )
-            } else {
-                // Handle case where eventId is null, e.g., show an error screen or navigate back
-                // For now, let's just log and pop back
-                Log.d("ERROR__","Error: Message ID is missing for ")
-                navController.popBackStack()
             }
         }
 
         composable(MainAppScreen.Finance.route) {
             FinanceScreen(
                 userSessionManager = userSessionManager,
-                currentScreen = MainAppScreen.Finance, // ✅ This is the current tab
-                onTabSelected = { screen ->         // ✅ Handle bottom tab navigation
-                    navController.navigate(screen.route) {
-                        launchSingleTop = true      // Prevent multiple copies
-                        restoreState = true         // Restore scroll position, etc.
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true       // Keep previous screen state
-                        }
-                    }
-                },
-                //modifier = TODO()
+                currentScreen = MainAppScreen.Finance,
+                onTabSelected = navController::navigateToMainScreen
             )
-            println("Navigated to Finance Screen") // Placeholder for FinanceScreen
         }
 
-        // --- Settings Flow ---
         composable(MainAppScreen.Settings.route) {
             SettingsScreen(
-                /* existing params … */
                 onLogout = {
                     CoroutineScope(Dispatchers.IO).launch {
                         userSessionManager.clearSession()
@@ -515,15 +444,10 @@ fun AppNavHost(
                 onNavigateToHelp           = { navController.navigate(MainAppScreen.HelpFAQ.route) },
                 onNavigateToAbout          = { navController.navigate(MainAppScreen.About.route) },
                 onDataPrivacy              = { navController.navigate(MainAppScreen.DataPrivacy.route) },
-
-                /*  ↓↓↓ theming controls  ↓↓↓  */
                 isDarkTheme    = isDarkTheme,
                 currentPalette = palette,
                 currentContrast = contrast,
-
-                onToggleTheme   = { enabled ->
-                    themeViewModel.toggleDark(enabled)
-                },
+                onToggleTheme   = themeViewModel::toggleDark,
                 onPalettePicked = { newPalette ->
                     themeViewModel.setPalette(newPalette)
                 },
@@ -534,9 +458,7 @@ fun AppNavHost(
         }
 
 
-        // --- Individual Settings Sub-Screens ---
         composable(MainAppScreen.Profile.route) {
-            // Pass userSessionManager if ProfileScreen needs user data
             ProfileScreen(
                 userSessionManager = userSessionManager,
                 onBack = navController::navigateUp
@@ -544,16 +466,13 @@ fun AppNavHost(
         }
         composable(MainAppScreen.Notifications.route) {
             NotificationSettingsScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Notifications Screen") // Placeholder for NotificationsScreen
         }
 
         composable(MainAppScreen.HelpFAQ.route) {
             HelpFAQScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Help/FAQ Screen") // Placeholder for HelpFAQScreen
         }
         composable(MainAppScreen.About.route) {
             AboutScreen(onBack = { navController.navigateUp() })
-            println("Navigated to About Screen") // Placeholder for AboutScreen
         }
         composable(MainAppScreen.DataPrivacy.route) {
             DataPrivacySettingsScreen(
@@ -566,65 +485,80 @@ fun AppNavHost(
                     navController.navigate(MainAppScreen.PrivacyPolicy.route)
                 }
             )
-            println("Navigated to Data Privacy Screen") // Placeholder for DataPrivacyScreen
         }
 
 
         composable(MainAppScreen.Terms.route) {
             TermsOfServiceScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Terms of Service Screen") // Placeholder for TermsOfServiceScreen
         }
 
         composable(MainAppScreen.PrivacyPolicy.route) {
             TermsOfServiceScreen(onBack = { navController.navigateUp() })
-            println("Navigated to Privacy Policy Screen") // Placeholder for PrivacyPolicyScreen
         }
 
-        // --- Academic Sections ---
         composable(MainAppScreen.CoursesList.route) {
-            // CoursesListScreen()
-            println("Navigated to Courses List Screen") // Placeholder for CoursesListScreen
+            // TODO: Implement the courses list destination UI.
         }
 
         composable(MainAppScreen.CourseDetail.ROUTE_PATTERN) { backStackEntry ->
-            val courseId = backStackEntry.arguments?.getString("courseId")
+            val courseId = backStackEntry.requiredStringArg(
+                navController = navController,
+                argName = MainAppScreen.CourseDetail.COURSE_ID_ARG,
+                screenName = "CourseDetail"
+            )
             if (courseId != null) {
-                // TODO: Implement your CourseDetailScreen composable, passing the courseId
-                println("Navigated to Course Detail for ID: $courseId") // Placeholder for CourseDetailScreen
-            } else {
-                println("Error: Course ID missing for CourseDetailScreen")
+                // TODO: Implement the course-detail destination UI.
             }
         }
 
         composable(MainAppScreen.GradesList.route) {
-            // GradesListScreen()
-            println("Navigated to Grades List Screen") // Placeholder for GradesListScreen
+            // TODO: Implement the grades list destination UI.
         }
 
         composable(MainAppScreen.EvaluationDetail.ROUTE_PATTERN) { backStackEntry ->
-            val evaluationId = backStackEntry.arguments?.getString("evaluationId")
+            val evaluationId = backStackEntry.requiredStringArg(
+                navController = navController,
+                argName = MainAppScreen.EvaluationDetail.EVALUATION_ID_ARG,
+                screenName = "EvaluationDetail"
+            )
             if (evaluationId != null) {
-                // TODO: Implement your EvaluationDetailScreen composable, passing the evaluationId
-                println("Navigated to Evaluation Detail for ID: $evaluationId") // Placeholder for EvaluationDetailScreen
-            } else {
-                println("Error: Evaluation ID missing for EvaluationDetailScreen")
+                // TODO: Implement the evaluation-detail destination UI.
             }
         }
 
-        // --- User-specific dashboards/lists (for different roles) ---
         composable(MainAppScreen.StudentDashboard.route) {
-            // StudentDashboardScreen()
-            println("Navigated to Student Dashboard Screen") // Placeholder for StudentDashboardScreen
+            // TODO: Implement the student dashboard destination UI.
         }
 
         composable(MainAppScreen.ParentChildrenList.route) {
-            // ParentChildrenListScreen()
-            println("Navigated to Parent Children List Screen") // Placeholder for ParentChildrenListScreen
+            // TODO: Implement the parent-children destination UI.
         }
 
         composable(MainAppScreen.TeacherAssignedCourses.route) {
-            // TeacherAssignedCoursesScreen()
-            println("Navigated to Teacher Assigned Courses Screen") // Placeholder for TeacherAssignedCoursesScreen
+            // TODO: Implement the teacher-assigned-courses destination UI.
         }
     }
+}
+
+private fun NavHostController.navigateToMainScreen(screen: MainAppScreen) {
+    navigate(screen.route) {
+        launchSingleTop = true
+        restoreState = true
+        popUpTo(graph.startDestinationId) {
+            saveState = true
+        }
+    }
+}
+
+private fun NavBackStackEntry.requiredStringArg(
+    navController: NavHostController,
+    argName: String,
+    screenName: String
+): String? {
+    val value = arguments?.getString(argName)
+    if (value == null) {
+        Log.w("AppNavHost", "Missing required nav argument '$argName' for $screenName")
+        navController.popBackStack()
+    }
+    return value
 }
