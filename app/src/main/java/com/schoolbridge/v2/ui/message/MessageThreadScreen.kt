@@ -126,7 +126,7 @@ fun MessageThreadScreen(
                         rawMessage = uiState.errorMessage,
                         onRetry = {
                             currentUser?.userId?.let { userId ->
-                                viewModel.loadThreads(userId)
+                                viewModel.retry(userId)
                             }
                         },
                         modifier = Modifier
@@ -257,6 +257,22 @@ fun MessageThreadScreen(
                         )
                     }
                 }
+            }
+        }
+
+        if (!uiState.errorMessage.isNullOrBlank() && messageThreads.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .align(Alignment.TopCenter)
+            ) {
+                FriendlyNetworkErrorCard(
+                    rawMessage = uiState.errorMessage,
+                    onRetry = {
+                        currentUser?.userId?.let(viewModel::retry)
+                    }
+                )
             }
         }
 
