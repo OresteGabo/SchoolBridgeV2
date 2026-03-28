@@ -4,105 +4,113 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CurrencyFranc
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CurrencyFranc
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.schoolbridge.v2.R
 
-/**
- * Defines the sealed class for all main application routes.
- */
 sealed class MainAppScreen(
-    val route: String, 
-    val title: Int? = null,
+    val route: String,
+    @StringRes val titleRes: Int? = null,
     val selectedIcon: ImageVector? = null,
     val unselectedIcon: ImageVector? = null,
-    val hasNews: Boolean = false,
-
-) {
-    // --- Main Bottom Navigation / Top-Level Items ---
+    val hasNews: Boolean = false
+)
+{
     data object Home : MainAppScreen(
         route = "home_screen",
-        title = R.string.home_label,
+        titleRes = R.string.home_label,
         selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home,
+        unselectedIcon = Icons.Outlined.Home
     )
 
     data object Message : MainAppScreen(
         route = "message_screen",
-        title = R.string.message_label,
+        titleRes = R.string.message_label,
         selectedIcon = Icons.AutoMirrored.Filled.Chat,
-        unselectedIcon = Icons.AutoMirrored.Outlined.Chat,
+        unselectedIcon = Icons.AutoMirrored.Outlined.Chat
     )
 
     data object Finance : MainAppScreen(
         route = "finance_screen",
-        title = R.string.finance_label,
+        titleRes = R.string.finance_label,
         selectedIcon = Icons.Filled.CurrencyFranc,
-        unselectedIcon = Icons.Outlined.CurrencyFranc,
+        unselectedIcon = Icons.Outlined.CurrencyFranc
     )
 
     data object Profile : MainAppScreen("profile_screen")
     data object Notifications : MainAppScreen("notifications_screen")
     data object Settings : MainAppScreen("settings_screen")
     data object Language : MainAppScreen("language_setting_screen")
-    data object Alerts : MainAppScreen("alerts_screen")
     data object Events : MainAppScreen("events_screen")
     data object Theme : MainAppScreen("theme_setting_screen")
     data object HelpFAQ : MainAppScreen("help_faq_screen")
     data object About : MainAppScreen("about_screen")
     data object DataPrivacy : MainAppScreen("data_privacy_screen")
 
-    data object WeeklySchedule : MainAppScreen("weekly_schedule_screen")
+    data object WeeklySchedule : MainAppScreen(
+        route = "weekly_schedule_screen",
+        titleRes = R.string.schedule_label,
+        selectedIcon = Icons.Filled.CalendarMonth,
+        unselectedIcon = Icons.Outlined.CalendarMonth
+    )
+
+    data object Alerts : MainAppScreen(
+        route = "alerts_screen",
+        titleRes = R.string.alerts_label,
+        selectedIcon = Icons.Filled.Notifications,
+        unselectedIcon = Icons.Outlined.Notifications
+    )
+
     data object Terms : MainAppScreen("terms_screen")
     data object PrivacyPolicy : MainAppScreen("privacy_policy_screen")
 
     data object VerificationScreen : MainAppScreen("verification_screen")
     data object CoursesList : MainAppScreen("courses_list_screen")
 
-    data class CourseDetail(val courseId: String) : MainAppScreen(CourseDetail.ROUTE_PATTERN) {
-        companion object {
-            const val ROUTE_PATTERN = "course_detail_screen/{courseId}"
-        }
+    data object CourseDetail : MainAppScreen("course_detail_screen/{courseId}") {
+        const val COURSE_ID_ARG = "courseId"
+        const val ROUTE_PATTERN = "course_detail_screen/{courseId}"
+
         fun createRoute(courseId: String) = "course_detail_screen/$courseId"
     }
 
     data object GradesList : MainAppScreen("grades_list_screen")
 
-    data class EvaluationDetail(val evaluationId: String) : MainAppScreen(EvaluationDetail.ROUTE_PATTERN) {
-        companion object {
-            const val ROUTE_PATTERN = "evaluation_detail_screen/{evaluationId}"
-        }
+    data object EvaluationDetail : MainAppScreen("evaluation_detail_screen/{evaluationId}") {
+        const val EVALUATION_ID_ARG = "evaluationId"
+        const val ROUTE_PATTERN = "evaluation_detail_screen/{evaluationId}"
+
         fun createRoute(evaluationId: String) = "evaluation_detail_screen/$evaluationId"
     }
 
 
-    data class EventDetails(val eventId: String) : MainAppScreen(EventDetails.ROUTE_PATTERN) {
-        companion object {
-            const val ROUTE_PATTERN = "event_details_screen/{eventId}"
-            const val EVENT_ID_ARG = "eventId"
-            fun createRoute(eventId: String) = "event_details_screen/$eventId"
-        }
+    data object EventDetails : MainAppScreen("event_details_screen/{eventId}") {
+        const val ROUTE_PATTERN = "event_details_screen/{eventId}"
+        const val EVENT_ID_ARG = "eventId"
+
+        fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
 
-    data class MessageThreadDetails(val messageThreadId: String) : MainAppScreen(MessageThreadDetails.ROUTE_PATTERN) {
-        companion object {
-            const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}"
-            const val MESSAGETHREAD_ID_ARG = "messageThreadId"
-            fun createRoute(messageThreadId: String) = "message_thread_screen/$messageThreadId"
-        }
+    data object MessageThreadDetails : MainAppScreen("message_thread_screen/{messageThreadId}") {
+        const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}"
+        const val MESSAGE_THREAD_ID_ARG = "messageThreadId"
+
+        fun createRoute(messageThreadId: String) = "message_thread_screen/$messageThreadId"
     }
 
-    data class MessageDetails(val messageId: String) : MainAppScreen(MessageDetails.ROUTE_PATTERN) {
-        companion object {
-            const val ROUTE_PATTERN = "message_details_screen/{messageId}"
-            const val MESSAGE_ID_ARG = "messageId"
-            fun createRoute(messageId: String) = "message_details_screen/$messageId"
-        }
-    }
+    data object MessageDetails : MainAppScreen("message_details_screen/{messageId}") {
+        const val ROUTE_PATTERN = "message_details_screen/{messageId}"
+        const val MESSAGE_ID_ARG = "messageId"
 
+        fun createRoute(messageId: String) = "message_details_screen/$messageId"
+    }
 
     data object StudentDashboard : MainAppScreen("student_dashboard_screen")
     data object ParentChildrenList : MainAppScreen("parent_children_list_screen")
@@ -113,10 +121,4 @@ sealed class MainAppScreen(
     data object RequestParentRole: MainAppScreen("request_parent_role")
     data object RequestTeacherRole: MainAppScreen("request_teachert_role")
     data object RequestSchoolAdminRole: MainAppScreen("request_school_admin_role")
-}
-
-enum class MainNavRouteType(val label: String) {
-    Message("Message"),
-    Home("Home"),
-    Finance("Finance"),
 }
