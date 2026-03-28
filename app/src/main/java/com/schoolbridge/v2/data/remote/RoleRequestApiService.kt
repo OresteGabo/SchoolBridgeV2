@@ -27,6 +27,7 @@ interface RoleRequestApiService {
 class RoleRequestApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : RoleRequestApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -69,7 +70,11 @@ class RoleRequestApiServiceImpl(
             put("supportingDocumentsUrls", json.encodeToJsonElement(docs))
         }
 
-        runApiCall(defaultMessage = "Could not submit your request.") {
+        runApiCall(
+            defaultMessage = "Could not submit your request.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.post("$BASE_URL/api/users/me/roles/request") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
