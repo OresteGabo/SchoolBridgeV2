@@ -1,8 +1,14 @@
 package com.schoolbridge.v2.ui.settings.help
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,60 +18,53 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.localization.t
-import com.schoolbridge.v2.ui.components.AppParagraph
-import com.schoolbridge.v2.ui.components.SectionHeader
-import com.schoolbridge.v2.ui.components.SpacerL
-import com.schoolbridge.v2.ui.components.SpacerS
-import com.schoolbridge.v2.ui.components.SpacerXS
-import com.schoolbridge.v2.util.generateFAQs
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
+import com.schoolbridge.v2.ui.common.AdaptivePageFrame
+import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import com.schoolbridge.v2.ui.common.isExpandedLayout
 
 data class FAQItem(
     val question: String,
@@ -78,394 +77,491 @@ data class FAQCategory(
     val questions: List<FAQItem>
 )
 
+private data class FAQCategoryMeta(
+    val title: String,
+    val icon: ImageVector
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpFAQScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    val offlineFaqs = remember { embeddedFaqs() }
-    val searchQuery = remember { mutableStateOf("") }
+    val categories = remember { embeddedFaqs() }
+    val isExpanded = isExpandedLayout()
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     val expandedStates = remember { mutableStateMapOf<String, Boolean>() }
-    var showDeepSearchPrompt by remember { mutableStateOf(false) }
-    var isSearchingOnline by remember { mutableStateOf(false) }
-    var onlineResults by remember { mutableStateOf<List<FAQItem>>(emptyList()) }
-    var showSearchBar by remember { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
 
-    val filteredOffline = remember(searchQuery.value, offlineFaqs) {
-        filterFAQ(offlineFaqs, searchQuery.value)
+    val filteredCategories = remember(categories, searchQuery, selectedCategory) {
+        filterFAQ(
+            allCategories = categories,
+            query = searchQuery,
+            selectedCategory = selectedCategory
+        )
     }
 
-    //If only one FAQ matches, expand it by default
-    LaunchedEffect(filteredOffline) {
-        if (filteredOffline.size == 1 && filteredOffline[0].questions.size == 1) {
-            val question = filteredOffline[0].questions[0].question
-            expandedStates[question] = true
+    LaunchedEffect(filteredCategories) {
+        if (filteredCategories.size == 1 && filteredCategories.first().questions.size == 1) {
+            expandedStates[filteredCategories.first().questions.first().question] = true
         }
     }
-
-    val allMatchesEmpty = filteredOffline.all { it.questions.isEmpty() } && onlineResults.isEmpty()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(t(R.string.help_and_faq)) },
-                colors = TopAppBarDefaults.topAppBarColors(),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = t(R.string.back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        showSearchBar = !showSearchBar
-                    }) {
-                        if (!showSearchBar) {
-                            Icon(Icons.Default.Search, contentDescription = t(R.string.search))
-                        } else {
-                            Icon(Icons.Default.SearchOff, contentDescription = "search off")
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = t(R.string.back)
+                        )
                     }
                 }
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = modifier
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .padding(innerPadding)
         ) {
-            Text(
-                text = t(R.string.faq_intro),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            SchoolBridgePatternBackground(dotAlpha = 0.018f, gradientAlpha = 0.045f)
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (showSearchBar) {
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    modifier = Modifier.fillMaxWidth()
+            AdaptivePageFrame(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                maxContentWidth = 1180.dp
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
-                    OutlinedTextField(
-                        value = searchQuery.value,
-                        onValueChange = {
-                            searchQuery.value = it
-                            showDeepSearchPrompt = it.isNotEmpty()
-                        },
-                        placeholder = { Text(t(R.string.search_faqs)) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (searchQuery.value.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    searchQuery.value = ""
-                                    showDeepSearchPrompt = false
-                                    onlineResults = emptyList()
-                                }) {
-                                    Icon(Icons.Default.Close, contentDescription = null)
-                                }
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-                }
-
-
-                LaunchedEffect(showSearchBar) {
-                    if (showSearchBar) {
-                        focusRequester.requestFocus()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            if (searchQuery.value.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = t(R.string.search_results_for, searchQuery.value),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (!showSearchBar) {
-                        OutlinedButton(
-                            onClick = {
-                                searchQuery.value = ""
-                                onlineResults = emptyList()
-                            },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = t(R.string.clear_search)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Text(
-                    text = t(R.string.common_questions),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (allMatchesEmpty && showDeepSearchPrompt) {
-                Spacer(modifier = Modifier.height(40.dp))
-                Icon(Icons.Default.QuestionAnswer, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(64.dp))
-                SpacerS()
-                SearchOnlinePrompt(
-                    query = searchQuery.value,
-                    isSearching = isSearchingOnline,
-                    onSearch = {
-                        scope.launch {
-                            isSearchingOnline = true
-                            onlineResults = fetchOnlineFAQs(searchQuery.value)
-                            isSearchingOnline = false
-                        }
-                    }
-                )
-            }
-
-
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                if (searchQuery.value.isNotEmpty() && onlineResults.isNotEmpty()) {
                     item {
-                        Text(
-                            text = t(R.string.from_online),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                        HelpHeroCard(
+                            totalQuestions = categories.sumOf { it.questions.size },
+                            totalCategories = categories.size,
+                            isExpanded = isExpanded
                         )
                     }
 
-                    items(onlineResults.size) { faqIndex ->
-                        ExpandableFAQItem(
-                            faq = onlineResults[faqIndex],
-                            isInitiallyExpanded = expandedStates[onlineResults[faqIndex].question] ?: false,
-                            onToggle = { expandedStates[onlineResults[faqIndex].question] = it }
+                    item {
+                        HelpSearchCard(
+                            searchQuery = searchQuery,
+                            onQueryChange = { searchQuery = it }
                         )
                     }
 
-                    item { Spacer(modifier = Modifier.height(32.dp)) }
-                }
+                    item {
+                        CategoryFilterRow(
+                            categories = categories,
+                            selectedCategory = selectedCategory,
+                            onCategorySelected = { selectedCategory = it }
+                        )
+                    }
 
-                items(filteredOffline.size) { categoryIndex ->
-                    FAQCategorySection(
-                        category = filteredOffline[categoryIndex],
-                        expandedStates = expandedStates
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    if (filteredCategories.isEmpty()) {
+                        item {
+                            HelpEmptyState(searchQuery = searchQuery)
+                        }
+                    } else {
+                        filteredCategories.forEach { category ->
+                            item(category.title) {
+                                FAQCategorySection(
+                                    category = category,
+                                    expandedStates = expandedStates
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-
-
-
-
-fun embeddedFaqs(): List<FAQCategory> = generateFAQs()
-
-suspend fun fetchOnlineFAQs(query: String): List<FAQItem> {
-    delay(1000) // simulate network delay
-    return listOf(
-        FAQItem("How can I contact support?", "You can email us at help@schoolbridge.app"),
-        FAQItem("Can I unlink a student?", "Currently, you need admin help to unlink a child.")
-    ).filter {
-        it.question.contains(query, ignoreCase = true) || it.answer.contains(query, ignoreCase = true)
-    }
-}
+fun embeddedFaqs(): List<FAQCategory> = helpFaqContent()
 
 fun filterFAQ(
     allCategories: List<FAQCategory>,
-    query: String
+    query: String,
+    selectedCategory: String? = null
 ): List<FAQCategory> {
-    if (query.isBlank()) return allCategories
-    val lowercaseQuery = query.lowercase().trim()
-    return allCategories.mapNotNull { category ->
-        val matchedQuestions = category.questions.filter { item ->
-            val questionMatch = item.question.contains(lowercaseQuery, ignoreCase = true)
-            val tagMatch = item.tags.any { it.contains(lowercaseQuery, ignoreCase = true) }
-            val answerMatch = item.answer.contains(lowercaseQuery, ignoreCase = true)
-            questionMatch || tagMatch || answerMatch
+    val normalizedQuery = query.trim()
+    return allCategories
+        .asSequence()
+        .filter { selectedCategory == null || it.title == selectedCategory }
+        .mapNotNull { category ->
+            val matchedQuestions = if (normalizedQuery.isBlank()) {
+                category.questions
+            } else {
+                category.questions.filter { item ->
+                    item.question.contains(normalizedQuery, ignoreCase = true) ||
+                        item.answer.contains(normalizedQuery, ignoreCase = true) ||
+                        item.tags.any { it.contains(normalizedQuery, ignoreCase = true) }
+                }
+            }
+            if (matchedQuestions.isNotEmpty()) category.copy(questions = matchedQuestions) else null
         }
-        if (matchedQuestions.isNotEmpty()) {
-            category.copy(questions = matchedQuestions)
-        } else null
+        .toList()
+}
+
+@Composable
+private fun HelpHeroCard(
+    totalQuestions: Int,
+    totalCategories: Int,
+    isExpanded: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ManageAccounts,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Help Center",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Find answers about role requests, school communication, payments, schedules, and profile access across the latest SchoolBridge flow.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (isExpanded) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    HelpStatPill(label = "Questions", value = totalQuestions.toString())
+                    HelpStatPill(label = "Topics", value = totalCategories.toString())
+                    HelpStatPill(label = "Updated", value = "Latest app")
+                }
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HelpStatPill(label = "Questions", value = totalQuestions.toString())
+                    HelpStatPill(label = "Topics", value = totalCategories.toString())
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun ExpandableFAQItem(
-    faq: FAQItem,
-    isInitiallyExpanded: Boolean = false,
-    onToggle: (Boolean) -> Unit
-) {
-    var isExpanded by remember { mutableStateOf(isInitiallyExpanded) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                isExpanded = !isExpanded
-                onToggle(isExpanded)
-            }
-            .animateContentSize()
-            .padding(vertical = 4.dp)
+private fun HelpStatPill(label: String, value: String) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = faq.question,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
             )
-            Icon(
-                Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
-            )
-        }
-        if (isExpanded) {
-            SpacerXS()
-            AppParagraph(
-                text = faq.answer,
-                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
         }
     }
 }
 
 @Composable
-fun FAQItemCard(
+private fun HelpSearchCard(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Search help topics",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Try words like role request, payment receipt, meeting, call invite, timetable, parent link, or profile verification.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                placeholder = {
+                    Text(t(R.string.search_faqs))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryFilterRow(
+    categories: List<FAQCategory>,
+    selectedCategory: String?,
+    onCategorySelected: (String?) -> Unit
+) {
+    val metas = remember(categories) {
+        categories.map { category ->
+            FAQCategoryMeta(
+                title = category.title,
+                icon = categoryIcon(category.title)
+            )
+        }
+    }
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        FilterChip(
+            selected = selectedCategory == null,
+            onClick = { onCategorySelected(null) },
+            label = { Text("All topics") }
+        )
+
+        metas.forEach { meta ->
+            FilterChip(
+                selected = selectedCategory == meta.title,
+                onClick = { onCategorySelected(if (selectedCategory == meta.title) null else meta.title) },
+                label = { Text(meta.title) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = meta.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FAQCategorySection(
+    category: FAQCategory,
+    expandedStates: MutableMap<String, Boolean>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = categoryIcon(category.title),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = category.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${category.questions.size} answer${if (category.questions.size == 1) "" else "s"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            category.questions.forEach { faq ->
+                val isExpanded = expandedStates[faq.question] ?: false
+                FAQQuestionCard(
+                    question = faq.question,
+                    answer = faq.answer,
+                    isExpanded = isExpanded,
+                    onToggleExpand = { expandedStates[faq.question] = !isExpanded }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FAQQuestionCard(
     question: String,
     answer: String,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit
 ) {
-    Column(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggleExpand() }
-            .animateContentSize()
-            .padding(vertical = 4.dp)
+            .clickable(onClick = onToggleExpand)
+            .animateContentSize(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = question,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            AnimatedVisibility(visible = isExpanded) {
+                Text(
+                    text = answer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpEmptyState(searchQuery: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null
+                )
+            }
             Text(
-                text = question,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                text = "No answer found yet",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
-            Icon(
-                Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.rotate(if (isExpanded) 180f else 0f)
-            )
-        }
-        if (isExpanded) {
-            SpacerXS()
-            AppParagraph(
-                text = answer,
-                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
+            Text(
+                text = if (searchQuery.isBlank()) {
+                    "Try another topic or open a more specific section."
+                } else {
+                    "Try different words such as parent link, role request, finance, timetable, or thread."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
-
-@Composable
-fun SearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    label: String = t(R.string.search)
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        label = { Text(label) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        singleLine = true,
-        modifier = modifier
-    )
-}
-
-@Composable
-fun FAQCategorySection(
-    category: FAQCategory,
-    expandedStates: MutableMap<String, Boolean>
-) {
-    SectionHeader(title = category.title)
-    SpacerS()
-    category.questions.forEachIndexed { i, faq ->
-        val isExpanded = expandedStates[faq.question] ?: false
-        FAQItemCard(
-            question = faq.question,
-            answer = faq.answer,
-            isExpanded = isExpanded,
-            onToggleExpand = {
-                expandedStates[faq.question] = !isExpanded
-            }
-        )
-
-    }
-}
-
-
-@Composable
-fun SearchOnlinePrompt(
-    query: String,
-    isSearching: Boolean,
-    onSearch: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = t(R.string.no_results),
-            color = Color.Gray
-        )
-        SpacerS()
-        Button(onClick = onSearch) {
-            if (isSearching) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                SpacerS()
-            }
-            Text(t(R.string.search_online))
-        }
-    }
+private fun categoryIcon(title: String): ImageVector = when (title) {
+    "Roles & access" -> Icons.Default.AdminPanelSettings
+    "Messages, requests & calls" -> Icons.Default.ChatBubbleOutline
+    "Finance & receipts" -> Icons.Default.CreditCard
+    "Schedule & meetings" -> Icons.Default.CalendarMonth
+    else -> Icons.Default.Security
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun HelpFAQScreenPreview() {
     MaterialTheme {
-        HelpFAQScreen(
-            onBack = {}
-        )
+        HelpFAQScreen(onBack = {})
     }
 }
-
-@Composable
-fun SectionHeader(title: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.QuestionAnswer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-        )
-    }
-}
-
