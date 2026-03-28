@@ -12,14 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CurrencyFranc
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CurrencyFranc
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,7 +29,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.schoolbridge.v2.R
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
@@ -129,12 +122,12 @@ private fun BottomNavItem(
                     )
                     .padding(8.dp)
             ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = navLabel(screen),
-                tint = contentColor,
-                modifier = Modifier.size(20.dp)
-            )
+                Icon(
+                    imageVector = icon,
+                    contentDescription = navLabel(screen),
+                    tint = contentColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
             Text(
                 text = navLabel(screen),
@@ -176,27 +169,11 @@ private fun rememberBottomNavItems(currentUser: CurrentUser?): List<MainAppScree
 }
 
 @Composable
-private fun navLabel(screen: MainAppScreen): String = when (screen) {
-    MainAppScreen.Message -> t(screen.title ?: error("Missing title"))
-    MainAppScreen.Home -> t(screen.title ?: error("Missing title"))
-    MainAppScreen.Finance -> t(screen.title ?: error("Missing title"))
-    MainAppScreen.WeeklySchedule -> t(R.string.schedule_label)
-    MainAppScreen.Alerts -> t(R.string.alerts_label)
-    else -> screen.route
-}
+private fun navLabel(screen: MainAppScreen): String =
+    screen.titleRes?.let { t(it) } ?: screen.route
 
-private fun selectedNavIcon(screen: MainAppScreen): ImageVector = when (screen) {
-    MainAppScreen.WeeklySchedule -> Icons.Filled.CalendarMonth
-    MainAppScreen.Alerts -> Icons.Filled.Notifications
-    MainAppScreen.Home -> Icons.Filled.Home
-    MainAppScreen.Finance -> Icons.Filled.CurrencyFranc
-    else -> screen.selectedIcon ?: Icons.Filled.Home
-}
+private fun selectedNavIcon(screen: MainAppScreen): ImageVector =
+    screen.selectedIcon ?: Icons.Filled.Home
 
-private fun unselectedNavIcon(screen: MainAppScreen): ImageVector = when (screen) {
-    MainAppScreen.WeeklySchedule -> Icons.Outlined.CalendarMonth
-    MainAppScreen.Alerts -> Icons.Outlined.Notifications
-    MainAppScreen.Home -> Icons.Outlined.Home
-    MainAppScreen.Finance -> Icons.Outlined.CurrencyFranc
-    else -> screen.unselectedIcon ?: screen.selectedIcon ?: Icons.Outlined.Home
-}
+private fun unselectedNavIcon(screen: MainAppScreen): ImageVector =
+    screen.unselectedIcon ?: screen.selectedIcon ?: Icons.Outlined.Home
