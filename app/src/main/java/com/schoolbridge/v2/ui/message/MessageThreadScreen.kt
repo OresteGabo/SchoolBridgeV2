@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,10 +22,15 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CallMissed
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.*
@@ -33,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -47,6 +54,8 @@ import com.schoolbridge.v2.data.remote.MessageRealtimeServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
+import com.schoolbridge.v2.domain.user.CurrentUser
+import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
@@ -158,6 +167,7 @@ fun MessageThreadScreen(
                         TabletThreadLayout(
                             threads = messageThreads,
                             selectedThread = thread,
+                            currentUser = currentUser,
                             onThreadClick = {
                                 internalSelectedThreadId = it.id
                                 viewModel.markAsRead(it.id)
@@ -181,6 +191,24 @@ fun MessageThreadScreen(
                                         replyToSender = originalMsg?.sender
                                     )
                                 }
+                            },
+                            onSendMessage = { content ->
+                                thread?.let { selected ->
+                                    viewModel.addUserMessage(threadId = selected.id, content = content)
+                                }
+                            },
+                            onLaunchThreadAction = { action ->
+                                thread?.let { selected ->
+                                    handleThreadComposerAction(
+                                        action = action,
+                                        thread = selected,
+                                        currentUser = currentUser,
+                                        onSendMessage = { content ->
+                                            viewModel.addUserMessage(threadId = selected.id, content = content)
+                                        },
+                                        onOpenCallPreview = { message -> activeCallMessage = message }
+                                    )
+                                }
                             }
                         )
                     } else if (thread == null) {
@@ -191,6 +219,7 @@ fun MessageThreadScreen(
                     } else {
                         ThreadDetailScreen(
                             thread = thread,
+                            currentUser = currentUser,
                             onBack = { internalSelectedThreadId = null },
                             onMessageClick = { viewingMessage = it },
                             onActionClick = { msgId, actionId ->
@@ -210,6 +239,20 @@ fun MessageThreadScreen(
                                         replyToSender = originalMsg?.sender
                                     )
                                 }
+                            },
+                            onSendMessage = { content ->
+                                viewModel.addUserMessage(threadId = thread.id, content = content)
+                            },
+                            onLaunchThreadAction = { action ->
+                                handleThreadComposerAction(
+                                    action = action,
+                                    thread = thread,
+                                    currentUser = currentUser,
+                                    onSendMessage = { content ->
+                                        viewModel.addUserMessage(threadId = thread.id, content = content)
+                                    },
+                                    onOpenCallPreview = { message -> activeCallMessage = message }
+                                )
                             }
                         )
                     }
@@ -285,9 +328,12 @@ fun MessageThreadScreen(
 private fun TabletThreadLayout(
     threads: List<MessageThread>,
     selectedThread: MessageThread?,
+    currentUser: CurrentUser?,
     onThreadClick: (MessageThread) -> Unit,
     onMessageClick: (Message) -> Unit,
-    onActionClick: (String, String) -> Unit
+    onActionClick: (String, String) -> Unit,
+    onSendMessage: (String) -> Unit,
+    onLaunchThreadAction: (ThreadComposerAction) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -341,9 +387,12 @@ private fun TabletThreadLayout(
             } else {
                 ThreadDetailScreen(
                     thread = selectedThread,
+                    currentUser = currentUser,
                     onBack = {},
                     onMessageClick = onMessageClick,
                     onActionClick = onActionClick,
+                    onSendMessage = onSendMessage,
+                    onLaunchThreadAction = onLaunchThreadAction,
                     showBackButton = false
                 )
             }
@@ -556,6 +605,43 @@ private data class ThreadBadgeStyle(
     val onContainerColor: Color
 )
 
+enum class ThreadComposerAction(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector
+) {
+    REQUEST_DOCUMENTS(
+        title = "Request docs",
+        subtitle = "Ask for evidence or files",
+        icon = Icons.Default.Description
+    ),
+    SCHEDULE_MEETING(
+        title = "Schedule meeting",
+        subtitle = "Propose a parent or staff meeting",
+        icon = Icons.Default.Event
+    ),
+    VERIFICATION_CALL(
+        title = "Call invite",
+        subtitle = "Open a verification or follow-up call",
+        icon = Icons.Default.VideoCall
+    ),
+    ANNOUNCEMENT(
+        title = "Announcement",
+        subtitle = "Broadcast an official update in-thread",
+        icon = Icons.Default.Campaign
+    ),
+    FINANCE_REMINDER(
+        title = "Finance reminder",
+        subtitle = "Remind about a pending payment",
+        icon = Icons.Default.Payments
+    ),
+    PROGRESS_UPDATE(
+        title = "Progress update",
+        subtitle = "Share academic or behavior feedback",
+        icon = Icons.Default.Info
+    );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Thread detail screen
 // ─────────────────────────────────────────────────────────────
@@ -563,9 +649,12 @@ private data class ThreadBadgeStyle(
 @Composable
 fun ThreadDetailScreen(
     thread: MessageThread,
+    currentUser: CurrentUser?,
     onBack: () -> Unit,
     onMessageClick: (Message) -> Unit,
     onActionClick: (String, String) -> Unit,
+    onSendMessage: (String) -> Unit,
+    onLaunchThreadAction: (ThreadComposerAction) -> Unit,
     showBackButton: Boolean = true
 ) {
     val listState = rememberLazyListState()
@@ -642,6 +731,13 @@ fun ThreadDetailScreen(
                 )
             }
         }
+
+        ThreadActionDock(
+            thread = thread,
+            currentUser = currentUser,
+            onSendMessage = onSendMessage,
+            onLaunchThreadAction = onLaunchThreadAction
+        )
     }
 }
 
@@ -837,6 +933,138 @@ fun MessageCard(
 }
 
 @Composable
+private fun ThreadActionDock(
+    thread: MessageThread,
+    currentUser: CurrentUser?,
+    onSendMessage: (String) -> Unit,
+    onLaunchThreadAction: (ThreadComposerAction) -> Unit
+) {
+    var composerText by remember(thread.id) { mutableStateOf("") }
+    var toolsExpanded by remember(thread.id) { mutableStateOf(false) }
+    val availableActions = remember(currentUser?.currentRole, thread.mode) {
+        availableThreadComposerActions(currentUser?.currentRole, thread.mode)
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (toolsExpanded && availableActions.isNotEmpty()) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Launch something from this thread",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        availableActions.forEach { action ->
+                            ElevatedCard(
+                                onClick = { onLaunchThreadAction(action) },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                ),
+                                modifier = Modifier.width(196.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Icon(
+                                                imageVector = action.icon,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(8.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = action.title,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    Text(
+                                        text = action.subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FilledTonalIconButton(
+                    onClick = { toolsExpanded = !toolsExpanded }
+                ) {
+                    Icon(
+                        imageVector = if (toolsExpanded) Icons.Default.Close else Icons.Default.Schedule,
+                        contentDescription = if (toolsExpanded) "Hide tools" else "Show tools"
+                    )
+                }
+
+                OutlinedTextField(
+                    value = composerText,
+                    onValueChange = { composerText = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(
+                            when (currentUser?.currentRole) {
+                                UserRole.SCHOOL_ADMIN -> "Write an official follow-up or launch an action..."
+                                UserRole.TEACHER -> "Share an update, meeting note, or class action..."
+                                else -> "Reply in this school thread..."
+                            }
+                        )
+                    },
+                    maxLines = 4,
+                    shape = RoundedCornerShape(22.dp)
+                )
+
+                FilledIconButton(
+                    onClick = {
+                        val message = composerText.trim()
+                        if (message.isNotEmpty()) {
+                            onSendMessage(message)
+                            composerText = ""
+                        }
+                    },
+                    enabled = composerText.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Send")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ThreadCallCard(callInfo: ThreadCallInfo) {
     val scheme = MaterialTheme.colorScheme
     val (container, content) = when (callInfo.status) {
@@ -947,6 +1175,98 @@ private val callActionIds = setOf(
     "join_live_announcement",
     "schedule_verification_call"
 )
+
+private fun availableThreadComposerActions(
+    role: UserRole?,
+    mode: ThreadMode
+): List<ThreadComposerAction> = when (role) {
+    UserRole.SCHOOL_ADMIN -> listOf(
+        ThreadComposerAction.REQUEST_DOCUMENTS,
+        ThreadComposerAction.VERIFICATION_CALL,
+        ThreadComposerAction.ANNOUNCEMENT,
+        ThreadComposerAction.FINANCE_REMINDER
+    )
+    UserRole.TEACHER -> listOf(
+        ThreadComposerAction.PROGRESS_UPDATE,
+        ThreadComposerAction.SCHEDULE_MEETING,
+        ThreadComposerAction.VERIFICATION_CALL,
+        ThreadComposerAction.ANNOUNCEMENT
+    )
+    UserRole.PARENT -> listOf(
+        ThreadComposerAction.SCHEDULE_MEETING,
+        ThreadComposerAction.PROGRESS_UPDATE
+    )
+    else -> when (mode) {
+        ThreadMode.ACTION_REQUIRED -> listOf(
+            ThreadComposerAction.REQUEST_DOCUMENTS,
+            ThreadComposerAction.SCHEDULE_MEETING
+        )
+        else -> listOf(
+            ThreadComposerAction.SCHEDULE_MEETING,
+            ThreadComposerAction.PROGRESS_UPDATE
+        )
+    }
+}
+
+private fun handleThreadComposerAction(
+    action: ThreadComposerAction,
+    thread: MessageThread,
+    currentUser: CurrentUser?,
+    onSendMessage: (String) -> Unit,
+    onOpenCallPreview: (Message) -> Unit
+) {
+    when (action) {
+        ThreadComposerAction.REQUEST_DOCUMENTS -> {
+            onSendMessage(
+                "Please upload the requested documents for this thread so the school side can review them here."
+            )
+        }
+        ThreadComposerAction.SCHEDULE_MEETING -> {
+            onSendMessage(
+                "I would like to schedule a follow-up meeting from this thread so the next steps stay attached to this conversation."
+            )
+        }
+        ThreadComposerAction.ANNOUNCEMENT -> {
+            onSendMessage(
+                "Official update: please use this thread as the source of truth for the latest school-side follow-up and replies."
+            )
+        }
+        ThreadComposerAction.FINANCE_REMINDER -> {
+            onSendMessage(
+                "Finance reminder: there is still a pending item linked to this thread. Please review it here and reply if clarification is needed."
+            )
+        }
+        ThreadComposerAction.PROGRESS_UPDATE -> {
+            onSendMessage(
+                "Progress update: I am sharing a structured follow-up from this thread so attendance, performance, or behavior notes stay in one place."
+            )
+        }
+        ThreadComposerAction.VERIFICATION_CALL -> {
+            onOpenCallPreview(
+                Message(
+                    senderUserId = currentUser?.userId,
+                    sender = listOfNotNull(currentUser?.firstName, currentUser?.lastName).joinToString(" ").ifBlank { "You" },
+                    title = "Call invitation",
+                    content = "Open a call from this thread so the discussion, verification, and follow-up all stay together.",
+                    timestamp = "Now",
+                    isFromCurrentUser = true,
+                    callInfo = ThreadCallInfo(
+                        type = ThreadCallType.VIDEO,
+                        purpose = when (thread.mode) {
+                            ThreadMode.ACTION_REQUIRED -> ThreadCallPurpose.ROLE_VERIFICATION
+                            ThreadMode.ANNOUNCEMENT -> ThreadCallPurpose.ANNOUNCEMENT
+                            else -> ThreadCallPurpose.GENERAL
+                        },
+                        status = ThreadCallStatus.REQUESTED,
+                        hostLabel = "You",
+                        participantSummary = thread.participantsLabel,
+                        note = "This invitation is being prepared from the action dock."
+                    )
+                )
+            )
+        }
+    }
+}
 
 private fun threadCallTitle(callInfo: ThreadCallInfo): String = when (callInfo.purpose) {
     ThreadCallPurpose.ROLE_VERIFICATION -> "Verification room"
