@@ -1,0 +1,70 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      SCHOOLBRIDGE_API_BASE_URL: https://example.invalid
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Grant Gradle execute permission
+        run: chmod +x gradlew
+
+      - name: Decode signing keystore
+        if: ${{ secrets.SCHOOLBRIDGE_UPLOAD_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        run: |
+          echo "${{ secrets.SCHOOLBRIDGE_UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > schoolbridge-upload.keystore
+
+      - name: Build release APK
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble release
+        env:
+          SCHOOLBRIDGE_UPLOAD_STORE_FILE: schoolbridge-upload.keystore
+          SCHOOLBRIDGE_UPLOAD_STORE_PASSWORD: ${{ secrets.SCHOOLBRIDGE_UPLOAD_STORE_PASSWORD }}
+          SCHOOLBRIDGE_UPLOAD_KEY_ALIAS: ${{ secrets.SCHOOLBRIDGE_UPLOAD_KEY_ALIAS }}
+          SCHOOLBRIDGE_UPLOAD_KEY_PASSWORD: ${{ secrets.SCHOOLBRIDGE_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew --stacktrace assembleRelease
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: schoolbridge-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload release mapping
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schoolbridge-release-metadata
+          path: |
+            app/build/outputs/mapping/release
+            app/build/outputs/logs
+          if-no-files-found: warn
