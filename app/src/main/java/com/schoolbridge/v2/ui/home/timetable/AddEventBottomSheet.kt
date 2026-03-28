@@ -1,3 +1,5 @@
+package com.schoolbridge.v2.ui.home.timetable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,17 +16,19 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-import java.time.format.DateTimeParseException
 
 @Composable
 fun AddEventBottomSheet(
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onAddEvent: (LocalTime, LocalTime, String) -> Unit
+    onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType) -> Unit
 ) {
     var startTime by remember { mutableStateOf(LocalTime.of(8, 0)) }
     var endTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
+    var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(PersonalPlanType.STUDY_BLOCK) }
+    var showTypeMenu by remember { mutableStateOf(false) }
 
     val formattedDate = remember(selectedDate) {
         val day = selectedDate.dayOfMonth
@@ -45,7 +49,7 @@ fun AddEventBottomSheet(
             .padding(16.dp)
     ) {
         Text(
-            text = "Add Event on $formattedDate",
+            text = "Plan something on $formattedDate",
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -55,7 +59,7 @@ fun AddEventBottomSheet(
             Icon(Icons.Default.Info, contentDescription = "Info", modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Note: These events are only visible to you. Use them to manage study time, homework, etc. They can be deleted anytime. Official school timetable is managed by your school.",
+                text = "Use this for your own school planning, like study blocks, homework sessions, project checkpoints, or group work. Official timetable entries still come from the school.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
@@ -65,12 +69,45 @@ fun AddEventBottomSheet(
         Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = description,
-            onValueChange = { if (it.length <= 15) description = it },
-            label = { Text("Description (max 15 chars)") },
+            value = title,
+            onValueChange = { if (it.length <= 60) title = it },
+            label = { Text("Plan title") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = description,
+            onValueChange = { if (it.length <= 180) description = it },
+            label = { Text("Note or purpose (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            maxLines = 4
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Box {
+            OutlinedButton(onClick = { showTypeMenu = true }) {
+                Text("Type: ${selectedType.toLabel()}")
+            }
+            DropdownMenu(
+                expanded = showTypeMenu,
+                onDismissRequest = { showTypeMenu = false }
+            ) {
+                PersonalPlanType.entries.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type.toLabel()) },
+                        onClick = {
+                            selectedType = type
+                            showTypeMenu = false
+                        }
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -95,10 +132,10 @@ fun AddEventBottomSheet(
             TextButton(onClick = onDismiss) { Text("Cancel") }
             Spacer(Modifier.width(8.dp))
             Button(
-                onClick = { onAddEvent(startTime, endTime, description) },
-                enabled = description.isNotBlank() && startTime < endTime
+                onClick = { onAddEvent(startTime, endTime, title, description, selectedType) },
+                enabled = title.isNotBlank() && startTime < endTime
             ) {
-                Text("Add")
+                Text("Save plan")
             }
         }
     }
@@ -168,7 +205,15 @@ fun TimePickerField(
     }
 }
 
-
+private fun PersonalPlanType.toLabel(): String = when (this) {
+    PersonalPlanType.STUDY_BLOCK -> "Study block"
+    PersonalPlanType.HOMEWORK -> "Homework"
+    PersonalPlanType.GROUP_WORK -> "Group work"
+    PersonalPlanType.PROJECT_MILESTONE -> "Project milestone"
+    PersonalPlanType.CLUB_ACTIVITY -> "Club activity"
+    PersonalPlanType.MEETING -> "Meeting"
+    PersonalPlanType.REMINDER -> "Reminder"
+}
 
 
 
