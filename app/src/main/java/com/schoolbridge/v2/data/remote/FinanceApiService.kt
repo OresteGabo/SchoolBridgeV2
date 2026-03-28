@@ -26,6 +26,7 @@ interface FinanceApiService {
 class FinanceApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : FinanceApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -50,7 +51,11 @@ class FinanceApiServiceImpl(
             ?: throw IllegalStateException("Missing auth token for finance request")
         Log.d(FINANCE_TRACE_TAG, "FinanceApiService.getFinanceDashboard userId=$userId url=$url")
 
-        return runApiCall(defaultMessage = "Could not load finance data.") {
+        return runApiCall(
+            defaultMessage = "Could not load finance data.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get(url) {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
