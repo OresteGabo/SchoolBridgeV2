@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.MenuBook
@@ -59,158 +61,198 @@ fun AgendaCard(
     val hasExpandableContent = item.subtitle.length > 88 || !item.note.isNullOrBlank()
     val compact = density == AgendaDensity.COMPACT
     val cardPadding = if (compact) 14.dp else 18.dp
-    val spacing = if (compact) 12.dp else 16.dp
+    val spacing = if (compact) 10.dp else 14.dp
     val iconSize = if (compact) 40.dp else 48.dp
     val colorScheme = MaterialTheme.colorScheme
+    val isPersonalPlan = item.origin == AgendaItemOrigin.PERSONAL_PLAN
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isImportant) {
+            containerColor = if (isPersonalPlan) {
+                colorScheme.surfaceContainerHigh.copy(alpha = 0.94f)
+            } else if (item.isImportant) {
                 colorScheme.surfaceBright
             } else {
                 colorScheme.surface
             }
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (item.isImportant) 8.dp else 4.dp
+            defaultElevation = if (isPersonalPlan) 5.dp else if (item.isImportant) 8.dp else 4.dp
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = accent.copy(alpha = if (item.isImportant) 0.22f else 0.1f),
+                    color = if (isPersonalPlan) {
+                        colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    } else {
+                        accent.copy(alpha = if (item.isImportant) 0.22f else 0.1f)
+                    },
                     shape = RoundedCornerShape(24.dp)
                 )
-                .padding(cardPadding),
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalAlignment = Alignment.Top
+                .padding(cardPadding)
         ) {
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .height(if (compact) 112.dp else 128.dp)
-                    .background(accent.copy(alpha = 0.9f), RoundedCornerShape(999.dp))
-            )
-
-            Column(
-                modifier = Modifier.width(if (compact) 78.dp else 88.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(iconSize)
-                        .background(accent.copy(alpha = 0.18f), CircleShape),
-                    contentAlignment = Alignment.Center
+            if (isPersonalPlan) {
+                Surface(
+                    modifier = Modifier.wrapContentWidth(),
+                    shape = RoundedCornerShape(999.dp),
+                    color = accent.copy(alpha = 0.14f)
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Text(
-                    text = timeLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = durationLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)
-            ) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AgendaBadge(item.badge, accent)
-                    AgendaSource(item.sourceLabel)
-                    item.statusLabel?.let { label ->
-                        AgendaStatus(label = label, accent = accent, important = item.isImportant)
-                    }
-                }
-
-                Text(
-                    text = item.title,
-                    style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface
-                )
-
-                Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.onSurfaceVariant,
-                    maxLines = if (expanded) Int.MAX_VALUE else 2,
-                    overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis
-                )
-
-                if (expanded && !item.note.isNullOrBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = colorScheme.surfaceVariant.copy(alpha = 0.54f)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(accent, CircleShape)
+                        )
                         Text(
-                            text = item.note,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant
+                            text = "Your plan",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
+            }
 
-                if (item.ctaLabel != null || hasExpandableContent) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = if (isPersonalPlan) 10.dp else 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(spacing),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.width(if (compact) 78.dp else 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(iconSize)
+                            .background(accent.copy(alpha = 0.18f), CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        item.ctaLabel?.let { cta ->
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = accent.copy(alpha = 0.14f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Text(
+                        text = timeLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = durationLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)
+                ) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AgendaBadge(item.badge, accent)
+                        if (!isPersonalPlan) {
+                            AgendaSource(
+                                label = item.sourceLabel,
+                                highlighted = item.isOwnedByCurrentUser
+                            )
+                        }
+                        item.schoolName?.let { schoolName ->
+                            AgendaSource(label = schoolName)
+                        }
+                        item.statusLabel?.let { label ->
+                            AgendaStatus(label = label, accent = accent, important = item.isImportant)
+                        }
+                    }
+
+                    Text(
+                        text = item.title,
+                        style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface
+                    )
+
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = if (expanded) Int.MAX_VALUE else 2,
+                        overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis
+                    )
+
+                    if (expanded && !item.note.isNullOrBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.54f)
+                        ) {
+                            Text(
+                                text = item.note,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (item.ctaLabel != null || hasExpandableContent) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            item.ctaLabel?.let { cta ->
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = accent.copy(alpha = 0.14f)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(accent, CircleShape)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = cta,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = accent,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(accent, CircleShape)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = cta,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = accent,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        if (hasExpandableContent) {
-                            TextButton(onClick = { expanded = !expanded }) {
-                                Text(if (expanded) "Show less" else "Show more")
+                            if (hasExpandableContent) {
+                                TextButton(onClick = { expanded = !expanded }) {
+                                    Text(if (expanded) "Show less" else "Show more")
+                                }
+                            } else {
+                                Spacer(Modifier.width(1.dp))
                             }
-                        } else {
-                            Spacer(Modifier.width(1.dp))
                         }
                     }
                 }
@@ -238,17 +280,28 @@ private fun AgendaBadge(label: String, accent: Color) {
 }
 
 @Composable
-private fun AgendaSource(label: String) {
+private fun AgendaSource(
+    label: String,
+    highlighted: Boolean = false
+) {
     Surface(
         modifier = Modifier.defaultMinSize(minHeight = 32.dp),
         shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        color = if (highlighted) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        }
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (highlighted) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -302,6 +355,7 @@ private fun agendaAccent(kind: AgendaItemKind): Color = when (kind) {
     AgendaItemKind.MEETING -> MaterialTheme.colorScheme.tertiary
     AgendaItemKind.CALL -> MaterialTheme.colorScheme.secondary
     AgendaItemKind.ANNOUNCEMENT -> MaterialTheme.colorScheme.primary
+    AgendaItemKind.PERSONAL -> MaterialTheme.colorScheme.secondary
 }
 
 @Composable
@@ -311,4 +365,5 @@ private fun agendaIcon(kind: AgendaItemKind): ImageVector = when (kind) {
     AgendaItemKind.MEETING -> Icons.Default.CalendarMonth
     AgendaItemKind.CALL -> Icons.Default.VideoCall
     AgendaItemKind.ANNOUNCEMENT -> Icons.Default.Campaign
+    AgendaItemKind.PERSONAL -> Icons.Default.AutoStories
 }
