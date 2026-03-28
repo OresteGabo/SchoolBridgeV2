@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +37,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -175,48 +180,112 @@ fun NoEventsPlaceholder(
     message: String,
     modifier: Modifier = Modifier
 ) {
+    val dayName = selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
+    val fallbackTitle = "A quiet schedule for $dayName"
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(horizontal = 28.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth(0.86f)
         ) {
-            Icon(
-                imageVector = Icons.Default.EventBusy,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
-                modifier = Modifier.padding(bottom = 10.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(42.dp)
+                        .height(1.dp)
+                        .padding(end = 0.dp)
+                ) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.EventBusy,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .size(18.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(42.dp)
+                        .height(1.dp)
+                ) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = dayName.uppercase(Locale.getDefault()),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.outline,
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(top = 18.dp)
             )
 
             Text(
                 text = title.ifBlank {
-                    "Nothing is planned for ${selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())}"
+                    fallbackTitle
                 },
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 14.dp)
             )
 
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 10.dp)
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(top = 12.dp)
             )
 
-            Spacer(Modifier.height(18.dp))
+            nextDateWithEvent?.let {
+                Row(
+                    modifier = Modifier.padding(top = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Next scheduled day: ${it.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
 
             if (nextDateWithEvent != null) {
-                OutlinedButton(onClick = { onDateChange(nextDateWithEvent) }) {
-                    Icon(Icons.Default.Schedule, contentDescription = null)
+                TextButton(onClick = { onDateChange(nextDateWithEvent) }) {
                     Text(
-                        text = "Jump to next planned day",
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = "Jump to it"
                     )
                 }
             }
