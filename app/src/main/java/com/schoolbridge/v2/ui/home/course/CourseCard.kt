@@ -33,25 +33,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.schoolbridge.v2.domain.academic.CourseWithStatus
-import com.schoolbridge.v2.util.dummyTeacherNames
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier) {
+fun CourseCard(course: CourseCardUi, modifier: Modifier = Modifier) {
     var visible by remember { mutableStateOf(false) }
-    val course = courseWithStatus.course
 
     LaunchedEffect(Unit) {
         visible = true
     }
 
-    val teacherNames = course.teacherUserIds.joinToString(", ") { dummyTeacherNames[it] ?: "Unknown" }
-
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(animationSpec = tween(durationMillis = 1000)) +
-                slideInHorizontally(animationSpec = tween(durationMillis = 1000))
+        enter = fadeIn(animationSpec = tween(durationMillis = 500)) +
+            slideInHorizontally(animationSpec = tween(durationMillis = 500))
     ) {
         Card(
             modifier = modifier
@@ -69,7 +64,6 @@ fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface)
             ) {
-                // Vertical accent bar
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -84,7 +78,6 @@ fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Circle with first letter of course name or an icon
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -93,7 +86,7 @@ fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = course.name.firstOrNull()?.uppercase() ?: "?",
+                            text = course.title.firstOrNull()?.uppercase() ?: "?",
                             style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -101,27 +94,51 @@ fun CourseCard(courseWithStatus: CourseWithStatus, modifier: Modifier = Modifier
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = course.name,
+                            text = course.title,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = course.description ?: "",
+                            text = course.description ?: "This subject is synced from your school schedule.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Teacher(s): $teacherNames",
+                            text = "Teacher: ${course.teacherName ?: "School team"}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        course.studentName?.let {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Student: $it",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
 
-                    CourseStatusBadge(courseWithStatus.status)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        course.scheduleLabel?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        course.room?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
