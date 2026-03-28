@@ -25,6 +25,7 @@ interface RoleLookupApiService {
 class RoleLookupApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : RoleLookupApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -47,7 +48,11 @@ class RoleLookupApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for school lookup")
 
-        return runApiCall(defaultMessage = "Could not search schools.") {
+        return runApiCall(
+            defaultMessage = "Could not search schools.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get("$BASE_URL/api/schools/search") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
@@ -60,7 +65,11 @@ class RoleLookupApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for student lookup")
 
-        return runApiCall(defaultMessage = "Could not search students.") {
+        return runApiCall(
+            defaultMessage = "Could not search students.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get("$BASE_URL/api/students/search") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
