@@ -16,7 +16,10 @@ data class TimetableTemplateEntry(
     val type: TimetableEntryType,
     val studentId: String? = null,
     val studentName: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val schoolId: String? = null,
+    val schoolName: String? = null,
+    val roleContext: String = "STUDENT"
 )
 
 fun TimetableTemplateEntry.toTimetableEntry(startOfWeek: LocalDate): TimetableEntry {
@@ -31,6 +34,9 @@ fun TimetableTemplateEntry.toTimetableEntry(startOfWeek: LocalDate): TimetableEn
         type = type,
         studentId = studentId,
         studentName = studentName,
-        note = note
+        note = note,
+        schoolId = schoolId,
+        schoolName = schoolName,
+        roleContext = roleContext
     )
 }
