@@ -27,6 +27,7 @@ interface MessageApiService {
 class MessageApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : MessageApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -44,7 +45,11 @@ class MessageApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        return runApiCall(defaultMessage = "Could not load messages.") {
+        return runApiCall(
+            defaultMessage = "Could not load messages.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get("$BASE_URL/mobile/messages") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
@@ -56,7 +61,11 @@ class MessageApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        runApiCall(defaultMessage = "Could not send your message.") {
+        runApiCall(
+            defaultMessage = "Could not send your message.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.post("$BASE_URL/messages") {
                 accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
@@ -76,7 +85,11 @@ class MessageApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 
-        runApiCall(defaultMessage = "Could not update the message status.") {
+        runApiCall(
+            defaultMessage = "Could not update the message status.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.post("$BASE_URL/messages/$messageId/read") {
                 accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
