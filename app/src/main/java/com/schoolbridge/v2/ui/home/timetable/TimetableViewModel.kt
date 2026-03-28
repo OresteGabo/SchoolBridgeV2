@@ -3,6 +3,8 @@ package com.schoolbridge.v2.ui.home.timetable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.schoolbridge.v2.data.dto.academic.CreatePersonalTimetablePlanRequestDto
+import com.schoolbridge.v2.data.dto.academic.MobilePersonalTimetablePlanDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableEntryDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableResponseDto
 import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
@@ -32,12 +34,29 @@ enum class AgendaItemKind {
     ASSESSMENT,
     MEETING,
     CALL,
-    ANNOUNCEMENT
+    ANNOUNCEMENT,
+    PERSONAL
+}
+
+enum class AgendaItemOrigin {
+    OFFICIAL,
+    THREAD_PLAN,
+    PERSONAL_PLAN
 }
 
 enum class AgendaDensity {
     COMFORTABLE,
     COMPACT
+}
+
+enum class PersonalPlanType {
+    STUDY_BLOCK,
+    HOMEWORK,
+    GROUP_WORK,
+    PROJECT_MILESTONE,
+    CLUB_ACTIVITY,
+    MEETING,
+    REMINDER
 }
 
 data class AgendaItemUi(
@@ -49,17 +68,22 @@ data class AgendaItemUi(
     val badge: String,
     val kind: AgendaItemKind,
     val sourceLabel: String,
+    val schoolName: String? = null,
     val room: String? = null,
     val studentName: String? = null,
     val note: String? = null,
     val statusLabel: String? = null,
     val ctaLabel: String? = null,
-    val isImportant: Boolean = false
+    val isImportant: Boolean = false,
+    val isOwnedByCurrentUser: Boolean = false,
+    val origin: AgendaItemOrigin = AgendaItemOrigin.OFFICIAL
 )
 
 data class TimetableStudent(
     val id: String,
-    val name: String
+    val name: String,
+    val schoolId: String? = null,
+    val schoolName: String? = null
 )
 
 data class TimetableUiState(
@@ -67,9 +91,10 @@ data class TimetableUiState(
     val audience: String = "GENERAL",
     val scopeLabel: String? = null,
     val students: List<TimetableStudent> = emptyList(),
-    val selectedStudentId: String? = null,
+    val selectedStudentIds: Set<String> = emptySet(),
     val templates: List<TimetableTemplateEntry> = emptyList(),
     val plannedItems: List<AgendaItemUi> = emptyList(),
+    val personalPlans: List<AgendaItemUi> = emptyList(),
     val errorMessage: String? = null
 ) {
     fun weeklyEntries(startOfWeek: LocalDate): List<TimetableEntry> =
@@ -89,33 +114,40 @@ data class TimetableUiState(
                     type = template.type,
                     studentId = template.studentId,
                     studentName = template.studentName,
-                    note = template.note
+                    note = template.note,
+                    schoolId = template.schoolId,
+                    schoolName = template.schoolName,
+                    roleContext = template.roleContext
                 )
             }
             .sortedBy { it.start }
 
     fun dailyAgenda(
         date: LocalDate,
-        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet()
+        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet(),
+        showOnlyMine: Boolean = false
     ): List<AgendaItemUi> =
-        (dailyEntries(date).map { it.toAgendaItem() } + filteredPlannedItems(date))
+        (dailyEntries(date).map { it.toAgendaItem() } + filteredPlannedItems(date, showOnlyMine) + filteredPersonalPlans(date))
+            .filter { !showOnlyMine || it.isOwnedByCurrentUser }
             .filter { it.kind in includedKinds }
             .sortedBy { it.start }
 
     fun upcomingHighlights(
         from: LocalDateTime = LocalDateTime.now(),
-        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet()
+        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet(),
+        showOnlyMine: Boolean = false
     ): List<AgendaItemUi> =
-        ((0..14).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds) })
+        ((0..14).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds, showOnlyMine) })
             .filter { it.end.isAfter(from) }
             .sortedBy { it.start }
             .take(3)
 
     fun nowAndNext(
         from: LocalDateTime = LocalDateTime.now(),
-        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet()
+        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet(),
+        showOnlyMine: Boolean = false
     ): Pair<AgendaItemUi?, AgendaItemUi?> {
-        val agenda = ((0..2).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds) })
+        val agenda = ((0..2).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds, showOnlyMine) })
             .sortedBy { it.start }
         val nowItem = agenda.firstOrNull { !it.start.isAfter(from) && it.end.isAfter(from) }
         val nextItem = agenda.firstOrNull { it.start.isAfter(from) && it.id != nowItem?.id }
@@ -124,9 +156,10 @@ data class TimetableUiState(
 
     fun upcomingDeadlines(
         from: LocalDateTime = LocalDateTime.now(),
-        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet()
+        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet(),
+        showOnlyMine: Boolean = false
     ): List<AgendaItemUi> =
-        ((0..14).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds) })
+        ((0..14).flatMap { offset -> dailyAgenda(from.toLocalDate().plusDays(offset.toLong()), includedKinds, showOnlyMine) })
             .filter { it.start.isAfter(from) }
             .filter { it.isImportant || it.kind == AgendaItemKind.ASSESSMENT || it.statusLabel != null }
             .sortedBy { it.start }
@@ -146,23 +179,45 @@ data class TimetableUiState(
             )
         }
 
+    fun selectedSchoolLabels(showOnlyMine: Boolean = false): List<String> {
+        val learnerSchools = if (showOnlyMine) {
+            emptyList()
+        } else if (selectedStudentIds.isEmpty()) {
+            students.mapNotNull { it.schoolName }
+        } else {
+            students.filter { it.id in selectedStudentIds }.mapNotNull { it.schoolName }
+        }
+        val teachingSchools = templates
+            .filter { it.roleContext == "TEACHER_SELF" }
+            .mapNotNull { it.schoolName }
+        return (teachingSchools + learnerSchools).distinct()
+    }
+
+    fun hasTeachingSchedule(): Boolean = templates.any { it.roleContext == "TEACHER_SELF" }
+
     fun nextDateWithEvent(
         fromDate: LocalDate,
-        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet()
+        includedKinds: Set<AgendaItemKind> = AgendaItemKind.entries.toSet(),
+        showOnlyMine: Boolean = false
     ): LocalDate? =
         (0..30)
             .map { fromDate.plusDays(it.toLong()) }
             .firstOrNull { date ->
-                dailyAgenda(date, includedKinds).isNotEmpty()
+                dailyAgenda(date, includedKinds, showOnlyMine).isNotEmpty()
             }
 
     private fun filteredTemplates(): List<TimetableTemplateEntry> =
-        selectedStudentId?.let { studentId ->
-            templates.filter { it.studentId == null || it.studentId == studentId }
-        } ?: templates
+        if (selectedStudentIds.isEmpty()) {
+            templates
+        } else {
+            templates.filter { it.studentId == null || it.studentId in selectedStudentIds }
+        }
 
-    private fun filteredPlannedItems(date: LocalDate): List<AgendaItemUi> =
-        plannedItems.filter { it.start.toLocalDate() == date }
+    private fun filteredPlannedItems(date: LocalDate, showOnlyMine: Boolean): List<AgendaItemUi> =
+        plannedItems.filter { it.start.toLocalDate() == date && (!showOnlyMine || it.isOwnedByCurrentUser) }
+
+    private fun filteredPersonalPlans(date: LocalDate): List<AgendaItemUi> =
+        personalPlans.filter { it.start.toLocalDate() == date }
 }
 
 class TimetableViewModel(
@@ -198,8 +253,59 @@ class TimetableViewModel(
         }
     }
 
-    fun selectStudent(studentId: String?) {
-        _uiState.value = _uiState.value.copy(selectedStudentId = studentId)
+    fun toggleStudentSelection(studentId: String) {
+        val current = _uiState.value.selectedStudentIds
+        val next = current.toMutableSet().apply {
+            if (studentId in this) {
+                remove(studentId)
+            } else {
+                add(studentId)
+            }
+        }
+        _uiState.value = _uiState.value.copy(selectedStudentIds = next)
+    }
+
+    fun selectAllStudents() {
+        _uiState.value = _uiState.value.copy(selectedStudentIds = emptySet())
+    }
+
+    fun createPersonalPlan(
+        date: LocalDate,
+        startTime: LocalTime,
+        endTime: LocalTime,
+        title: String,
+        description: String,
+        planType: PersonalPlanType
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                timetableRepository.createPersonalPlan(
+                    CreatePersonalTimetablePlanRequestDto(
+                        title = title.trim(),
+                        description = description.trim().ifBlank { null },
+                        date = date.toString(),
+                        startTime = startTime.toString(),
+                        endTime = endTime.toString(),
+                        type = planType.name,
+                        note = if (planType == PersonalPlanType.GROUP_WORK) {
+                            // TODO: Add participant picker and invitation flow for collaborative plans.
+                            "Created from mobile personal planner."
+                        } else {
+                            "Created from mobile personal planner."
+                        }
+                    )
+                )
+            }.onSuccess { createdPlan ->
+                _uiState.value = _uiState.value.copy(
+                    personalPlans = (_uiState.value.personalPlans + createdPlan.toAgendaItem()).sortedBy { it.start },
+                    errorMessage = null
+                )
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = throwable.message ?: "Could not create your personal plan"
+                )
+            }
+        }
     }
 }
 
@@ -220,10 +326,18 @@ private fun MobileTimetableResponseDto.toUiState(plannedItems: List<AgendaItemUi
     isLoading = false,
     audience = audience,
     scopeLabel = scopeLabel,
-    students = students.map { TimetableStudent(id = it.id, name = it.name) },
-    selectedStudentId = selectedStudentId ?: students.firstOrNull()?.id,
+    students = students.map {
+        TimetableStudent(
+            id = it.id,
+            name = it.name,
+            schoolId = it.schoolId,
+            schoolName = it.schoolName
+        )
+    },
+    selectedStudentIds = emptySet(),
     templates = entries.map { it.toTemplateEntry() },
     plannedItems = plannedItems,
+    personalPlans = personalPlans.map { it.toAgendaItem() },
     errorMessage = null
 )
 
@@ -238,21 +352,31 @@ private fun MobileTimetableEntryDto.toTemplateEntry(): TimetableTemplateEntry = 
     type = runCatching { TimetableEntryType.valueOf(type) }.getOrDefault(TimetableEntryType.LECTURE),
     studentId = studentId,
     studentName = studentName,
-    note = note
+    note = note,
+    schoolId = schoolId,
+    schoolName = schoolName,
+    roleContext = roleContext
 )
 
 private fun TimetableEntry.toAgendaItem(): AgendaItemUi = AgendaItemUi(
-    id = "class_$id",
+    id = buildString {
+        append("class_")
+        append(id)
+        append("_")
+        append(roleContext.lowercase(Locale.getDefault()))
+        append("_")
+        append(studentId ?: "shared")
+    },
     start = start,
     end = end,
     title = title,
     subtitle = buildString {
-        if (teacher.isNotBlank()) append(teacher)
+        if (roleContext != "TEACHER_SELF" && teacher.isNotBlank()) append(teacher)
         if (room.isNotBlank()) {
             if (isNotEmpty()) append(" • ")
             append(room)
         }
-        if (!studentName.isNullOrBlank()) {
+        if (roleContext != "LINKED_STUDENT" && !studentName.isNullOrBlank()) {
             if (isNotEmpty()) append(" • ")
             append(studentName)
         }
@@ -267,13 +391,25 @@ private fun TimetableEntry.toAgendaItem(): AgendaItemUi = AgendaItemUi(
         TimetableEntryType.LECTURE -> "Class"
     },
     kind = if (type == TimetableEntryType.TEST) AgendaItemKind.ASSESSMENT else AgendaItemKind.CLASS,
-    sourceLabel = "Timetable",
+    sourceLabel = when (roleContext) {
+        "TEACHER_SELF" -> "Your schedule"
+        "LINKED_STUDENT" -> studentName?.substringBefore(" ") ?: "Learner"
+        "SELF_STUDENT" -> "Your classes"
+        else -> "Timetable"
+    },
+    schoolName = schoolName,
     room = room.takeIf { it.isNotBlank() },
     studentName = studentName,
     note = note,
-    statusLabel = if (type == TimetableEntryType.TEST) "Prepare" else null,
+    statusLabel = when {
+        type == TimetableEntryType.TEST -> "Prepare"
+        roleContext == "TEACHER_SELF" -> "Teaching"
+        else -> null
+    },
     ctaLabel = if (type == TimetableEntryType.TEST) "Revision" else null,
-    isImportant = type == TimetableEntryType.TEST
+    isImportant = type == TimetableEntryType.TEST,
+    isOwnedByCurrentUser = roleContext == "TEACHER_SELF",
+    origin = AgendaItemOrigin.OFFICIAL
 )
 
 private fun List<MobileMessageThreadDto>.toPlannedAgendaItems(): List<AgendaItemUi> =
@@ -315,7 +451,51 @@ private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadD
         ctaLabel = status.toFriendlyCallAction(),
         isImportant = status.equals("SCHEDULED", ignoreCase = true) ||
             status.equals("PENDING_CONFIRMATION", ignoreCase = true) ||
-            purpose.equals("ANNOUNCEMENT", ignoreCase = true)
+            purpose.equals("ANNOUNCEMENT", ignoreCase = true),
+        origin = AgendaItemOrigin.THREAD_PLAN
+    )
+}
+
+private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
+    val startDate = LocalDate.parse(date)
+    val start = startDate.atTime(LocalTime.parse(startTime))
+    val end = startDate.atTime(LocalTime.parse(endTime))
+    val participantSummary = participantLabels.joinToString(", ").takeIf { it.isNotBlank() }
+    val detailNote = buildString {
+        description?.takeIf { it.isNotBlank() }?.let { append(it) }
+        note?.takeIf { it.isNotBlank() }?.let {
+            if (isNotEmpty()) append("\n\n")
+            append(it)
+        }
+    }.ifBlank { null }
+    return AgendaItemUi(
+        id = "personal_plan_$id",
+        start = start,
+        end = end,
+        title = title,
+        subtitle = buildString {
+            append(type.toFriendlyPersonalPlanSubtitle())
+            participantSummary?.let {
+                append(" • ")
+                append(it)
+            }
+        }.ifBlank { "Personal school plan" },
+        badge = type.toFriendlyPersonalPlanBadge(),
+        kind = AgendaItemKind.PERSONAL,
+        sourceLabel = when (visibility.uppercase(Locale.getDefault())) {
+            "SHARED" -> "Shared plan"
+            else -> "Your plan"
+        },
+        note = detailNote,
+        statusLabel = when (visibility.uppercase(Locale.getDefault())) {
+            "SHARED" -> "Shared"
+            else -> "Private"
+        },
+        ctaLabel = if (participantLabels.isNotEmpty()) "Group plan" else null,
+        isImportant = type.equals("PROJECT_MILESTONE", ignoreCase = true) ||
+            type.equals("GROUP_WORK", ignoreCase = true),
+        isOwnedByCurrentUser = true,
+        origin = AgendaItemOrigin.PERSONAL_PLAN
     )
 }
 
@@ -349,6 +529,26 @@ private fun String.toFriendlyCallAction(): String? = when {
     equals("SCHEDULED", ignoreCase = true) -> "Join soon"
     equals("LIVE", ignoreCase = true) || equals("ONGOING", ignoreCase = true) -> "Join now"
     else -> null
+}
+
+private fun String.toFriendlyPersonalPlanBadge(): String = when {
+    equals("STUDY_BLOCK", ignoreCase = true) -> "Study block"
+    equals("HOMEWORK", ignoreCase = true) -> "Homework"
+    equals("GROUP_WORK", ignoreCase = true) -> "Group work"
+    equals("PROJECT_MILESTONE", ignoreCase = true) -> "Project"
+    equals("CLUB_ACTIVITY", ignoreCase = true) -> "Club"
+    equals("MEETING", ignoreCase = true) -> "Personal meeting"
+    else -> "Reminder"
+}
+
+private fun String.toFriendlyPersonalPlanSubtitle(): String = when {
+    equals("STUDY_BLOCK", ignoreCase = true) -> "Time reserved for focused study"
+    equals("HOMEWORK", ignoreCase = true) -> "Personal homework session"
+    equals("GROUP_WORK", ignoreCase = true) -> "Collaborative school work"
+    equals("PROJECT_MILESTONE", ignoreCase = true) -> "Project checkpoint"
+    equals("CLUB_ACTIVITY", ignoreCase = true) -> "School activity or club plan"
+    equals("MEETING", ignoreCase = true) -> "Personal meeting slot"
+    else -> "Personal school reminder"
 }
 
 fun LocalDate.shortWeekdayLabel(): String =
