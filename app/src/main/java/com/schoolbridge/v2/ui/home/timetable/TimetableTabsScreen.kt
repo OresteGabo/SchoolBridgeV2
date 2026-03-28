@@ -1,6 +1,4 @@
 package com.schoolbridge.v2.ui.home.timetable
-
-import AddEventBottomSheet
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.FlowRow
@@ -42,6 +40,7 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -64,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
@@ -142,20 +142,35 @@ fun TimetableTabsScreen(
         mutableStateOf(AgendaItemKind.entries.toSet())
     }
     var densityName by rememberSaveable { mutableStateOf(AgendaDensity.COMFORTABLE.name) }
+    var showOnlyMine by rememberSaveable { mutableStateOf(false) }
     val density = remember(densityName) { AgendaDensity.valueOf(densityName) }
 
-    val dailyAgenda = remember(uiState, selectedDate, includedKinds) { uiState.dailyAgenda(selectedDate, includedKinds) }
-    val nextDateWithEvent = remember(uiState, selectedDate, includedKinds) { uiState.nextDateWithEvent(selectedDate.plusDays(1), includedKinds) }
-    val highlights = remember(uiState, includedKinds) { uiState.upcomingHighlights(includedKinds = includedKinds) }
-    val nowNext = remember(uiState, includedKinds) { uiState.nowAndNext(includedKinds = includedKinds) }
-    val deadlines = remember(uiState, includedKinds) { uiState.upcomingDeadlines(includedKinds = includedKinds) }
+    val dailyAgenda = remember(uiState, selectedDate, includedKinds, showOnlyMine) {
+        uiState.dailyAgenda(selectedDate, includedKinds, showOnlyMine)
+    }
+    val nextDateWithEvent = remember(uiState, selectedDate, includedKinds, showOnlyMine) {
+        uiState.nextDateWithEvent(selectedDate.plusDays(1), includedKinds, showOnlyMine)
+    }
+    val highlights = remember(uiState, includedKinds, showOnlyMine) {
+        uiState.upcomingHighlights(includedKinds = includedKinds, showOnlyMine = showOnlyMine)
+    }
+    val nowNext = remember(uiState, includedKinds, showOnlyMine) {
+        uiState.nowAndNext(includedKinds = includedKinds, showOnlyMine = showOnlyMine)
+    }
+    val deadlines = remember(uiState, includedKinds, showOnlyMine) {
+        uiState.upcomingDeadlines(includedKinds = includedKinds, showOnlyMine = showOnlyMine)
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val emptyTitle = remember(uiState.audience, selectedDate, includedKinds) {
-        buildEmptyTitle(uiState.audience, selectedDate, includedKinds)
+    val emptyTitle = remember(uiState.audience, selectedDate, includedKinds, showOnlyMine) {
+        buildEmptyTitle(uiState.audience, selectedDate, includedKinds, showOnlyMine)
     }
-    val emptyMessage = remember(uiState.audience, uiState.selectedStudentId, includedKinds) {
-        buildEmptyMessage(uiState.audience, uiState.selectedStudentId != null, includedKinds)
+    val emptyMessage = remember(uiState.audience, uiState.selectedStudentIds, includedKinds, showOnlyMine) {
+        buildEmptyMessage(uiState.audience, uiState.selectedStudentIds.size, includedKinds, showOnlyMine)
     }
+    val selectedSchoolLabels = remember(uiState.students, uiState.selectedStudentIds, uiState.templates, showOnlyMine) {
+        uiState.selectedSchoolLabels(showOnlyMine)
+    }
+    var showLearnerMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(pages) {
         if (selectedPage > pages.lastIndex) {
@@ -169,15 +184,25 @@ fun TimetableTabsScreen(
             TopAppBar(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("School rhythm")
                         Text(
                             text = when (pages[selectedPage]) {
                                 TimetablePage.Flow -> selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
                                 TimetablePage.Snapshot -> "Live overview and planner tools"
                                 TimetablePage.Week -> "Week of ${selectedWeekDate.format(DateTimeFormatter.ofPattern("MMM d"))}"
                             },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = timetableAudienceSummary(
+                                students = uiState.students,
+                                selectedStudentIds = uiState.selectedStudentIds,
+                                showOnlyMine = showOnlyMine
+                            ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },
@@ -189,6 +214,56 @@ fun TimetableTabsScreen(
                     }
                 },
                 actions = {
+                    if (uiState.students.size > 1) {
+                        Box {
+                            OutlinedButton(
+                                onClick = { showLearnerMenu = true },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = learnerSelectionSummary(uiState.students, uiState.selectedStudentIds),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showLearnerMenu,
+                                onDismissRequest = { showLearnerMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("All children") },
+                                    onClick = {
+                                        viewModel.selectAllStudents()
+                                        showLearnerMenu = false
+                                    },
+                                    trailingIcon = {
+                                        if (uiState.selectedStudentIds.isEmpty()) {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        }
+                                    }
+                                )
+                                uiState.students.forEach { student ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = student.name,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.toggleStudentSelection(student.id)
+                                        },
+                                        trailingIcon = {
+                                            if (student.id in uiState.selectedStudentIds) {
+                                                Icon(Icons.Default.Check, contentDescription = null)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     IconButton(onClick = { showInfoSheet = true }) {
                         Icon(Icons.Default.Info, contentDescription = "About timetable")
                     }
@@ -236,14 +311,16 @@ fun TimetableTabsScreen(
                                 .fillMaxSize()
                         ) {
                             TimetableSidebar(
-                                highlights = highlights,
+                            highlights = highlights,
                                 audience = uiState.audience,
                                 scopeLabel = uiState.scopeLabel,
+                                selectedSchoolLabels = selectedSchoolLabels,
+                                showOnlyMine = showOnlyMine,
+                                onToggleShowOnlyMine = { showOnlyMine = !showOnlyMine },
                                 compact = true,
                                 wideLayout = true,
                                 uiState = uiState,
-                                onStudentSelected = viewModel::selectStudent,
-                                selectedPage = selectedPage,
+                            selectedPage = selectedPage,
                                 pages = pages,
                                 onPageSelected = { selectedPage = it }
                             )
@@ -251,7 +328,10 @@ fun TimetableTabsScreen(
 
                         TimetableContentPane(
                             modifier = Modifier.weight(1f),
-                            hasError = uiState.errorMessage != null && uiState.templates.isEmpty() && uiState.plannedItems.isEmpty(),
+                            hasError = uiState.errorMessage != null &&
+                                uiState.templates.isEmpty() &&
+                                uiState.plannedItems.isEmpty() &&
+                                uiState.personalPlans.isEmpty(),
                             errorMessage = uiState.errorMessage,
                             onRetry = viewModel::refresh
                         ) {
@@ -286,10 +366,12 @@ fun TimetableTabsScreen(
                             highlights = highlights,
                             audience = uiState.audience,
                             scopeLabel = uiState.scopeLabel,
+                            selectedSchoolLabels = selectedSchoolLabels,
+                            showOnlyMine = showOnlyMine,
+                            onToggleShowOnlyMine = { showOnlyMine = !showOnlyMine },
                             compact = useCompactHeader,
                             wideLayout = false,
                             uiState = uiState,
-                            onStudentSelected = viewModel::selectStudent,
                             selectedPage = selectedPage,
                             pages = pages,
                             onPageSelected = { selectedPage = it }
@@ -299,7 +381,10 @@ fun TimetableTabsScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth(),
-                            hasError = uiState.errorMessage != null && uiState.templates.isEmpty() && uiState.plannedItems.isEmpty(),
+                            hasError = uiState.errorMessage != null &&
+                                uiState.templates.isEmpty() &&
+                                uiState.plannedItems.isEmpty() &&
+                                uiState.personalPlans.isEmpty(),
                             errorMessage = uiState.errorMessage,
                             onRetry = viewModel::refresh
                         ) {
@@ -341,7 +426,15 @@ fun TimetableTabsScreen(
             AddEventBottomSheet(
                 selectedDate = selectedDate,
                 onDismiss = { showAddSheet = false },
-                onAddEvent = { _, _, _ ->
+                onAddEvent = { startTime, endTime, title, description, planType ->
+                    viewModel.createPersonalPlan(
+                        date = selectedDate,
+                        startTime = startTime,
+                        endTime = endTime,
+                        title = title,
+                        description = description,
+                        planType = planType
+                    )
                     showAddSheet = false
                 }
             )
@@ -366,10 +459,12 @@ private fun TimetableSidebar(
     highlights: List<AgendaItemUi>,
     audience: String,
     scopeLabel: String?,
+    selectedSchoolLabels: List<String>,
+    showOnlyMine: Boolean,
+    onToggleShowOnlyMine: () -> Unit,
     compact: Boolean,
     wideLayout: Boolean,
     uiState: TimetableUiState,
-    onStudentSelected: (String?) -> Unit,
     selectedPage: Int,
     pages: List<TimetablePage>,
     onPageSelected: (Int) -> Unit
@@ -381,28 +476,27 @@ private fun TimetableSidebar(
         compact = compact
     )
 
-    if (uiState.students.size > 1) {
+    if (selectedSchoolLabels.isNotEmpty()) {
+        SelectedSchoolStrip(
+            schoolLabels = selectedSchoolLabels,
+            modifier = Modifier.padding(bottom = if (compact) 6.dp else 10.dp)
+        )
+    }
+
+    if (uiState.hasTeachingSchedule()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Start
         ) {
             FilterChip(
-                selected = uiState.selectedStudentId == null,
-                onClick = { onStudentSelected(null) },
-                label = { Text("Family") }
+                selected = showOnlyMine,
+                onClick = onToggleShowOnlyMine,
+                label = { Text("Only my schedule") }
             )
-            uiState.students.forEach { student ->
-                FilterChip(
-                    selected = uiState.selectedStudentId == student.id,
-                    onClick = { onStudentSelected(student.id) },
-                    label = { Text(student.name) }
-                )
-            }
         }
-        Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
+        Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
     }
 
     if (wideLayout) {
@@ -965,11 +1059,13 @@ private fun QuickJumpChip(
 private fun buildEmptyTitle(
     audience: String,
     selectedDate: LocalDate,
-    includedKinds: Set<AgendaItemKind>
+    includedKinds: Set<AgendaItemKind>,
+    showOnlyMine: Boolean
 ): String {
     val dayLabel = selectedDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
     return when {
         includedKinds.size < AgendaItemKind.entries.size -> "Nothing in the current filters for $dayLabel"
+        showOnlyMine -> "No personal school moments are scheduled for $dayLabel"
         audience.contains("PARENT", ignoreCase = true) -> "No school moments are scheduled for $dayLabel"
         audience.contains("TEACHER", ignoreCase = true) -> "No teaching moments are scheduled for $dayLabel"
         else -> "The schedule is clear for $dayLabel"
@@ -978,13 +1074,16 @@ private fun buildEmptyTitle(
 
 private fun buildEmptyMessage(
     audience: String,
-    studentFocused: Boolean,
-    includedKinds: Set<AgendaItemKind>
+    selectedLearnerCount: Int,
+    includedKinds: Set<AgendaItemKind>,
+    showOnlyMine: Boolean
 ): String = when {
     includedKinds.size < AgendaItemKind.entries.size ->
         "Try widening the filters if you want to bring back classes, meetings, calls, or school notices."
-    audience.contains("PARENT", ignoreCase = true) && studentFocused ->
-        "When this learner has a class, meeting, call invite, or school notice, it will appear here in the order it happens."
+    showOnlyMine ->
+        "Only your own school schedule is visible right now. Turn that filter off whenever you want to bring your children back into view."
+    audience.contains("PARENT", ignoreCase = true) && selectedLearnerCount == 1 ->
+        "When this child has a class, meeting, call invite, or school notice, it will appear here in the order it happens."
     audience.contains("PARENT", ignoreCase = true) ->
         "Classes, parent meetings, school calls, and school notices will appear here once they are scheduled."
     audience.contains("TEACHER", ignoreCase = true) ->
@@ -993,12 +1092,77 @@ private fun buildEmptyMessage(
         "Any upcoming class, meeting, call invite, or school notice will appear here in one continuous schedule."
 }
 
+@Composable
+private fun SelectedSchoolStrip(
+    schoolLabels: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        schoolLabels.forEach { schoolLabel ->
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.74f)
+            ) {
+                Text(
+                    text = shortSchoolLabel(schoolLabel),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+private fun learnerSelectionSummary(
+    students: List<TimetableStudent>,
+    selectedStudentIds: Set<String>
+): String = when {
+    students.isEmpty() -> "Schedule"
+    selectedStudentIds.isEmpty() -> "All children"
+    selectedStudentIds.size == 1 -> {
+        students.firstOrNull { it.id in selectedStudentIds }?.name?.let(::shortLearnerLabel) ?: "1 child"
+    }
+    else -> "${selectedStudentIds.size} children"
+}
+
+private fun timetableAudienceSummary(
+    students: List<TimetableStudent>,
+    selectedStudentIds: Set<String>,
+    showOnlyMine: Boolean
+): String = if (showOnlyMine) {
+    "Only your own schedule"
+} else {
+    learnerSelectionSummary(students, selectedStudentIds)
+}
+
+private fun shortLearnerLabel(name: String): String {
+    val firstName = name.trim().substringBefore(" ").ifBlank { name.trim() }
+    return if (firstName.length <= 14) firstName else "${firstName.take(13)}…"
+}
+
+private fun shortSchoolLabel(name: String): String =
+    name
+        .replace("School", "Sch.")
+        .replace("University", "Univ.")
+        .replace("Institute", "Inst.")
+        .let { if (it.length <= 22) it else "${it.take(21)}…" }
+
 private fun AgendaItemKind.toLabel(): String = when (this) {
     AgendaItemKind.CLASS -> "Classes"
     AgendaItemKind.ASSESSMENT -> "Assessments"
     AgendaItemKind.MEETING -> "Meetings"
     AgendaItemKind.CALL -> "Calls"
     AgendaItemKind.ANNOUNCEMENT -> "Announcements"
+    AgendaItemKind.PERSONAL -> "Personal plans"
 }
 
 @Composable
