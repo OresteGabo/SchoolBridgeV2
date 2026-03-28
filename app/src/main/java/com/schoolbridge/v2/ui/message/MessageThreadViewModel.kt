@@ -56,9 +56,8 @@ class MessageThreadViewModel(
                     errorMessage = null
                 )
             }.onFailure { throwable ->
-                _uiState.value = MessageThreadsUiState(
+                _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    threads = emptyList(),
                     errorMessage = throwable.message ?: "Could not load messages"
                 )
             }
@@ -70,10 +69,26 @@ class MessageThreadViewModel(
         if (realtimeJob?.isActive == true) return
 
         realtimeJob = viewModelScope.launch {
-            messageRealtimeService.observeEvents().collectLatest {
-                loadThreads(currentUserId)
+            runCatching {
+                messageRealtimeService.observeEvents().collectLatest {
+                    _uiState.value = _uiState.value.copy(errorMessage = null)
+                    loadThreads(currentUserId)
+                }
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = throwable.message ?: "Live message updates are temporarily unavailable."
+                )
+            }.also {
+                realtimeJob = null
             }
         }
+    }
+
+    fun retry(currentUserId: String) {
+        realtimeJob?.cancel()
+        realtimeJob = null
+        loadThreads(currentUserId)
+        observeRealtime(currentUserId)
     }
 
     fun addUserMessage(
