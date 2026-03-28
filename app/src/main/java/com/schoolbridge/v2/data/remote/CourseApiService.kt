@@ -20,6 +20,7 @@ interface CourseApiService {
 class CourseApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : CourseApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -37,7 +38,11 @@ class CourseApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for courses request")
 
-        return runApiCall(defaultMessage = "Could not load courses.") {
+        return runApiCall(
+            defaultMessage = "Could not load courses.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get("$BASE_URL/mobile/courses") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
