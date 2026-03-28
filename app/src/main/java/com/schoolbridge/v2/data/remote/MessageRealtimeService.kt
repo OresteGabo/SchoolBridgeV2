@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,8 @@ interface MessageRealtimeService {
 class MessageRealtimeServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : MessageRealtimeService {
+    private val realtimeUnavailableMessage =
+        "Live message updates are temporarily unavailable. Please try again when the server is back."
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -42,25 +45,34 @@ class MessageRealtimeServiceImpl(
     override fun observeEvents(): Flow<MessagingRealtimeEventDto> = callbackFlow {
         val token = userSessionManager.getAuthTokenSync()
             ?: run {
-                close(IllegalStateException("Missing auth token for messaging websocket"))
+                close(IOException("Your session has expired. Please sign in again."))
                 return@callbackFlow
             }
 
-        val session = withContext(Dispatchers.IO) {
-            client.webSocketSession(
-                urlString = "${BASE_URL.toWebSocketBaseUrl()}/ws/messages?token=$token"
-            )
+        val session = runCatching {
+            withContext(Dispatchers.IO) {
+                client.webSocketSession(
+                    urlString = "${BASE_URL.toWebSocketBaseUrl()}/ws/messages?token=$token"
+                )
+            }
+        }.getOrElse { throwable ->
+            close(IOException(realtimeUnavailableMessage, throwable))
+            return@callbackFlow
         }
 
         val collector = launch {
-            for (frame in session.incoming) {
-                if (frame is Frame.Text) {
-                    runCatching {
-                        json.decodeFromString<MessagingRealtimeEventDto>(frame.readText())
-                    }.onSuccess { event ->
-                        trySend(event)
+            runCatching {
+                for (frame in session.incoming) {
+                    if (frame is Frame.Text) {
+                        runCatching {
+                            json.decodeFromString<MessagingRealtimeEventDto>(frame.readText())
+                        }.onSuccess { event ->
+                            trySend(event)
+                        }
                     }
                 }
+            }.onFailure { throwable ->
+                close(IOException(realtimeUnavailableMessage, throwable))
             }
         }
 
