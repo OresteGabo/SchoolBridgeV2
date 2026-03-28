@@ -20,6 +20,7 @@ interface TimetableApiService {
 class TimetableApiServiceImpl(
     private val userSessionManager: UserSessionManager
 ) : TimetableApiService {
+    private val authFailureStatusCodes = setOf(401, 403)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -37,7 +38,11 @@ class TimetableApiServiceImpl(
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for timetable request")
 
-        return runApiCall(defaultMessage = "Could not load timetable.") {
+        return runApiCall(
+            defaultMessage = "Could not load timetable.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
             client.get("$BASE_URL/mobile/timetable") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
