@@ -71,9 +71,13 @@ fun TodayScheduleSection(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                AssistChip(
+                    onClick = { viewModel.selectAllStudents() },
+                    label = { Text("All children") }
+                )
                 uiState.students.forEach { student ->
                     AssistChip(
-                        onClick = { viewModel.selectStudent(student.id) },
+                        onClick = { viewModel.toggleStudentSelection(student.id) },
                         label = { Text(student.name) }
                     )
                 }
