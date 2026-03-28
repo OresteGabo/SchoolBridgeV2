@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.schoolbridge.v2.data.preferences.ThemePreferenceManager
 import com.schoolbridge.v2.data.remote.AuthApiServiceImpl
 import com.schoolbridge.v2.data.session.SessionState
 import com.schoolbridge.v2.data.session.UserSessionManager
@@ -33,7 +32,6 @@ class MainActivity : ComponentActivity() {
     /* simple manual DI ---------------------------------------------------- */
     private val authApiService        = AuthApiServiceImpl()
     private lateinit var userSessionManager: UserSessionManager
-    private lateinit var themePreferenceManager: ThemePreferenceManager
     /* -------------------------------------------------------------------- */
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -41,7 +39,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         userSessionManager     = UserSessionManager(applicationContext)
-        themePreferenceManager = ThemePreferenceManager(applicationContext)
 
         setContent {
             /* --- theme state from ViewModel ------------------------------ */
@@ -93,8 +90,7 @@ class MainActivity : ComponentActivity() {
                                 startDestination       = AuthScreen.Login.route,
                                 authApiService         = authApiService,
                                 userSessionManager     = sessionMgr,
-                                themeViewModel         = themeViewModel,
-                                themePreferenceManager = themePreferenceManager
+                                themeViewModel         = themeViewModel
                             )
                         }
 
@@ -105,8 +101,7 @@ class MainActivity : ComponentActivity() {
                                 startDestination       = MainAppScreen.Home.route,
                                 authApiService         = authApiService,
                                 userSessionManager     = sessionMgr,
-                                themeViewModel         = themeViewModel,
-                                themePreferenceManager = themePreferenceManager
+                                themeViewModel         = themeViewModel
                             )
                         }
                     }
