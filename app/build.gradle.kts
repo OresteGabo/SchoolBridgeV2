@@ -37,6 +37,17 @@ val schoolBridgeApiBaseUrl = (
         ?: ""
 ).trim()
 
+val releaseStoreFile = System.getenv("SCHOOLBRIDGE_UPLOAD_STORE_FILE")?.trim().orEmpty()
+val releaseStorePassword = System.getenv("SCHOOLBRIDGE_UPLOAD_STORE_PASSWORD")?.trim().orEmpty()
+val releaseKeyAlias = System.getenv("SCHOOLBRIDGE_UPLOAD_KEY_ALIAS")?.trim().orEmpty()
+val releaseKeyPassword = System.getenv("SCHOOLBRIDGE_UPLOAD_KEY_PASSWORD")?.trim().orEmpty()
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { it.isNotBlank() }
+
 android {
     namespace = "com.schoolbridge.v2"
     compileSdk = 35
@@ -55,9 +66,23 @@ android {
         )
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -94,6 +119,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui.geometry)
     implementation(libs.androidx.compose.animation)
+    implementation(libs.androidx.compose.foundation)
     //implementation(libs.androidx.compose.testing)          // e.g. 2024.06.00
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
