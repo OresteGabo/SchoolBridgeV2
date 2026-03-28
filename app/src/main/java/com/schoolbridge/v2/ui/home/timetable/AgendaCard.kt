@@ -1,11 +1,15 @@
 package com.schoolbridge.v2.ui.home.timetable
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,7 +28,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +45,7 @@ import java.time.Duration
 import java.time.format.DateTimeFormatter
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun AgendaCard(
     item: AgendaItemUi,
     density: AgendaDensity = AgendaDensity.COMFORTABLE,
@@ -45,30 +55,49 @@ fun AgendaCard(
     val icon = agendaIcon(item.kind)
     val timeLabel = rememberTimeLabel(item)
     val durationLabel = rememberDurationLabel(item)
+    var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
+    val hasExpandableContent = item.subtitle.length > 88 || !item.note.isNullOrBlank()
     val compact = density == AgendaDensity.COMPACT
     val cardPadding = if (compact) 14.dp else 18.dp
-    val spacing = if (compact) 10.dp else 14.dp
-    val iconSize = if (compact) 42.dp else 50.dp
+    val spacing = if (compact) 12.dp else 16.dp
+    val iconSize = if (compact) 40.dp else 48.dp
+    val colorScheme = MaterialTheme.colorScheme
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (item.isImportant) {
-                MaterialTheme.colorScheme.surfaceContainer
+                colorScheme.surfaceBright
             } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
+                colorScheme.surface
             }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (item.isImportant) 8.dp else 4.dp
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = accent.copy(alpha = if (item.isImportant) 0.22f else 0.1f),
+                    shape = RoundedCornerShape(24.dp)
+                )
                 .padding(cardPadding),
             horizontalArrangement = Arrangement.spacedBy(spacing),
             verticalAlignment = Alignment.Top
         ) {
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .height(if (compact) 112.dp else 128.dp)
+                    .background(accent.copy(alpha = 0.9f), RoundedCornerShape(999.dp))
+            )
+
             Column(
+                modifier = Modifier.width(if (compact) 78.dp else 88.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -88,13 +117,13 @@ fun AgendaCard(
                 Text(
                     text = timeLabel,
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = durationLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colorScheme.onSurfaceVariant
                 )
             }
 
@@ -102,9 +131,10 @@ fun AgendaCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)
             ) {
-                Row(
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AgendaBadge(item.badge, accent)
                     AgendaSource(item.sourceLabel)
@@ -117,47 +147,71 @@ fun AgendaCard(
                     text = item.title,
                     style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colorScheme.onSurface
                 )
 
                 Text(
                     text = item.subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis
                 )
 
-                if (!item.note.isNullOrBlank()) {
+                if (expanded && !item.note.isNullOrBlank()) {
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+                        color = colorScheme.surfaceVariant.copy(alpha = 0.54f)
                     ) {
                         Text(
                             text = item.note,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                item.ctaLabel?.let { cta ->
+                if (item.ctaLabel != null || hasExpandableContent) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .background(accent, CircleShape)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = cta,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = accent,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        item.ctaLabel?.let { cta ->
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = accent.copy(alpha = 0.14f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(accent, CircleShape)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = cta,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = accent,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+
+                        if (hasExpandableContent) {
+                            TextButton(onClick = { expanded = !expanded }) {
+                                Text(if (expanded) "Show less" else "Show more")
+                            }
+                        } else {
+                            Spacer(Modifier.width(1.dp))
+                        }
                     }
                 }
             }
@@ -168,6 +222,7 @@ fun AgendaCard(
 @Composable
 private fun AgendaBadge(label: String, accent: Color) {
     Surface(
+        modifier = Modifier.defaultMinSize(minHeight = 32.dp),
         shape = RoundedCornerShape(999.dp),
         color = accent.copy(alpha = 0.16f)
     ) {
@@ -175,7 +230,9 @@ private fun AgendaBadge(label: String, accent: Color) {
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = accent
+            color = accent,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -183,6 +240,7 @@ private fun AgendaBadge(label: String, accent: Color) {
 @Composable
 private fun AgendaSource(label: String) {
     Surface(
+        modifier = Modifier.defaultMinSize(minHeight = 32.dp),
         shape = RoundedCornerShape(999.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
     ) {
@@ -190,7 +248,9 @@ private fun AgendaSource(label: String) {
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -202,6 +262,7 @@ private fun AgendaStatus(
     important: Boolean
 ) {
     Surface(
+        modifier = Modifier.defaultMinSize(minHeight = 32.dp),
         shape = RoundedCornerShape(999.dp),
         color = if (important) accent.copy(alpha = 0.18f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
     ) {
@@ -209,7 +270,9 @@ private fun AgendaStatus(
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = if (important) accent else MaterialTheme.colorScheme.onSecondaryContainer
+            color = if (important) accent else MaterialTheme.colorScheme.onSecondaryContainer,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
