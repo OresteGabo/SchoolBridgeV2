@@ -23,7 +23,10 @@ data class TimetableEntry(
     val type: TimetableEntryType,
     val studentId: String? = null,
     val studentName: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val schoolId: String? = null,
+    val schoolName: String? = null,
+    val roleContext: String = "STUDENT"
 )
 
 
