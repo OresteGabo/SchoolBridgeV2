@@ -480,7 +480,7 @@ private fun HomeUI(
                 SpacerL()
                 GradesSummarySection()
                 SpacerL()
-                CourseListSection()
+                CourseListSection(userSessionManager = userSessionManager)
             }
             UserRole.PARENT -> {
                 ParentOverviewSection(currentUser = currentUser)
@@ -531,7 +531,7 @@ private fun HomeUI(
                     onWeeklyViewClick = onWeeklyViewClick
                 )
                 SpacerL()
-                CourseListSection()
+                CourseListSection(userSessionManager = userSessionManager)
             }
             UserRole.SCHOOL_ADMIN -> {
                 AdminOverviewSection()
