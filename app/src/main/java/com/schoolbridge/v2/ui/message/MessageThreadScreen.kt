@@ -2,6 +2,12 @@ package com.schoolbridge.v2.ui.message
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -37,7 +43,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -47,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
@@ -56,15 +65,28 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
-import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 import java.util.UUID
 
 // ─────────────────────────────────────────────────────────────
 // Root navigation shell
 // ─────────────────────────────────────────────────────────────
+
+private const val MESSAGE_RETRY_INTERVAL_MILLIS = 5_000L
+private const val MESSAGE_RECOVERY_TILE_DURATION_MILLIS = 2_500L
+
+private enum class MessageConnectionState {
+    DISCONNECTED,
+    RECONNECTING,
+    RECOVERED
+}
 
 @Composable
 fun MessageThreadScreen(
@@ -86,11 +108,45 @@ fun MessageThreadScreen(
     val uiState by viewModel.uiState.collectAsState()
     val messageThreads = uiState.threads
     val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
+    val latestUiState by rememberUpdatedState(uiState)
+    var showRecoveryTile by remember { mutableStateOf(false) }
+    var hadConnectionIssue by remember { mutableStateOf(false) }
+    val isReconnectAttemptInFlight = hadConnectionIssue && uiState.isLoading
+    val showPinnedStatusTile =
+        (!uiState.errorMessage.isNullOrBlank() || isReconnectAttemptInFlight || showRecoveryTile) &&
+            messageThreads.isNotEmpty()
 
     LaunchedEffect(currentUser?.userId) {
         currentUser?.userId?.let { userId ->
             viewModel.loadThreads(userId)
             viewModel.observeRealtime(userId)
+        }
+    }
+
+    LaunchedEffect(currentUser?.userId, uiState.errorMessage) {
+        val userId = currentUser?.userId ?: return@LaunchedEffect
+        if (uiState.errorMessage.isNullOrBlank()) return@LaunchedEffect
+
+        while (isActive && !latestUiState.errorMessage.isNullOrBlank()) {
+            delay(MESSAGE_RETRY_INTERVAL_MILLIS)
+            if (!latestUiState.isLoading) {
+                viewModel.retry(userId)
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        if (!uiState.errorMessage.isNullOrBlank()) {
+            hadConnectionIssue = true
+            showRecoveryTile = false
+            return@LaunchedEffect
+        }
+
+        if (hadConnectionIssue) {
+            showRecoveryTile = true
+            hadConnectionIssue = false
+            delay(MESSAGE_RECOVERY_TILE_DURATION_MILLIS)
+            showRecoveryTile = false
         }
     }
 
@@ -116,18 +172,34 @@ fun MessageThreadScreen(
             targetState = viewingMessage != null,
             label = "ScreenTransition"
         ) { isViewing ->
-            if (uiState.isLoading && messageThreads.isEmpty()) {
+            if (isReconnectAttemptInFlight && messageThreads.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    MessageConnectionStatusTile(
+                        message = "SchoolBridge is still unavailable. We are retrying automatically.",
+                        state = MessageConnectionState.RECONNECTING,
+                        onRetry = {
+                            currentUser?.userId?.let(viewModel::retry)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    )
+                }
+            } else if (uiState.isLoading && messageThreads.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else if (uiState.errorMessage != null && messageThreads.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    FriendlyNetworkErrorCard(
-                        rawMessage = uiState.errorMessage,
+                    MessageConnectionStatusTile(
+                        message = uiState.errorMessage ?: "SchoolBridge is temporarily unavailable.",
+                        state = if (uiState.isLoading) {
+                            MessageConnectionState.RECONNECTING
+                        } else {
+                            MessageConnectionState.DISCONNECTED
+                        },
                         onRetry = {
-                            currentUser?.userId?.let { userId ->
-                                viewModel.retry(userId)
-                            }
+                            currentUser?.userId?.let(viewModel::retry)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -260,18 +332,28 @@ fun MessageThreadScreen(
             }
         }
 
-        if (!uiState.errorMessage.isNullOrBlank() && messageThreads.isNotEmpty()) {
+        if (showPinnedStatusTile) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
                     .align(Alignment.TopCenter)
             ) {
-                FriendlyNetworkErrorCard(
-                    rawMessage = uiState.errorMessage,
+                MessageConnectionStatusTile(
+                    message = when {
+                        !uiState.errorMessage.isNullOrBlank() -> uiState.errorMessage ?: "SchoolBridge is temporarily unavailable."
+                        isReconnectAttemptInFlight -> "Messages are still trying to reconnect to SchoolBridge."
+                        else -> "Messages are live again. SchoolBridge reconnected successfully."
+                    },
+                    state = when {
+                        showRecoveryTile -> MessageConnectionState.RECOVERED
+                        isReconnectAttemptInFlight -> MessageConnectionState.RECONNECTING
+                        else -> MessageConnectionState.DISCONNECTED
+                    },
                     onRetry = {
                         currentUser?.userId?.let(viewModel::retry)
-                    }
+                    },
+                    modifier = Modifier.alpha(0.98f)
                 )
             }
         }
@@ -338,6 +420,160 @@ fun MessageThreadScreen(
             else -> internalSelectedThreadId = null
         }
     }
+}
+
+@Composable
+private fun MessageConnectionStatusTile(
+    message: String,
+    state: MessageConnectionState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val accentContainer = when (state) {
+        MessageConnectionState.DISCONNECTED -> colorScheme.errorContainer.copy(alpha = 0.7f)
+        MessageConnectionState.RECONNECTING -> colorScheme.tertiaryContainer.copy(alpha = 0.78f)
+        MessageConnectionState.RECOVERED -> colorScheme.secondaryContainer.copy(alpha = 0.82f)
+    }
+    val accentColor = when (state) {
+        MessageConnectionState.DISCONNECTED -> colorScheme.error
+        MessageConnectionState.RECONNECTING -> colorScheme.tertiary
+        MessageConnectionState.RECOVERED -> colorScheme.secondary
+    }
+    val title = when (state) {
+        MessageConnectionState.DISCONNECTED -> "SchoolBridge is temporarily down"
+        MessageConnectionState.RECONNECTING -> "Reconnecting to SchoolBridge"
+        MessageConnectionState.RECOVERED -> "SchoolBridge is back"
+    }
+    val helper = when (state) {
+        MessageConnectionState.DISCONNECTED -> "We will keep checking the server in the background."
+        MessageConnectionState.RECONNECTING -> "Trying again automatically every few seconds."
+        MessageConnectionState.RECOVERED -> "Live updates are available again."
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = colorScheme.surfaceContainerHigh,
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentContainer)
+            ) {
+                ExpressiveRetryIndicator(
+                    color = accentColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = helper,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accentColor
+                )
+            }
+
+            if (state != MessageConnectionState.RECOVERED) {
+                TextButton(onClick = onRetry) {
+                    Text(if (state == MessageConnectionState.RECONNECTING) "Try now" else "Retry")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpressiveRetryIndicator(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "reconnectLoader")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (Math.PI * 2f).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase"
+    )
+    val pulse by transition.animateFloat(
+        initialValue = 0.82f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        drawExpressiveRetryIndicator(
+            color = color,
+            phase = phase,
+            pulse = pulse
+        )
+    }
+}
+
+private fun DrawScope.drawExpressiveRetryIndicator(
+    color: Color,
+    phase: Float,
+    pulse: Float
+) {
+    val radius = min(size.width, size.height) / 2f
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val orbitRadius = radius * 0.62f * pulse
+    val dotRadius = radius * 0.12f
+
+    repeat(6) { index ->
+        val angle = phase + (index * 0.9f)
+        val dotCenter = Offset(
+            x = center.x + cos(angle) * orbitRadius,
+            y = center.y + sin(angle) * orbitRadius
+        )
+        val alpha = 0.3f + (((sin(angle) + 1f) / 2f) * 0.7f)
+        drawCircle(
+            color = color.copy(alpha = alpha),
+            radius = dotRadius + (alpha * radius * 0.04f),
+            center = dotCenter
+        )
+    }
+
+    drawCircle(
+        color = color.copy(alpha = 0.18f),
+        radius = radius * 0.38f * pulse,
+        center = center
+    )
 }
 
 @Composable
