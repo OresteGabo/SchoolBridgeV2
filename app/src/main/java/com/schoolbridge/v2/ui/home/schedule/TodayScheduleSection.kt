@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
+import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
 import com.schoolbridge.v2.data.remote.TimetableApiServiceImpl
+import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.repository.implementations.TimetableRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.localization.t
@@ -38,7 +40,8 @@ fun TodayScheduleSection(
     modifier: Modifier = Modifier,
     viewModel: TimetableViewModel = viewModel(
         factory = TimetableViewModelFactory(
-            TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager))
+            timetableRepository = TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager)),
+            messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
         )
     )
 ) {
