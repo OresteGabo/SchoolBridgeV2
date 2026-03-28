@@ -8,7 +8,8 @@ data class MobileTimetableResponseDto(
     val scopeLabel: String? = null,
     val students: List<MobileTimetableStudentDto> = emptyList(),
     val selectedStudentId: String? = null,
-    val entries: List<MobileTimetableEntryDto> = emptyList()
+    val entries: List<MobileTimetableEntryDto> = emptyList(),
+    val personalPlans: List<MobilePersonalTimetablePlanDto> = emptyList()
 )
 
 @Serializable
@@ -16,7 +17,9 @@ data class MobileTimetableStudentDto(
     val id: String,
     val name: String,
     val firstName: String? = null,
-    val lastName: String? = null
+    val lastName: String? = null,
+    val schoolId: String? = null,
+    val schoolName: String? = null
 )
 
 @Serializable
@@ -31,5 +34,23 @@ data class MobileTimetableEntryDto(
     val type: String,
     val studentId: String? = null,
     val studentName: String? = null,
+    val note: String? = null,
+    val schoolId: String? = null,
+    val schoolName: String? = null,
+    val roleContext: String = "STUDENT"
+)
+
+@Serializable
+data class MobilePersonalTimetablePlanDto(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    val date: String,
+    val startTime: String,
+    val endTime: String,
+    val type: String,
+    val visibility: String,
+    val participantLabels: List<String> = emptyList(),
+    val createdByLabel: String? = null,
     val note: String? = null
 )
