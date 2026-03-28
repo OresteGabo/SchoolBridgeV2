@@ -23,12 +23,18 @@ private val httpErrorJson = Json {
 
 suspend fun <T> runApiCall(
     defaultMessage: String,
+    authFailureStatusCodes: Set<Int> = emptySet(),
+    onAuthFailure: (suspend (UserReadableHttpException) -> Unit)? = null,
     block: suspend () -> T
 ): T {
     return try {
         block()
     } catch (throwable: Throwable) {
-        throw throwable.toUserReadableHttpException(defaultMessage)
+        val mappedError = throwable.toUserReadableHttpException(defaultMessage)
+        if (mappedError.statusCode in authFailureStatusCodes) {
+            onAuthFailure?.invoke(mappedError)
+        }
+        throw mappedError
     }
 }
 
