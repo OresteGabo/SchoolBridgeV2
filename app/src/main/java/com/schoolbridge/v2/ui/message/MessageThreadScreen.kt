@@ -561,11 +561,7 @@ private fun ThreadCard(thread: MessageThread, onClick: () -> Unit) {
 @Composable
 private fun rememberThreadBadgeStyle(thread: MessageThread): ThreadBadgeStyle {
     val latestMessage = thread.getLatestMessage()
-    val latestIncomingActionIndex = thread.messages.indexOfLast { message ->
-        !message.isFromCurrentUser && message.actions.isNotEmpty()
-    }
-    val hasPendingIncomingAction = latestIncomingActionIndex >= 0 &&
-        thread.messages.drop(latestIncomingActionIndex + 1).none { it.isFromCurrentUser }
+    val hasPendingIncomingAction = thread.findPendingIncomingAction() != null
 
     return when {
         hasPendingIncomingAction -> ThreadBadgeStyle(
@@ -603,6 +599,14 @@ private data class ThreadBadgeStyle(
     val emoji: String,
     val containerColor: Color,
     val onContainerColor: Color
+)
+
+private data class ThreadReplyPolicy(
+    val canTypeFreely: Boolean,
+    val canLaunchTools: Boolean,
+    val pendingActionMessage: Message? = null,
+    val helperTitle: String,
+    val helperBody: String
 )
 
 enum class ThreadComposerAction(
@@ -939,11 +943,16 @@ private fun ThreadActionDock(
     onSendMessage: (String) -> Unit,
     onLaunchThreadAction: (ThreadComposerAction) -> Unit
 ) {
+    val replyPolicy = remember(thread, currentUser?.currentRole) {
+        buildThreadReplyPolicy(thread = thread, currentUser = currentUser)
+    }
     var composerText by remember(thread.id) { mutableStateOf("") }
     var toolsExpanded by remember(thread.id) { mutableStateOf(false) }
     val availableActions = remember(currentUser?.currentRole, thread.mode) {
         availableThreadComposerActions(currentUser?.currentRole, thread.mode)
     }
+    val showToolsToggle = replyPolicy.canLaunchTools && availableActions.isNotEmpty()
+    val showComposer = replyPolicy.canTypeFreely
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -955,7 +964,13 @@ private fun ThreadActionDock(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (toolsExpanded && availableActions.isNotEmpty()) {
+            ThreadReplyStatusCard(
+                title = replyPolicy.helperTitle,
+                body = replyPolicy.helperBody,
+                isMuted = !showComposer && !showToolsToggle
+            )
+
+            if (toolsExpanded && showToolsToggle) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1016,52 +1031,186 @@ private fun ThreadActionDock(
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                FilledTonalIconButton(
-                    onClick = { toolsExpanded = !toolsExpanded }
+            if (showComposer || showToolsToggle) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = if (toolsExpanded) Icons.Default.Close else Icons.Default.Schedule,
-                        contentDescription = if (toolsExpanded) "Hide tools" else "Show tools"
-                    )
-                }
-
-                OutlinedTextField(
-                    value = composerText,
-                    onValueChange = { composerText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            when (currentUser?.currentRole) {
-                                UserRole.SCHOOL_ADMIN -> "Write an official follow-up or launch an action..."
-                                UserRole.TEACHER -> "Share an update, meeting note, or class action..."
-                                else -> "Reply in this school thread..."
-                            }
-                        )
-                    },
-                    maxLines = 4,
-                    shape = RoundedCornerShape(22.dp)
-                )
-
-                FilledIconButton(
-                    onClick = {
-                        val message = composerText.trim()
-                        if (message.isNotEmpty()) {
-                            onSendMessage(message)
-                            composerText = ""
+                    if (showToolsToggle) {
+                        FilledTonalIconButton(
+                            onClick = { toolsExpanded = !toolsExpanded }
+                        ) {
+                            Icon(
+                                imageVector = if (toolsExpanded) Icons.Default.Close else Icons.Default.Schedule,
+                                contentDescription = if (toolsExpanded) "Hide tools" else "Show tools"
+                            )
                         }
-                    },
-                    enabled = composerText.isNotBlank()
-                ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send")
+                    }
+
+                    if (showComposer) {
+                        OutlinedTextField(
+                            value = composerText,
+                            onValueChange = { composerText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = {
+                                Text(
+                                    when (currentUser?.currentRole) {
+                                        UserRole.SCHOOL_ADMIN -> "Write an official follow-up for this thread..."
+                                        UserRole.TEACHER -> "Share a guided school follow-up..."
+                                        else -> "Reply in this school thread..."
+                                    }
+                                )
+                            },
+                            maxLines = 4,
+                            shape = RoundedCornerShape(22.dp)
+                        )
+                    } else {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(22.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Structured replies only",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "This thread is using guided actions instead of free typing right now.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    if (showComposer) {
+                        FilledIconButton(
+                            onClick = {
+                                val message = composerText.trim()
+                                if (message.isNotEmpty()) {
+                                    onSendMessage(message)
+                                    composerText = ""
+                                }
+                            },
+                            enabled = composerText.isNotBlank()
+                        ) {
+                            Icon(Icons.Default.Send, contentDescription = "Send")
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ThreadReplyStatusCard(
+    title: String,
+    body: String,
+    isMuted: Boolean
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = if (isMuted) {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f)
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun buildThreadReplyPolicy(
+    thread: MessageThread,
+    currentUser: CurrentUser?
+): ThreadReplyPolicy {
+    val role = currentUser?.currentRole
+    val pendingIncomingAction = thread.findPendingIncomingAction()
+    val canLaunchTools = role == UserRole.SCHOOL_ADMIN || role == UserRole.TEACHER
+    val canTypeFreely = (role == UserRole.SCHOOL_ADMIN || role == UserRole.TEACHER) &&
+        thread.mode in setOf(ThreadMode.CONVERSATION, ThreadMode.DIRECT_CONTACT)
+
+    if (pendingIncomingAction != null) {
+        return ThreadReplyPolicy(
+            canTypeFreely = false,
+            canLaunchTools = false,
+            pendingActionMessage = pendingIncomingAction,
+            helperTitle = "Reply expected through the request above",
+            helperBody = "Use the buttons on the pending school message to answer this step. Free typing stays closed until that requested response is handled."
+        )
+    }
+
+    return when {
+        canTypeFreely -> ThreadReplyPolicy(
+            canTypeFreely = true,
+            canLaunchTools = canLaunchTools,
+            helperTitle = "Direct school follow-up is open",
+            helperBody = "This thread allows a guided text response because your current role can continue the discussion from here."
+        )
+
+        canLaunchTools -> ThreadReplyPolicy(
+            canTypeFreely = false,
+            canLaunchTools = true,
+            helperTitle = "Launch the next school action",
+            helperBody = "Use the tools below to request documents, schedule a meeting, invite a call, or post the next official step without turning this into an open chat."
+        )
+
+        thread.mode == ThreadMode.ANNOUNCEMENT -> ThreadReplyPolicy(
+            canTypeFreely = false,
+            canLaunchTools = false,
+            helperTitle = "This thread is read-only",
+            helperBody = "Announcements can carry updates, links, and planned moments, but they do not always accept replies."
+        )
+
+        thread.mode == ThreadMode.ACTION_REQUIRED -> ThreadReplyPolicy(
+            canTypeFreely = false,
+            canLaunchTools = false,
+            helperTitle = "This step is complete for now",
+            helperBody = "You already responded or there is no action waiting on this side right now. The thread will reopen if the school asks for the next step."
+        )
+
+        else -> ThreadReplyPolicy(
+            canTypeFreely = false,
+            canLaunchTools = false,
+            helperTitle = "No free reply needed right now",
+            helperBody = "This thread is still contextual and guided. When the workflow expects your input, SchoolBridge can reopen the right response control."
+        )
+    }
+}
+
+private fun MessageThread.findPendingIncomingAction(): Message? {
+    val candidateIndex = messages.indexOfLast { message ->
+        !message.isFromCurrentUser && message.actions.isNotEmpty() && message.status == null
+    }
+    if (candidateIndex == -1) return null
+
+    val hasAlreadyReplied = messages.drop(candidateIndex + 1).any { later ->
+        later.isFromCurrentUser || later.replyToId == messages[candidateIndex].id
+    }
+    return if (hasAlreadyReplied) null else messages[candidateIndex]
 }
 
 @Composable
