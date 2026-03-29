@@ -432,15 +432,17 @@ fun TimetableTabsScreen(
         ) {
             AddEventBottomSheet(
                 selectedDate = selectedDate,
+                audienceSummary = learnerSelectionSummary(uiState.students, uiState.selectedStudentIds),
                 onDismiss = { showAddSheet = false },
-                onAddEvent = { startTime, endTime, title, description, planType ->
+                onAddEvent = { startTime, endTime, title, description, planType, visibility ->
                     viewModel.createPersonalPlan(
                         date = selectedDate,
                         startTime = startTime,
                         endTime = endTime,
                         title = title,
                         description = description,
-                        planType = planType
+                        planType = planType,
+                        visibility = visibility
                     )
                     showAddSheet = false
                 }
