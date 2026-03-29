@@ -8,7 +8,7 @@ class MessageThreadTest {
 
     @Test
     fun `getUnreadCount counts only unread messages`() {
-        val thread = MessageThread(
+        val thread = MessageConversation(
             topic = "Finance follow-up",
             participantsLabel = "Parent and bursar",
             messages = mutableListOf(
@@ -24,7 +24,7 @@ class MessageThreadTest {
     @Test
     fun `getLatestMessage returns last message in thread`() {
         val lastMessage = Message(sender = "Teacher", content = "See you tomorrow", timestamp = "11:15")
-        val thread = MessageThread(
+        val thread = MessageConversation(
             topic = "Meeting",
             participantsLabel = "Teacher and parent",
             messages = mutableListOf(
@@ -38,7 +38,7 @@ class MessageThreadTest {
 
     @Test
     fun `getLatestMessage returns null when thread is empty`() {
-        val thread = MessageThread(
+        val thread = MessageConversation(
             topic = "Announcements",
             participantsLabel = "SchoolBridge"
         )
