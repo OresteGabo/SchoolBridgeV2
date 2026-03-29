@@ -1,5 +1,6 @@
 package com.schoolbridge.v2.ui.navigation
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -102,7 +103,15 @@ sealed class MainAppScreen(
         const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}"
         const val MESSAGE_THREAD_ID_ARG = "messageThreadId"
 
-        fun createRoute(messageThreadId: String) = "message_thread_screen/$messageThreadId"
+        fun createRoute(messageThreadId: String, callMessageId: String? = null): String {
+            val encodedThreadId = Uri.encode(messageThreadId)
+            val encodedCallMessageId = callMessageId?.let(Uri::encode)
+            return if (encodedCallMessageId == null) {
+                "message_thread_screen/$encodedThreadId"
+            } else {
+                "message_thread_screen/$encodedThreadId?callMessageId=$encodedCallMessageId"
+            }
+        }
     }
 
     data object MessageDetails : MainAppScreen("message_details_screen/{messageId}") {
