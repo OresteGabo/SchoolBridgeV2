@@ -38,26 +38,33 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.schoolbridge.v2.components.CustomBottomNavBar
+import com.schoolbridge.v2.components.CustomSideNavBar
 import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.AlertRepositoryImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.Alert
 import com.schoolbridge.v2.domain.messaging.AlertSeverity
+import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
+import com.schoolbridge.v2.ui.common.isWideLandscapeLayout
 import com.schoolbridge.v2.ui.home.common.SeverityChip
+import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertsScreen(
     userSessionManager: UserSessionManager,
+    currentScreen: MainAppScreen? = null,
+    onTabSelected: ((MainAppScreen) -> Unit)? = null,
+    currentUser: CurrentUser? = null,
     onBack: (() -> Unit)? = null,
-    bottomBar: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val viewModel: AlertsViewModel = viewModel(
@@ -69,6 +76,7 @@ fun AlertsScreen(
         )
     )
     val isExpanded = isExpandedLayout()
+    val useWideLandscapeNav = isWideLandscapeLayout() && currentScreen != null && onTabSelected != null
     val uiState by viewModel.uiState.collectAsState()
     val alerts = uiState.alerts
     val hasUnreadAlerts = remember(alerts) { alerts.any { !it.isRead } }
@@ -106,86 +114,117 @@ fun AlertsScreen(
             )
         },
         bottomBar = {
-            bottomBar?.invoke()
+            if (!useWideLandscapeNav && currentScreen != null && onTabSelected != null) {
+                CustomBottomNavBar(
+                    currentScreen = currentScreen,
+                    onTabSelected = onTabSelected,
+                    currentUser = currentUser
+                )
+            }
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        AdaptivePageFrame(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = paddingValues,
-            maxContentWidth = if (isExpanded) 1200.dp else 1240.dp
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                SchoolBridgePatternBackground(dotAlpha = 0.016f, gradientAlpha = 0.035f)
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxSize()
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
+        val alertsContent: @Composable () -> Unit = {
+            AdaptivePageFrame(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = if (useWideLandscapeNav) PaddingValues(horizontal = 20.dp, vertical = 0.dp) else paddingValues,
+                maxContentWidth = if (useWideLandscapeNav) 1680.dp else if (isExpanded) 1200.dp else 1240.dp
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    SchoolBridgePatternBackground(dotAlpha = 0.016f, gradientAlpha = 0.035f)
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        placeholder = { Text(t(R.string.alerts_search_placeholder)) },
-                        singleLine = true,
-                        keyboardActions = KeyboardActions(onSearch = { }),
-                        colors = TextFieldDefaults.colors()
-                    )
-
-                    SwipeRefresh(
-                        state = rememberSwipeRefreshState(uiState.isLoading),
-                        onRefresh = {
-                            viewModel.refresh()
-                        },
-                        modifier = Modifier.fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .fillMaxSize()
                     ) {
-                        if (uiState.errorMessage != null && alerts.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                FriendlyNetworkErrorCard(
-                                    rawMessage = uiState.errorMessage,
-                                    onRetry = viewModel::refresh
-                                )
-                            }
-                        } else if (filteredAlerts.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    t(R.string.alerts_empty_search),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(filteredAlerts.size) { alertIndex ->
-                                    AlertCardDetailed(
-                                        alert = filteredAlerts[alertIndex],
-                                        index = alertIndex,
-                                        onClick = { alert ->
-                                            viewModel.markAsRead(alert.id)
-                                            selectedAlert = alert
-                                        },
-                                        modifier = Modifier
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            placeholder = { Text(t(R.string.alerts_search_placeholder)) },
+                            singleLine = true,
+                            keyboardActions = KeyboardActions(onSearch = { }),
+                            colors = TextFieldDefaults.colors()
+                        )
+
+                        SwipeRefresh(
+                            state = rememberSwipeRefreshState(uiState.isLoading),
+                            onRefresh = {
+                                viewModel.refresh()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (uiState.errorMessage != null && alerts.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    FriendlyNetworkErrorCard(
+                                        rawMessage = uiState.errorMessage,
+                                        onRetry = viewModel::refresh
                                     )
+                                }
+                            } else if (filteredAlerts.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        t(R.string.alerts_empty_search),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(filteredAlerts.size) { alertIndex ->
+                                        AlertCardDetailed(
+                                            alert = filteredAlerts[alertIndex],
+                                            index = alertIndex,
+                                            onClick = { alert ->
+                                                viewModel.markAsRead(alert.id)
+                                                selectedAlert = alert
+                                            },
+                                            modifier = Modifier
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        if (useWideLandscapeNav && currentScreen != null && onTabSelected != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                CustomSideNavBar(
+                    currentScreen = currentScreen,
+                    onTabSelected = onTabSelected,
+                    currentUser = currentUser
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                ) {
+                    alertsContent()
+                }
+            }
+        } else {
+            alertsContent()
         }
 
         selectedAlert?.let { alert ->
