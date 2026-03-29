@@ -45,10 +45,10 @@ private fun SettingsScreenPrev() {
         onDataPrivacy = {},
         isDarkTheme = false,
         onToggleTheme = {},
-        currentPalette = TODO(),
-        currentContrast = TODO(),
-        onPalettePicked = TODO(),
-        onContrastPicked = TODO()
+        currentPalette = AppPalette.GOLDEN,
+        currentContrast = Contrast.NORMAL,
+        onPalettePicked = {},
+        onContrastPicked = {}
     )
 }
 
@@ -353,4 +353,3 @@ fun SettingsScreen(
         }
     }
 }
-
