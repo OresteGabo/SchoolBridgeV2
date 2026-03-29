@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +66,8 @@ import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.messaging.*
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.domain.user.UserRole
+import com.schoolbridge.v2.ui.home.timetable.MeetingDecision
+import com.schoolbridge.v2.ui.home.timetable.NotificationInteractionStore
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import kotlinx.coroutines.delay
@@ -92,10 +95,12 @@ private enum class MessageConnectionState {
 fun MessageThreadScreen(
     userSessionManager: UserSessionManager,
     initialThreadId: String? = null,
+    initialCallMessageId: String? = null,
     onThreadSelected: ((String) -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ) {
     val isExpanded = isExpandedLayout()
+    val context = LocalContext.current
     val messagingRepository = remember(userSessionManager) {
         MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
     }
@@ -163,6 +168,25 @@ fun MessageThreadScreen(
 
     val effectiveThreadId = initialThreadId ?: internalSelectedThreadId
     val selectedThread = messageThreads.find { it.id == effectiveThreadId }
+    val leaveThread: () -> Unit = {
+        if (initialThreadId != null) {
+            onBack?.invoke()
+        } else {
+            internalSelectedThreadId = null
+        }
+    }
+
+    LaunchedEffect(selectedThread?.id) {
+        selectedThread?.id?.let(viewModel::markAsRead)
+    }
+
+    LaunchedEffect(selectedThread, initialCallMessageId) {
+        val callMessageId = initialCallMessageId ?: return@LaunchedEffect
+        val targetMessage = selectedThread?.messages?.find { it.id == callMessageId } ?: return@LaunchedEffect
+        if (targetMessage.callInfo != null && activeCallMessage?.id != targetMessage.id) {
+            activeCallMessage = targetMessage
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         SchoolBridgePatternBackground()
@@ -219,6 +243,9 @@ fun MessageThreadScreen(
                             } else if (actionId in callActionIds) {
                                 activeCallMessage = originalMsg
                             } else {
+                                actionId.toMeetingDecisionOrNull()?.let { decision ->
+                                    NotificationInteractionStore.saveMeetingDecision(context, thread.id, decision)
+                                }
                                 viewModel.performAction(thread.id, originalMsg.id, actionId)
                                 val actionLabel = originalMsg.actions.find { it.actionId == actionId }?.label ?: "Confirmed"
                                 viewModel.addUserMessage(
@@ -253,6 +280,9 @@ fun MessageThreadScreen(
                                 } else if (actionId in callActionIds) {
                                     activeCallMessage = originalMsg
                                 } else {
+                                    actionId.toMeetingDecisionOrNull()?.let { decision ->
+                                        NotificationInteractionStore.saveMeetingDecision(context, actualThread.id, decision)
+                                    }
                                     viewModel.performAction(actualThread.id, msgId, actionId)
                                     val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
                                     viewModel.addUserMessage(
@@ -292,7 +322,7 @@ fun MessageThreadScreen(
                         ThreadDetailScreen(
                             thread = thread,
                             currentUser = currentUser,
-                            onBack = { internalSelectedThreadId = null },
+                            onBack = leaveThread,
                             onMessageClick = { viewingMessage = it },
                             onActionClick = { msgId, actionId ->
                                 val originalMsg = thread.messages.find { it.id == msgId }
@@ -301,6 +331,9 @@ fun MessageThreadScreen(
                                 } else if (actionId in callActionIds) {
                                     activeCallMessage = originalMsg
                                 } else {
+                                    actionId.toMeetingDecisionOrNull()?.let { decision ->
+                                        NotificationInteractionStore.saveMeetingDecision(context, thread.id, decision)
+                                    }
                                     viewModel.performAction(thread.id, msgId, actionId)
                                     val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
                                     viewModel.addUserMessage(
@@ -417,7 +450,7 @@ fun MessageThreadScreen(
             activeCallMessage != null -> activeCallMessage = null
             activePaymentMessage != null -> activePaymentMessage = null
             viewingMessage != null -> viewingMessage = null
-            else -> internalSelectedThreadId = null
+            else -> leaveThread()
         }
     }
 }
@@ -1692,6 +1725,13 @@ private fun threadCallStatusLabel(status: ThreadCallStatus): String = when (stat
     ThreadCallStatus.MISSED -> "Missed"
     ThreadCallStatus.DECLINED -> "Declined"
     ThreadCallStatus.NEEDS_DOCUMENTS -> "Need docs"
+}
+
+private fun String.toMeetingDecisionOrNull(): MeetingDecision? = when (lowercase()) {
+    "yes" -> MeetingDecision.ATTENDING
+    "no" -> MeetingDecision.DECLINED
+    "not_sure" -> MeetingDecision.MAYBE
+    else -> null
 }
 
 // ─────────────────────────────────────────────────────────────
