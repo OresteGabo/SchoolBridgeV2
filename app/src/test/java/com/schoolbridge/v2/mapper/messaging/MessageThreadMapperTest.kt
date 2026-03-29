@@ -1,10 +1,10 @@
 package com.schoolbridge.v2.mapper.messaging
 
-import com.schoolbridge.v2.data.dto.messaging.MessageInThreadDto
-import com.schoolbridge.v2.data.dto.messaging.MessageThreadDto
+import com.schoolbridge.v2.data.dto.messaging.MessageConversationDto
+import com.schoolbridge.v2.data.dto.messaging.MessageInConversationDto
 import com.schoolbridge.v2.domain.messaging.Message
-import com.schoolbridge.v2.domain.messaging.MessageThread
-import com.schoolbridge.v2.domain.messaging.ThreadMode
+import com.schoolbridge.v2.domain.messaging.ConversationMode
+import com.schoolbridge.v2.domain.messaging.MessageConversation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,7 +13,7 @@ class MessageThreadMapperTest {
 
     @Test
     fun `thread dto toDomain maps participants mode and messages`() {
-        val dto = MessageThreadDto(
+        val dto = MessageConversationDto(
             id = "thread-1",
             subject = "Role verification",
             participants = listOf("School admin", "Teacher candidate"),
@@ -25,7 +25,7 @@ class MessageThreadMapperTest {
             isArchived = false,
             autoDeleteDate = null,
             messages = listOf(
-                MessageInThreadDto(
+                MessageInConversationDto(
                     id = "msg-1",
                     senderId = "admin-1",
                     content = "Please upload your degree.",
@@ -41,14 +41,14 @@ class MessageThreadMapperTest {
         assertEquals("thread-1", thread.id)
         assertEquals("Role verification", thread.topic)
         assertEquals("School admin, Teacher candidate", thread.participantsLabel)
-        assertEquals(ThreadMode.ACTION_REQUIRED, thread.mode)
+        assertEquals(ConversationMode.ACTION_REQUIRED, thread.mode)
         assertEquals(1, thread.messages.size)
         assertEquals("Please upload your degree.", thread.messages.first().content)
     }
 
     @Test
     fun `thread dto toDomain falls back to announcement for unknown mode`() {
-        val dto = MessageThreadDto(
+        val dto = MessageConversationDto(
             id = "thread-2",
             subject = "General notice",
             participants = emptyList(),
@@ -64,16 +64,16 @@ class MessageThreadMapperTest {
 
         val thread = dto.toDomain()
 
-        assertEquals(ThreadMode.ANNOUNCEMENT, thread.mode)
+        assertEquals(ConversationMode.ANNOUNCEMENT, thread.mode)
     }
 
     @Test
     fun `thread toDto splits trimmed participants and maps message list`() {
-        val thread = MessageThread(
+        val thread = MessageConversation(
             id = "thread-3",
             topic = "Parent meeting",
             participantsLabel = "Teacher A, Parent B,  Counselor C ",
-            mode = ThreadMode.CONVERSATION,
+            mode = ConversationMode.CONVERSATION,
             messages = mutableListOf(
                 Message(
                     id = "msg-2",
