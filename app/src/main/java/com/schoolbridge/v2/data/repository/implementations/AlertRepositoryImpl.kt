@@ -11,6 +11,7 @@ import com.schoolbridge.v2.domain.messaging.AlertSourceType
 import com.schoolbridge.v2.domain.messaging.AlertType
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 
 class AlertRepositoryImpl(
     private val messagingRepository: MessagingRepository,
@@ -70,7 +71,9 @@ private fun MobileMessageThreadDto.toAlertOrNull(): Alert? {
 }
 
 private fun parseAlertTimestamp(raw: String): LocalDateTime = runCatching {
-    OffsetDateTime.parse(raw).toLocalDateTime()
+    OffsetDateTime.parse(raw)
+        .atZoneSameInstant(ZoneId.systemDefault())
+        .toLocalDateTime()
 }.getOrElse {
     LocalDateTime.now()
 }
