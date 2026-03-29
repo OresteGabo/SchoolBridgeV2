@@ -144,7 +144,7 @@ private fun AboutHeroCard() {
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "A school operations and communication platform built around trusted threads, school roles, finance follow-up, schedule planning, and guided verification workflows.",
+                        text = "A school operations and communication platform built around trusted conversations, school roles, finance follow-up, schedule planning, and guided verification workflows.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -157,7 +157,7 @@ private fun AboutHeroCard() {
             ) {
                 AboutPill(label = "Current release", value = aboutReleaseNotes.first().title)
                 AboutPill(label = "Focus", value = "School workflows")
-                AboutPill(label = "Realtime", value = "Live thread updates")
+                AboutPill(label = "Realtime", value = "Live conversation updates")
             }
         }
     }
@@ -175,7 +175,7 @@ private fun AboutCapabilityGrid() {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AboutCapabilityCard(
                 title = "Thread-based school communication",
-                description = "Messages are no longer generic chats. A thread can carry approvals, finance follow-up, requested documents, planned calls, announcements, and guided next steps.",
+                description = "Messages are no longer generic chats. A conversation can carry approvals, finance follow-up, requested documents, planned calls, announcements, and guided next steps.",
                 icon = Icons.Default.Forum
             )
             AboutCapabilityCard(
@@ -318,13 +318,13 @@ private fun AboutTrustSection() {
         AboutInfoPanel(
             modifier = Modifier.weight(1f),
             title = "Privacy & trust",
-            body = "SchoolBridge is designed for school workflows, not open social chat. Access, role linking, school actions, and thread participation are meant to stay contextual and permission-aware.",
+            body = "SchoolBridge is designed for school workflows, not open social chat. Access, role linking, school actions, and conversation participation are meant to stay contextual and permission-aware.",
             icon = Icons.Default.Security
         )
         AboutInfoPanel(
             modifier = Modifier.weight(1f),
             title = "Institutional communication",
-            body = "Invited calls, notices, finance reminders, and role-request follow-up can stay inside their related thread so schools and families have one source of truth.",
+            body = "Invited calls, notices, finance reminders, and role-request follow-up can stay inside their related conversation so schools and families have one source of truth.",
             icon = Icons.Default.Campaign
         )
     }
@@ -389,7 +389,7 @@ private fun AboutSupportCard() {
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "SchoolBridge is evolving quickly, especially around school communication, role verification, finance follow-up, and schedule planning. If something changes in your school workflow, the related thread or help area should usually guide the next step.",
+                text = "SchoolBridge is evolving quickly, especially around school communication, role verification, finance follow-up, and schedule planning. If something changes in your school workflow, the related conversation or help area should usually guide the next step.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

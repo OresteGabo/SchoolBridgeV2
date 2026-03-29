@@ -2,7 +2,7 @@ package com.schoolbridge.v2.data.remote
 
 import com.schoolbridge.v2.data.dto.message.CreateMessageRequestDto
 import com.schoolbridge.v2.data.dto.message.MarkMessageReadRequestDto
-import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageConversationDto
 import com.schoolbridge.v2.data.session.UserSessionManager
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -19,7 +19,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 interface MessageApiService {
-    suspend fun getMessageThreads(): List<MobileMessageThreadDto>
+    suspend fun getMessageConversations(): List<MobileMessageConversationDto>
     suspend fun sendMessage(conversationId: Long, senderId: Long, content: String)
     suspend fun markMessageAsRead(messageId: Long, userId: Long)
 }
@@ -41,7 +41,7 @@ class MessageApiServiceImpl(
         }
     }
 
-    override suspend fun getMessageThreads(): List<MobileMessageThreadDto> {
+    override suspend fun getMessageConversations(): List<MobileMessageConversationDto> {
         val token = userSessionManager.getAuthToken()
             ?: throw IllegalStateException("Missing auth token for message request")
 

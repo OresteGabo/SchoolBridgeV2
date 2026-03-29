@@ -70,7 +70,7 @@ private data class AdminRequestInboxItem(
     val id: String,
     val title: String,
     val requesterLabel: String,
-    val threadHint: String,
+    val conversationHint: String,
     val statusLabel: String,
     val icon: ImageVector,
     val tint: Color,
@@ -297,31 +297,31 @@ fun AdminPendingRequestsSection(modifier: Modifier = Modifier) {
                 id = "req_teacher_role",
                 title = "Teacher role request",
                 requesterLabel = "Niyonzima Claude",
-                threadHint = "Teacher access verification thread",
+                conversationHint = "Teacher access verification conversation",
                 statusLabel = "Need review",
                 icon = Icons.Default.School,
                 tint = scheme.primary,
-                note = "Documents, clarifications, and the verification call should continue in the same thread."
+                note = "Documents, clarifications, and the verification call should continue in the same conversation."
             ),
             AdminRequestInboxItem(
                 id = "req_parent_link",
                 title = "Trusted adult child link",
                 requesterLabel = "Mukamana Alice",
-                threadHint = "Guardian consent thread",
+                conversationHint = "Guardian consent thread",
                 statusLabel = "Need documents",
                 icon = Icons.Default.Groups,
                 tint = scheme.secondary,
-                note = "Request guardian consent and supporting evidence inside the request thread."
+                note = "Request guardian consent and supporting evidence inside the request conversation."
             ),
             AdminRequestInboxItem(
                 id = "req_school_admin",
                 title = "School admin access",
                 requesterLabel = "Habimana Eric",
-                threadHint = "Campus authorization thread",
+                conversationHint = "Campus authorization thread",
                 statusLabel = "Waiting reply",
                 icon = Icons.Default.Badge,
                 tint = Color(0xFFC77700),
-                note = "Use the thread to request the signed authorization and track uploads."
+                note = "Use the conversation to request the signed authorization and track uploads."
             )
         )
     }
@@ -349,12 +349,12 @@ fun AdminPendingRequestsSection(modifier: Modifier = Modifier) {
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "Keep approvals inside request threads",
+                            text = "Keep approvals inside request conversations",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Home only shows what needs attention. The real approve, reject, ask-for-documents, and verification flow should live in the thread history.",
+                            text = "Home only shows what needs attention. The real approve, reject, ask-for-documents, and verification flow should live in the conversation history.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = scheme.onSurfaceVariant
                         )
@@ -386,7 +386,7 @@ fun AdminPendingRequestsSection(modifier: Modifier = Modifier) {
                     EmptyRequestInboxState()
                 } else {
                     inboxItems.forEachIndexed { index, item ->
-                        RequestThreadPreview(item = item)
+                        RequestConversationPreview(item = item)
                         if (index != inboxItems.lastIndex) {
                             HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
                         }
@@ -421,7 +421,7 @@ private fun InboxStatPill(label: String, value: String, tint: Color) {
 }
 
 @Composable
-private fun RequestThreadPreview(item: AdminRequestInboxItem) {
+private fun RequestConversationPreview(item: AdminRequestInboxItem) {
     val scheme = MaterialTheme.colorScheme
 
     Row(
@@ -467,7 +467,7 @@ private fun RequestThreadPreview(item: AdminRequestInboxItem) {
                 color = scheme.onSurfaceVariant
             )
             Text(
-                text = item.threadHint,
+                text = item.conversationHint,
                 style = MaterialTheme.typography.labelLarge,
                 color = scheme.primary
             )
@@ -499,13 +499,13 @@ private fun EmptyRequestInboxState() {
 
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "No request threads need attention",
+                text = "No request conversations need attention",
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.outline
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "When a role request, document follow-up, or verification call is pending, it should appear here as a thread to open.",
+                text = "When a role request, document follow-up, or verification call is pending, it should appear here as a conversation to open.",
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.outline,
                 modifier = Modifier.padding(horizontal = 20.dp)

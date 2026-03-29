@@ -100,7 +100,7 @@ private val AgendaKindSetSaver = Saver<Set<AgendaItemKind>, List<String>>(
 fun TimetableTabsScreen(
     userSessionManager: UserSessionManager,
     onBack: (() -> Unit)? = null,
-    onOpenMessageThread: ((String, String?) -> Unit)? = null,
+    onOpenMessageConversation: ((String, String?) -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null
 ) {
     val viewModel: TimetableViewModel = viewModel(
@@ -355,8 +355,8 @@ fun TimetableTabsScreen(
                                 emptyTitle = emptyTitle,
                                 emptyMessage = emptyMessage,
                                 onAgendaItemActionClick = { item ->
-                                    item.threadId?.let { threadId ->
-                                        onOpenMessageThread?.invoke(threadId, item.threadCallMessageId)
+                                    item.conversationId?.let { conversationId ->
+                                        onOpenMessageConversation?.invoke(conversationId, item.conversationCallMessageId)
                                     }
                                 }
                             )
@@ -413,8 +413,8 @@ fun TimetableTabsScreen(
                                 emptyTitle = emptyTitle,
                                 emptyMessage = emptyMessage,
                                 onAgendaItemActionClick = { item ->
-                                    item.threadId?.let { threadId ->
-                                        onOpenMessageThread?.invoke(threadId, item.threadCallMessageId)
+                                    item.conversationId?.let { conversationId ->
+                                        onOpenMessageConversation?.invoke(conversationId, item.conversationCallMessageId)
                                     }
                                 }
                             )
@@ -1242,7 +1242,7 @@ private fun TimetableHero(
                 text = if (compact) {
                     "Day, now, and week are split so the real timetable stays easy to scan."
                 } else {
-                    "Classes, planned thread calls, parent-teacher meetings, and live school moments now show up in one place so the schedule feels more like a daily rhythm than a rigid table."
+                    "Classes, planned conversation calls, parent-teacher meetings, and live school moments now show up in one place so the schedule feels more like a daily rhythm than a rigid table."
                 },
                 style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

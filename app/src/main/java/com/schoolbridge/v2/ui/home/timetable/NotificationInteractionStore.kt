@@ -25,16 +25,16 @@ object NotificationInteractionStore {
         return prefs.getStringSet(KEY_HANDLED_ACTION_MESSAGES, emptySet()).orEmpty().contains(messageId)
     }
 
-    fun saveMeetingDecision(context: Context, threadId: String, decision: MeetingDecision) {
+    fun saveMeetingDecision(context: Context, conversationId: String, decision: MeetingDecision) {
         context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putString("$KEY_DECISION_PREFIX$threadId", decision.name)
+            .putString("$KEY_DECISION_PREFIX$conversationId", decision.name)
             .apply()
     }
 
-    fun getMeetingDecision(context: Context, threadId: String): MeetingDecision? {
+    fun getMeetingDecision(context: Context, conversationId: String): MeetingDecision? {
         val raw = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
-            .getString("$KEY_DECISION_PREFIX$threadId", null)
+            .getString("$KEY_DECISION_PREFIX$conversationId", null)
             ?: return null
         return runCatching { MeetingDecision.valueOf(raw) }.getOrNull()
     }

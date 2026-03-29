@@ -336,7 +336,7 @@ fun FinanceScreen(
                                     item {
                                         SectionTitle(
                                             title = "Outstanding items",
-                                            subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through threads."
+                                            subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through conversations."
                                         )
                                     }
 
@@ -647,7 +647,7 @@ private fun FinanceHeroCard(
     val subtitle = when (selectedFilter) {
         FinanceFilter.All -> "Payments from MoMo, chat requests, fines, uniforms, and tuition stay in one ledger."
         FinanceFilter.Outstanding -> "Pending items stay visible until they are paid or resolved."
-        FinanceFilter.Chat -> "Chat-origin transactions are tracked here so no one has to reopen old threads."
+        FinanceFilter.Chat -> "Chat-origin transactions are tracked here so no one has to reopen old conversations."
         FinanceFilter.Completed -> "Completed transactions are kept ready for receipts and reconciliation."
     }
 

@@ -99,18 +99,18 @@ sealed class MainAppScreen(
         fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
 
-    data object MessageThreadDetails : MainAppScreen("message_thread_screen/{messageThreadId}?callMessageId={callMessageId}") {
-        const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}?callMessageId={callMessageId}"
-        const val MESSAGE_THREAD_ID_ARG = "messageThreadId"
+    data object MessageConversationDetails : MainAppScreen("message_conversation_screen/{messageConversationId}?callMessageId={callMessageId}") {
+        const val ROUTE_PATTERN = "message_conversation_screen/{messageConversationId}?callMessageId={callMessageId}"
+        const val MESSAGE_CONVERSATION_ID_ARG = "messageConversationId"
         const val CALL_MESSAGE_ID_ARG = "callMessageId"
 
-        fun createRoute(messageThreadId: String, callMessageId: String? = null): String {
-            val encodedThreadId = Uri.encode(messageThreadId)
+        fun createRoute(messageConversationId: String, callMessageId: String? = null): String {
+            val encodedConversationId = Uri.encode(messageConversationId)
             val encodedCallMessageId = callMessageId?.let(Uri::encode)
             return if (encodedCallMessageId == null) {
-                "message_thread_screen/$encodedThreadId"
+                "message_conversation_screen/$encodedConversationId"
             } else {
-                "message_thread_screen/$encodedThreadId?callMessageId=$encodedCallMessageId"
+                "message_conversation_screen/$encodedConversationId?callMessageId=$encodedCallMessageId"
             }
         }
     }

@@ -38,7 +38,7 @@ import com.schoolbridge.v2.ui.theme.ThemeViewModel
 
 class MainActivity : ComponentActivity() {
     companion object {
-        const val EXTRA_OPEN_THREAD_ID = "extra_open_thread_id"
+        const val EXTRA_OPEN_CONVERSATION_ID = "extra_open_conversation_id"
         const val EXTRA_OPEN_CALL_MESSAGE_ID = "extra_open_call_message_id"
         const val EXTRA_OPEN_SCHEDULE = "extra_open_schedule"
     }
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
     private val authApiService        = AuthApiServiceImpl()
     private lateinit var userSessionManager: UserSessionManager
     /* -------------------------------------------------------------------- */
-    private var pendingThreadId by mutableStateOf<String?>(null)
+    private var pendingConversationId by mutableStateOf<String?>(null)
     private var pendingCallMessageId by mutableStateOf<String?>(null)
     private var openScheduleRequested by mutableStateOf(false)
 
@@ -138,11 +138,11 @@ class MainActivity : ComponentActivity() {
                                 authApiService         = authApiService,
                                 userSessionManager     = sessionMgr,
                                 themeViewModel         = themeViewModel,
-                                pendingMessageThreadId = pendingThreadId,
+                                pendingMessageConversationId = pendingConversationId,
                                 pendingCallMessageId = pendingCallMessageId,
                                 openScheduleRequested = openScheduleRequested,
                                 onPendingNotificationConsumed = {
-                                    pendingThreadId = null
+                                    pendingConversationId = null
                                     pendingCallMessageId = null
                                     openScheduleRequested = false
                                 }
@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeNavigationIntent(intent: Intent?) {
-        pendingThreadId = intent?.getStringExtra(EXTRA_OPEN_THREAD_ID)
+        pendingConversationId = intent?.getStringExtra(EXTRA_OPEN_CONVERSATION_ID)
         pendingCallMessageId = intent?.getStringExtra(EXTRA_OPEN_CALL_MESSAGE_ID)
         openScheduleRequested = intent?.getBooleanExtra(EXTRA_OPEN_SCHEDULE, false) == true
     }

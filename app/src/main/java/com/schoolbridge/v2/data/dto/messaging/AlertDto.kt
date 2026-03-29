@@ -32,7 +32,7 @@ import com.google.gson.annotations.SerializedName
  * @property content The detailed message or body of the alert. Example: "Your tuition for Term 2 was due on 2025-05-30."
  * @property sentDate The date and time when the alert was generated/sent, as an ISO 8601 datetime string. Example: "2025-06-05T09:00:00Z"
  * @property isRead A boolean indicating whether the user has marked this alert as read. Example: `false`
- * @property linkToEntityId An optional ID of another entity (e.g., an `ExerciseDto`, `InvoiceDto`, `MessageThreadDto`)
+ * @property linkToEntityId An optional ID of another entity (e.g., an `ExerciseDto`, `InvoiceDto`, `MessageConversationDto`)
  * that this alert relates to, allowing for deep-linking. Nullable. Example: "INV005"
  * @property linkToEntityType An optional string indicating the type of entity `linkToEntityId` refers to.
  * Examples: "INVOICE", "EXERCISE", "MESSAGE_THREAD". Nullable.

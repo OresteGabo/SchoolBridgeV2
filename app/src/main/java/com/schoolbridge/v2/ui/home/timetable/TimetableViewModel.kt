@@ -8,8 +8,8 @@ import com.schoolbridge.v2.data.dto.academic.CreatePersonalTimetablePlanRequestD
 import com.schoolbridge.v2.data.dto.academic.MobilePersonalTimetablePlanDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableEntryDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableResponseDto
-import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
-import com.schoolbridge.v2.data.dto.message.MobileThreadCallSummaryDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageConversationDto
+import com.schoolbridge.v2.data.dto.message.MobileConversationCallSummaryDto
 import com.schoolbridge.v2.data.repository.interfaces.MessagingRepository
 import com.schoolbridge.v2.data.repository.interfaces.TimetableRepository
 import com.schoolbridge.v2.domain.academic.AttendanceStatus
@@ -42,7 +42,7 @@ enum class AgendaItemKind {
 
 enum class AgendaItemOrigin {
     OFFICIAL,
-    THREAD_PLAN,
+    CONVERSATION_PLAN,
     PERSONAL_PLAN
 }
 
@@ -77,8 +77,8 @@ data class AgendaItemUi(
     val note: String? = null,
     val statusLabel: String? = null,
     val ctaLabel: String? = null,
-    val threadId: String? = null,
-    val threadCallMessageId: String? = null,
+    val conversationId: String? = null,
+    val conversationCallMessageId: String? = null,
     val meetingDecision: MeetingDecision? = null,
     val isImportant: Boolean = false,
     val isOwnedByCurrentUser: Boolean = false,
@@ -247,7 +247,7 @@ class TimetableViewModel(
                 .onSuccess { response ->
                     val plannedItems = messagingRepository
                         ?.let { repo ->
-                            runCatching { repo.getMessageThreads().toPlannedAgendaItems() }.getOrDefault(emptyList())
+                            runCatching { repo.getMessageConversations().toPlannedAgendaItems() }.getOrDefault(emptyList())
                         }
                         .orEmpty()
                     val decisionAwareItems = plannedItems.applyMeetingDecisions(userSessionManager)
@@ -427,10 +427,10 @@ private fun TimetableEntry.toAgendaItem(): AgendaItemUi = AgendaItemUi(
     origin = AgendaItemOrigin.OFFICIAL
 )
 
-private fun List<MobileMessageThreadDto>.toPlannedAgendaItems(): List<AgendaItemUi> =
-    flatMap { thread -> thread.calls.mapNotNull { call -> call.toAgendaItem(thread) } }
+private fun List<MobileMessageConversationDto>.toPlannedAgendaItems(): List<AgendaItemUi> =
+    flatMap { conversation -> conversation.calls.mapNotNull { call -> call.toAgendaItem(conversation) } }
 
-private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadDto): AgendaItemUi? {
+private fun MobileConversationCallSummaryDto.toAgendaItem(conversation: MobileMessageConversationDto): AgendaItemUi? {
     val start = scheduledFor?.let(::parseCallDateTime) ?: return null
     val end = start.plusMinutes(estimatedDurationMinutes())
     val now = LocalDateTime.now()
@@ -447,7 +447,7 @@ private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadD
         end = end,
         title = title,
         subtitle = buildString {
-            append(thread.topic)
+            append(conversation.topic)
             participantSummary?.takeIf { it.isNotBlank() }?.let {
                 append(" • ")
                 append(it)
@@ -461,22 +461,22 @@ private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadD
                 word.replaceFirstChar { char -> char.titlecase(Locale.getDefault()) }
         },
         kind = kind,
-        sourceLabel = "Thread plan",
+        sourceLabel = "Conversation plan",
         note = note,
         statusLabel = status.toFriendlyCallStatus(),
-        ctaLabel = resolveThreadCallActionLabel(
+        ctaLabel = resolveConversationCallActionLabel(
             status = status,
             start = start,
             end = end,
             now = now
         ),
-        threadId = thread.id,
-        threadCallMessageId = relatedMessageId ?: "call_$id",
+        conversationId = conversation.id,
+        conversationCallMessageId = relatedMessageId ?: "call_$id",
         isOwnedByCurrentUser = true,
         isImportant = status.equals("SCHEDULED", ignoreCase = true) ||
             status.equals("PENDING_CONFIRMATION", ignoreCase = true) ||
             purpose.equals("ANNOUNCEMENT", ignoreCase = true),
-        origin = AgendaItemOrigin.THREAD_PLAN
+        origin = AgendaItemOrigin.CONVERSATION_PLAN
     )
 }
 
@@ -485,10 +485,10 @@ private fun List<AgendaItemUi>.applyMeetingDecisions(
 ): List<AgendaItemUi> {
     val appContext = userSessionManager?.appContext
     return map { item ->
-        if (item.origin != AgendaItemOrigin.THREAD_PLAN || item.threadId == null) {
+        if (item.origin != AgendaItemOrigin.CONVERSATION_PLAN || item.conversationId == null) {
             item
         } else {
-            val decision = appContext?.let { NotificationInteractionStore.getMeetingDecision(it, item.threadId) }
+            val decision = appContext?.let { NotificationInteractionStore.getMeetingDecision(it, item.conversationId) }
             when (decision) {
                 MeetingDecision.DECLINED -> item.copy(
                     meetingDecision = decision,
@@ -621,7 +621,7 @@ private fun List<AgendaItemUi>.mergeLinkedStudentSchedules(): List<AgendaItemUi>
     return merged
 }
 
-private fun MobileThreadCallSummaryDto.estimatedDurationMinutes(): Long {
+private fun MobileConversationCallSummaryDto.estimatedDurationMinutes(): Long {
     durationLabel
         ?.substringBefore(' ')
         ?.toLongOrNull()
@@ -649,7 +649,7 @@ private fun String.toFriendlyCallAction(): String? = when {
     else -> null
 }
 
-private fun resolveThreadCallActionLabel(
+private fun resolveConversationCallActionLabel(
     status: String,
     start: LocalDateTime,
     end: LocalDateTime,

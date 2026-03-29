@@ -1,14 +1,14 @@
 package com.schoolbridge.v2.data.repository.implementations
 
-import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageConversationDto
 import com.schoolbridge.v2.data.remote.MessageApiService
 import com.schoolbridge.v2.data.repository.interfaces.MessagingRepository
 
 class MessagingRepositoryImpl(
     private val messageApiService: MessageApiService
 ) : MessagingRepository {
-    override suspend fun getMessageThreads(): List<MobileMessageThreadDto> {
-        return messageApiService.getMessageThreads()
+    override suspend fun getMessageConversations(): List<MobileMessageConversationDto> {
+        return messageApiService.getMessageConversations()
     }
 
     override suspend fun sendMessage(conversationId: Long, senderId: Long, content: String) {

@@ -16,7 +16,7 @@ data class Message(
     val isFromCurrentUser: Boolean = false,
     val actions: List<MessageAction> = emptyList(),
     val status: String? = null,
-    val callInfo: ThreadCallInfo? = null,
+    val callInfo: ConversationCallInfo? = null,
 
     // --- NEW FIELDS FOR REPLY LOGIC ---
     val replyToId: String? = null,      // The ID of the message being replied to

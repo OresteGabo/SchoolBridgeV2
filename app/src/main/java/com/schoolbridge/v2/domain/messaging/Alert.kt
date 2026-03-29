@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 
 data class Alert(
     val id: String,
-    val threadId: String? = null,
+    val conversationId: String? = null,
     val latestMessageId: String? = null,
     val title: String,
     val message: String,
@@ -42,4 +42,3 @@ enum class AlertSeverity {
     MEDIUM,    // Moderate alerts, should be noticed
     HIGH       // Critical alerts, urgent attention needed
 }
-

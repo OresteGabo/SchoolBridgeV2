@@ -32,7 +32,7 @@ import com.google.gson.annotations.SerializedName
  * @property studentPortalEnabled A boolean indicating if the student portal features are active for this school. Example: `true`
  * @property parentPortalEnabled A boolean indicating if the parent portal features are active for this school. Example: `true`
  * @property teacherPortalEnabled A boolean indicating if the teacher portal features are active for this school. Example: `true`
- * @property autoArchiveMessageThreadsAfterDays The number of days after which message threads are automatically archived or soft-deleted. Nullable. This directly relates to your threading strategy. Example: 365
+ * @property autoArchiveMessageConversationsAfterDays The number of days after which message threads are automatically archived or soft-deleted. Nullable. This directly relates to your threading strategy. Example: 365
  * @property schoolTimeZone The primary time zone for the school, in IANA Time Zone Database format (e.g., "Africa/Kigali", "Europe/Paris"). Example: "Africa/Kigali"
  * @property logoUrl An optional URL to the school's primary logo. Example: "https://cdn.schoolvridge.com/logos/sch001_logo.png"
  * @property languagePreferences A list of strings defining the languages supported or preferred by the school (e.g., "en", "fr", "kin"). Nullable.
@@ -47,7 +47,7 @@ data class SchoolSettingsDto(
     @SerializedName("studentPortalEnabled") val studentPortalEnabled: Boolean,
     @SerializedName("parentPortalEnabled") val parentPortalEnabled: Boolean,
     @SerializedName("teacherPortalEnabled") val teacherPortalEnabled: Boolean,
-    @SerializedName("autoArchiveMessageThreadsAfterDays") val autoArchiveMessageThreadsAfterDays: Int?,
+    @SerializedName("autoArchiveMessageConversationsAfterDays") val autoArchiveMessageConversationsAfterDays: Int?,
     @SerializedName("schoolTimeZone") val schoolTimeZone: String,
     @SerializedName("logoUrl") val logoUrl: String?,
     @SerializedName("languagePreferences") val languagePreferences: List<String>?

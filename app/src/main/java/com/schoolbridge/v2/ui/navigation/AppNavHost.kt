@@ -56,7 +56,7 @@ import com.schoolbridge.v2.ui.home.alert.AlertsScreen
 import com.schoolbridge.v2.ui.home.alert.EventsScreen
 import com.schoolbridge.v2.ui.home.timetable.TimetableTabsScreen
 import com.schoolbridge.v2.ui.message.MessageScreen
-import com.schoolbridge.v2.ui.message.MessageThreadScreen
+import com.schoolbridge.v2.ui.message.MessageConversationScreen
 import com.schoolbridge.v2.ui.onboarding.auth.VerificationScreen
 /**
  * The main navigation host for the SchoolBridge V2 application.
@@ -77,7 +77,7 @@ fun AppNavHost(
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
     themeViewModel: ThemeViewModel,
-    pendingMessageThreadId: String? = null,
+    pendingMessageConversationId: String? = null,
     pendingCallMessageId: String? = null,
     openScheduleRequested: Boolean = false,
     onPendingNotificationConsumed: () -> Unit = {},
@@ -90,15 +90,15 @@ fun AppNavHost(
     val roleRequestApiService = remember(userSessionManager) { RoleRequestApiServiceImpl(userSessionManager) }
     val roleLookupApiService = remember(userSessionManager) { RoleLookupApiServiceImpl(userSessionManager) }
 
-    LaunchedEffect(pendingMessageThreadId, pendingCallMessageId, openScheduleRequested) {
+    LaunchedEffect(pendingMessageConversationId, pendingCallMessageId, openScheduleRequested) {
         when {
-            pendingMessageThreadId != null -> {
+            pendingMessageConversationId != null -> {
                 navController.navigate(MainAppScreen.Message.route) {
                     launchSingleTop = true
                 }
                 navController.navigate(
-                    MainAppScreen.MessageThreadDetails.createRoute(
-                        messageThreadId = pendingMessageThreadId,
+                    MainAppScreen.MessageConversationDetails.createRoute(
+                        messageConversationId = pendingMessageConversationId,
                         callMessageId = pendingCallMessageId
                     )
                 )
@@ -352,10 +352,10 @@ fun AppNavHost(
             TimetableTabsScreen(
                 userSessionManager = userSessionManager,
                 onBack = null,
-                onOpenMessageThread = { messageThreadId, callMessageId ->
+                onOpenMessageConversation = { messageConversationId, callMessageId ->
                     navController.navigate(
-                        MainAppScreen.MessageThreadDetails.createRoute(
-                            messageThreadId = messageThreadId,
+                        MainAppScreen.MessageConversationDetails.createRoute(
+                            messageConversationId = messageConversationId,
                             callMessageId = callMessageId
                         )
                     )
@@ -420,10 +420,10 @@ fun AppNavHost(
                 currentScreen = MainAppScreen.Message,
                 onTabSelected = navController::navigateToMainScreen,
                 onBack = navController::navigateUp,
-                onMessageThreadClick = { messageThreadId ->
+                onMessageConversationClick = { messageConversationId ->
                     navController.navigate(
-                        MainAppScreen.MessageThreadDetails.createRoute(
-                            messageThreadId
+                        MainAppScreen.MessageConversationDetails.createRoute(
+                            messageConversationId
                         )
                     )
                 }
@@ -431,28 +431,28 @@ fun AppNavHost(
         }
 
         composable(
-            route = MainAppScreen.MessageThreadDetails.ROUTE_PATTERN,
-            arguments = listOf(navArgument(MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG) {
+            route = MainAppScreen.MessageConversationDetails.ROUTE_PATTERN,
+            arguments = listOf(navArgument(MainAppScreen.MessageConversationDetails.MESSAGE_CONVERSATION_ID_ARG) {
                 type = NavType.StringType
-            }, navArgument(MainAppScreen.MessageThreadDetails.CALL_MESSAGE_ID_ARG) {
+            }, navArgument(MainAppScreen.MessageConversationDetails.CALL_MESSAGE_ID_ARG) {
                 type = NavType.StringType
                 nullable = true
                 defaultValue = null
             })
         ) { backStackEntry ->
-            val messageThreadId = backStackEntry.requiredStringArg(
+            val messageConversationId = backStackEntry.requiredStringArg(
                 navController = navController,
-                argName = MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG,
-                screenName = "MessageThreadDetails"
+                argName = MainAppScreen.MessageConversationDetails.MESSAGE_CONVERSATION_ID_ARG,
+                screenName = "MessageConversationDetails"
             )
             val callMessageId = backStackEntry.arguments?.getString(
-                MainAppScreen.MessageThreadDetails.CALL_MESSAGE_ID_ARG
+                MainAppScreen.MessageConversationDetails.CALL_MESSAGE_ID_ARG
             )
-            if (messageThreadId != null) {
-                Log.d("MessageThreadID", messageThreadId)
-                MessageThreadScreen(
+            if (messageConversationId != null) {
+                Log.d("MessageConversationID", messageConversationId)
+                MessageConversationScreen(
                     userSessionManager = userSessionManager,
-                    initialThreadId = messageThreadId,
+                    initialConversationId = messageConversationId,
                     initialCallMessageId = callMessageId,
                     onBack = { navController.popBackStack() }
                 )

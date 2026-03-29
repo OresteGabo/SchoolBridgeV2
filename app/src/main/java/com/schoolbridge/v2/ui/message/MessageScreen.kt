@@ -23,7 +23,7 @@ fun MessageScreen(
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
     onBack: () -> Unit,
-    onMessageThreadClick: (String) -> Unit,
+    onMessageConversationClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -85,10 +85,10 @@ fun MessageScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = innerPadding
         ) {
-            MessageThreadScreen(
+            MessageConversationScreen(
                 userSessionManager = userSessionManager,
-                initialThreadId  = null,
-                onThreadSelected = onMessageThreadClick
+                initialConversationId  = null,
+                onConversationSelected = onMessageConversationClick
             )
         }
     }

@@ -28,9 +28,9 @@ import com.schoolbridge.v2.R
 import com.schoolbridge.v2.data.dto.academic.MobilePersonalTimetablePlanDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableEntryDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableResponseDto
-import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageConversationDto
 import com.schoolbridge.v2.data.dto.message.MobileMessageDto
-import com.schoolbridge.v2.data.dto.message.MobileThreadCallSummaryDto
+import com.schoolbridge.v2.data.dto.message.MobileConversationCallSummaryDto
 import com.schoolbridge.v2.data.remote.MessageApiServiceImpl
 import com.schoolbridge.v2.data.remote.TimetableApiServiceImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
@@ -55,7 +55,7 @@ private const val REFRESH_INTERVAL_HOURS = 6L
 private const val KEY_NOTIFICATION_ID = "notification_id"
 private const val KEY_TITLE = "title"
 private const val KEY_BODY = "body"
-private const val KEY_THREAD_ID = "thread_id"
+private const val KEY_CONVERSATION_ID = "conversation_id"
 private const val KEY_CALL_MESSAGE_ID = "call_message_id"
 private const val KEY_TARGET_SCREEN = "target_screen"
 private const val KEY_START_MILLIS = "start_millis"
@@ -69,7 +69,7 @@ private const val SNOOZE_MINUTES = 5L
 
 internal enum class ReminderTargetScreen {
     TIMETABLE,
-    MESSAGE_THREAD
+    MESSAGE_CONVERSATION
 }
 
 internal data class ReminderPayload(
@@ -77,7 +77,7 @@ internal data class ReminderPayload(
     val title: String,
     val body: String,
     val startAt: LocalDateTime,
-    val threadId: String? = null,
+    val conversationId: String? = null,
     val callMessageId: String? = null,
     val messageId: String? = null,
     val actionIds: List<String> = emptyList(),
@@ -88,7 +88,7 @@ internal data class ReminderPayload(
         .putString(KEY_NOTIFICATION_ID, uniqueId)
         .putString(KEY_TITLE, title)
         .putString(KEY_BODY, body)
-        .putString(KEY_THREAD_ID, threadId)
+        .putString(KEY_CONVERSATION_ID, conversationId)
         .putString(KEY_CALL_MESSAGE_ID, callMessageId)
         .putString(KEY_MESSAGE_ID, messageId)
         .putStringArray(KEY_ACTION_IDS, actionIds.toTypedArray())
@@ -176,7 +176,7 @@ class ScheduleReminderRefreshWorker(
 
         return runCatching {
             val timetable = TimetableApiServiceImpl(sessionManager).getTimetable()
-            val threads = MessageApiServiceImpl(sessionManager).getMessageThreads()
+            val threads = MessageApiServiceImpl(sessionManager).getMessageConversations()
             buildReminderPayloads(applicationContext, timetable, threads).forEach { payload ->
                 ScheduleReminderScheduler.enqueueReminder(applicationContext, payload)
             }
@@ -202,7 +202,7 @@ class ScheduleReminderWorker(
         val title = inputData.getString(KEY_TITLE) ?: return Result.failure()
         val body = inputData.getString(KEY_BODY) ?: return Result.failure()
         val notificationId = inputData.getString(KEY_NOTIFICATION_ID)?.hashCode() ?: return Result.failure()
-        val threadId = inputData.getString(KEY_THREAD_ID)
+        val conversationId = inputData.getString(KEY_CONVERSATION_ID)
         val callMessageId = inputData.getString(KEY_CALL_MESSAGE_ID)
         val messageId = inputData.getString(KEY_MESSAGE_ID)
         val actionIds = inputData.getStringArray(KEY_ACTION_IDS).orEmpty().toList()
@@ -216,8 +216,8 @@ class ScheduleReminderWorker(
         val openIntent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             when (targetScreen) {
-                ReminderTargetScreen.MESSAGE_THREAD -> {
-                    putExtra(MainActivity.EXTRA_OPEN_THREAD_ID, threadId)
+                ReminderTargetScreen.MESSAGE_CONVERSATION -> {
+                    putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, conversationId)
                     putExtra(MainActivity.EXTRA_OPEN_CALL_MESSAGE_ID, callMessageId)
                 }
                 ReminderTargetScreen.TIMETABLE -> {
@@ -257,8 +257,8 @@ class ScheduleReminderWorker(
         )
 
         val actionLabel = when {
-            targetScreen == ReminderTargetScreen.MESSAGE_THREAD && callMessageId != null -> "Join now"
-            targetScreen == ReminderTargetScreen.MESSAGE_THREAD -> "Open thread"
+            targetScreen == ReminderTargetScreen.MESSAGE_CONVERSATION && callMessageId != null -> "Join now"
+            targetScreen == ReminderTargetScreen.MESSAGE_CONVERSATION -> "Open conversation"
             else -> "Open schedule"
         }
         val builder = NotificationCompat.Builder(applicationContext, REMINDER_CHANNEL_ID)
@@ -268,7 +268,7 @@ class ScheduleReminderWorker(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(
-                if (targetScreen == ReminderTargetScreen.MESSAGE_THREAD) {
+                if (targetScreen == ReminderTargetScreen.MESSAGE_CONVERSATION) {
                     if (callMessageId != null) NotificationCompat.CATEGORY_CALL else NotificationCompat.CATEGORY_MESSAGE
                 } else {
                     NotificationCompat.CATEGORY_REMINDER
@@ -279,7 +279,7 @@ class ScheduleReminderWorker(
             .setContentIntent(contentIntent)
             .addAction(0, actionLabel, openActionPendingIntent)
 
-        if (actionIds.isNotEmpty() && messageId != null && threadId != null) {
+        if (actionIds.isNotEmpty() && messageId != null && conversationId != null) {
             actionIds.zip(actionLabels).take(2).forEachIndexed { index, (actionId, label) ->
                 val actionIntent = Intent(applicationContext, ScheduleReminderActionReceiver::class.java).apply {
                     action = ACTION_PERFORM_MESSAGE_ACTION
@@ -314,7 +314,7 @@ class ScheduleReminderActionReceiver : BroadcastReceiver() {
             ACTION_OPEN_REMINDER -> {
                 val openIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra(MainActivity.EXTRA_OPEN_THREAD_ID, intent.getStringExtra(KEY_THREAD_ID))
+                    putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, intent.getStringExtra(KEY_CONVERSATION_ID))
                     putExtra(MainActivity.EXTRA_OPEN_CALL_MESSAGE_ID, intent.getStringExtra(KEY_CALL_MESSAGE_ID))
                     putExtra(
                         MainActivity.EXTRA_OPEN_SCHEDULE,
@@ -337,24 +337,24 @@ class ScheduleReminderActionReceiver : BroadcastReceiver() {
             }
 
             ACTION_PERFORM_MESSAGE_ACTION -> {
-                val threadId = intent.getStringExtra(KEY_THREAD_ID) ?: return
+                val conversationId = intent.getStringExtra(KEY_CONVERSATION_ID) ?: return
                 val messageId = intent.getStringExtra(KEY_MESSAGE_ID) ?: return
                 val selectedActionId = intent.getStringExtra("selected_action_id") ?: return
                 val selectedActionLabel = intent.getStringExtra("selected_action_label") ?: selectedActionId
                 val sessionManager = UserSessionManager(context)
-                val conversationId = threadId.toLongOrNull() ?: return
+                val backendConversationId = conversationId.toLongOrNull() ?: return
                 val senderId = sessionManager.getCurrentUserIdSync()?.toLongOrNull() ?: return
                 val reply = formatNotificationActionReply(selectedActionId, selectedActionLabel)
                 runBlocking {
                     MessageApiServiceImpl(sessionManager).sendMessage(
-                        conversationId = conversationId,
+                        conversationId = backendConversationId,
                         senderId = senderId,
                         content = reply
                     )
                 }
                 NotificationInteractionStore.markMessageHandled(context, messageId)
                 selectedActionId.toMeetingDecisionOrNull()?.let { decision ->
-                    NotificationInteractionStore.saveMeetingDecision(context, threadId, decision)
+                    NotificationInteractionStore.saveMeetingDecision(context, conversationId, decision)
                 }
                 NotificationManagerCompat.from(context).cancel(notificationId)
             }
@@ -389,7 +389,7 @@ private fun ensureNotificationChannel(context: Context) {
 private fun buildReminderPayloads(
     context: Context,
     timetable: MobileTimetableResponseDto,
-    threads: List<MobileMessageThreadDto>
+    threads: List<MobileMessageConversationDto>
 ): List<ReminderPayload> {
     val now = LocalDateTime.now()
     val endWindow = now.plusDays(REMINDER_LOOKAHEAD_DAYS)
@@ -422,16 +422,16 @@ private fun buildReminderPayloads(
         .mapNotNull { plan -> plan.toReminderPayload(now, endWindow) }
         .forEach(payloads::add)
 
-    threads.forEach { thread ->
-        thread.calls.forEach { call ->
-            call.toReminderPayload(context, thread, now, endWindow)?.let(payloads::add)
+    threads.forEach { conversation ->
+        conversation.calls.forEach { call ->
+            call.toReminderPayload(context, conversation, now, endWindow)?.let(payloads::add)
         }
     }
 
-    threads.forEach { thread ->
-        thread.messages
+    threads.forEach { conversation ->
+        conversation.messages
             .filter { it.isUnread && it.actions.isNotEmpty() }
-            .mapNotNull { it.toActionNotificationPayload(context, thread, now) }
+            .mapNotNull { it.toActionNotificationPayload(context, conversation, now) }
             .forEach(payloads::add)
     }
 
@@ -468,36 +468,36 @@ private fun MobilePersonalTimetablePlanDto.toReminderPayload(
     )
 }
 
-private fun MobileThreadCallSummaryDto.toReminderPayload(
+private fun MobileConversationCallSummaryDto.toReminderPayload(
     context: Context,
-    thread: MobileMessageThreadDto,
+    conversation: MobileMessageConversationDto,
     now: LocalDateTime,
     endWindow: LocalDateTime
 ): ReminderPayload? {
     val startAt = scheduledFor?.let(::parseOffsetDateTimeForDevice) ?: return null
     if (!startAt.isAfter(now) || !startAt.isBefore(endWindow)) return null
-    if (NotificationInteractionStore.getMeetingDecision(context, thread.id) == MeetingDecision.DECLINED) {
+    if (NotificationInteractionStore.getMeetingDecision(context, conversation.id) == MeetingDecision.DECLINED) {
         return null
     }
     val body = buildString {
-        append("$title starts at ${startAt.toLocalTime().toString().take(5)} in ${thread.topic}.")
+        append("$title starts at ${startAt.toLocalTime().toString().take(5)} in ${conversation.topic}.")
         participantSummary?.takeIf { it.isNotBlank() }?.let { append(" $it") }
         note?.takeIf { it.isNotBlank() }?.let { append(" $it") }
     }
     return ReminderPayload(
-        uniqueId = "thread_call_$id",
+        uniqueId = "conversation_call_$id",
         title = if (type.equals("VIDEO", ignoreCase = true)) "Video meeting starts soon" else "School call starts soon",
         body = body,
         startAt = startAt,
-        threadId = thread.id,
+        conversationId = conversation.id,
         callMessageId = relatedMessageId ?: "call_$id",
-        targetScreen = ReminderTargetScreen.MESSAGE_THREAD
+        targetScreen = ReminderTargetScreen.MESSAGE_CONVERSATION
     )
 }
 
 private fun MobileMessageDto.toActionNotificationPayload(
     context: Context,
-    thread: MobileMessageThreadDto,
+    conversation: MobileMessageConversationDto,
     now: LocalDateTime
 ): ReminderPayload? {
     if (NotificationInteractionStore.isMessageHandled(context, id)) return null
@@ -507,14 +507,14 @@ private fun MobileMessageDto.toActionNotificationPayload(
     if (safeActions.isEmpty()) return null
     return ReminderPayload(
         uniqueId = "message_action_$id",
-        title = title?.ifBlank { null } ?: thread.topic,
+        title = title?.ifBlank { null } ?: conversation.topic,
         body = content,
         startAt = now.plusSeconds(1),
-        threadId = thread.id,
+        conversationId = conversation.id,
         messageId = id,
         actionIds = safeActions.map { it.actionId },
         actionLabels = safeActions.map { it.label },
-        targetScreen = ReminderTargetScreen.MESSAGE_THREAD
+        targetScreen = ReminderTargetScreen.MESSAGE_CONVERSATION
     )
 }
 

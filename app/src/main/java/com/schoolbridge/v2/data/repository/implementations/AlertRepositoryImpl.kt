@@ -1,7 +1,7 @@
 package com.schoolbridge.v2.data.repository.implementations
 
 import com.schoolbridge.v2.data.dto.message.MobileMessageDto
-import com.schoolbridge.v2.data.dto.message.MobileMessageThreadDto
+import com.schoolbridge.v2.data.dto.message.MobileMessageConversationDto
 import com.schoolbridge.v2.data.repository.interfaces.AlertRepository
 import com.schoolbridge.v2.data.repository.interfaces.MessagingRepository
 import com.schoolbridge.v2.data.session.UserSessionManager
@@ -19,7 +19,7 @@ class AlertRepositoryImpl(
 ) : AlertRepository {
 
     override suspend fun getAlerts(): List<Alert> {
-        return messagingRepository.getMessageThreads()
+        return messagingRepository.getMessageConversations()
             .mapNotNull { it.toAlertOrNull() }
             .sortedByDescending { it.timestamp }
     }
@@ -42,7 +42,7 @@ class AlertRepositoryImpl(
     }
 }
 
-private fun MobileMessageThreadDto.toAlertOrNull(): Alert? {
+private fun MobileMessageConversationDto.toAlertOrNull(): Alert? {
     if (!conversationType.equals("SYSTEM", ignoreCase = true)) return null
 
     val latestMessage = messages.lastOrNull() ?: return null
@@ -54,7 +54,7 @@ private fun MobileMessageThreadDto.toAlertOrNull(): Alert? {
 
     return Alert(
         id = id,
-        threadId = id,
+        conversationId = id,
         latestMessageId = latestMessage.id,
         title = latestMessage.title?.takeIf { it.isNotBlank() } ?: topic,
         message = latestMessage.content,
