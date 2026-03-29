@@ -51,7 +51,8 @@ fun DailyTimetableTab(
     onDateChange: (LocalDate) -> Unit,
     density: AgendaDensity,
     emptyTitle: String,
-    emptyMessage: String
+    emptyMessage: String,
+    onAgendaItemActionClick: (AgendaItemUi) -> Unit = {}
 ) {
     Column(Modifier.fillMaxSize()) {
         AgendaDateRibbon(
@@ -76,7 +77,11 @@ fun DailyTimetableTab(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(agendaItems, key = { it.id }) { item ->
-                    AgendaCard(item = item, density = density)
+                    AgendaCard(
+                        item = item,
+                        density = density,
+                        onCTAClick = { onAgendaItemActionClick(item) }
+                    )
                 }
             }
         }
