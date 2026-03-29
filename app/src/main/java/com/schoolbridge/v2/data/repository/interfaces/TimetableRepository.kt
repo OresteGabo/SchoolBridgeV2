@@ -7,4 +7,6 @@ import com.schoolbridge.v2.data.dto.academic.MobileTimetableResponseDto
 interface TimetableRepository {
     suspend fun getTimetable(): MobileTimetableResponseDto
     suspend fun createPersonalPlan(request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto
+    suspend fun updatePersonalPlan(planId: Long, request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto
+    suspend fun deletePersonalPlan(planId: Long)
 }
