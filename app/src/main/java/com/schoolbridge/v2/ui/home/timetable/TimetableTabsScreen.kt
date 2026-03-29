@@ -127,6 +127,7 @@ fun TimetableTabsScreen(
     }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSheet by remember { mutableStateOf(false) }
+    var pendingAddSheetDismiss by remember { mutableStateOf(false) }
 
     val today = LocalDate.now()
     var selectedDate by rememberSaveable(stateSaver = LocalDateSaver) {
@@ -143,6 +144,16 @@ fun TimetableTabsScreen(
     }
     var densityName by rememberSaveable { mutableStateOf(AgendaDensity.COMFORTABLE.name) }
     var showOnlyMine by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isSavingPersonalPlan, uiState.errorMessage, pendingAddSheetDismiss) {
+        if (!pendingAddSheetDismiss) return@LaunchedEffect
+        if (uiState.isSavingPersonalPlan) return@LaunchedEffect
+
+        if (uiState.errorMessage == null) {
+            showAddSheet = false
+        }
+        pendingAddSheetDismiss = false
+    }
     val density = remember(densityName) { AgendaDensity.valueOf(densityName) }
 
     val dailyAgenda = remember(uiState, selectedDate, includedKinds, showOnlyMine) {
@@ -433,8 +444,15 @@ fun TimetableTabsScreen(
             AddEventBottomSheet(
                 selectedDate = selectedDate,
                 audienceSummary = learnerSelectionSummary(uiState.students, uiState.selectedStudentIds),
+                existingAgenda = uiState.dailyAgenda(
+                    date = selectedDate,
+                    includedKinds = includedKinds,
+                    showOnlyMine = showOnlyMine
+                ),
+                isSaving = uiState.isSavingPersonalPlan,
                 onDismiss = { showAddSheet = false },
                 onAddEvent = { startTime, endTime, title, description, planType, visibility ->
+                    pendingAddSheetDismiss = true
                     viewModel.createPersonalPlan(
                         date = selectedDate,
                         startTime = startTime,
@@ -444,7 +462,6 @@ fun TimetableTabsScreen(
                         planType = planType,
                         visibility = visibility
                     )
-                    showAddSheet = false
                 }
             )
         }
