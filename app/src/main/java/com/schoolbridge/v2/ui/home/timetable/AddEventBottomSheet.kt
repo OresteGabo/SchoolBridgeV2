@@ -45,10 +45,12 @@ import java.util.Locale
 fun AddEventBottomSheet(
     selectedDate: LocalDate,
     audienceSummary: String?,
+    participantOptions: List<TimetableParticipantOption>,
+    defaultParticipantIds: Set<Long>,
     existingAgenda: List<AgendaItemUi>,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType, PlanVisibility) -> Unit
+    onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType, PlanVisibility, List<Long>) -> Unit
 ) {
     var startTime by remember { mutableStateOf(LocalTime.of(8, 0)) }
     var endTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
@@ -56,6 +58,7 @@ fun AddEventBottomSheet(
     var description by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(PersonalPlanType.STUDY_BLOCK) }
     var selectedVisibility by remember { mutableStateOf(PlanVisibility.PRIVATE) }
+    var selectedParticipantIds by remember(defaultParticipantIds) { mutableStateOf(defaultParticipantIds) }
     var showTypeMenu by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val suggestedDurations = remember {
@@ -210,6 +213,42 @@ fun AddEventBottomSheet(
             )
         }
 
+        if (selectedVisibility == PlanVisibility.SHARED) {
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = "Who should see this?",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (participantOptions.isEmpty()) {
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+                ) {
+                    Text(
+                        text = "No linked people are available yet in this timetable view. You can still save this now and invite others later when the school directory is connected here.",
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                ParticipantSelectionBlock(
+                    options = participantOptions,
+                    selectedIds = selectedParticipantIds,
+                    enabled = !isSaving,
+                    onToggle = { participantId ->
+                        selectedParticipantIds = selectedParticipantIds.toMutableSet().apply {
+                            if (participantId in this) remove(participantId) else add(participantId)
+                        }
+                    }
+                )
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
 
         Text(
@@ -268,7 +307,12 @@ fun AddEventBottomSheet(
                         title.ifBlank { selectedType.defaultTitle() },
                         description,
                         selectedType,
-                        selectedVisibility
+                        selectedVisibility,
+                        if (selectedVisibility == PlanVisibility.SHARED) {
+                            selectedParticipantIds.toList()
+                        } else {
+                            emptyList()
+                        }
                     )
                 },
                 enabled = startTime < endTime && !isSaving
@@ -283,6 +327,73 @@ fun AddEventBottomSheet(
                     Text("Saving...")
                 } else {
                     Text("Save plan")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParticipantSelectionBlock(
+    options: List<TimetableParticipantOption>,
+    selectedIds: Set<Long>,
+    enabled: Boolean,
+    onToggle: (Long) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            val selected = option.userId in selectedIds
+            Surface(
+                onClick = { onToggle(option.userId) },
+                enabled = enabled,
+                shape = MaterialTheme.shapes.large,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.tertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.outlineVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = option.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        option.schoolName?.let { schoolName ->
+                            Text(
+                                text = schoolName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.82f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
+                    if (selected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
                 }
             }
         }
