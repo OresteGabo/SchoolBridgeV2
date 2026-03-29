@@ -66,19 +66,16 @@ class UserSessionManager @Inject constructor(
         Log.d("UserSessionManager", "initializeSession()")
 
         val isFirstTime = isFirstLaunch()
-        _sessionState.emit(
-            when {
-                isFirstTime -> SessionState.Onboarding
-                else -> SessionState.LoggedOut
-            }
-        )
 
         runCatching { context.userDataStore.data.first() }
             .onSuccess { prefs ->
                 val user = prefs.toCurrentUserOrNull()
                 _currentUser.value = user
-                _sessionState.value = if (user != null) SessionState.LoggedIn(user)
-                else SessionState.LoggedOut
+                _sessionState.value = when {
+                    user != null -> SessionState.LoggedIn(user)
+                    isFirstTime -> SessionState.Onboarding
+                    else -> SessionState.LoggedOut
+                }
                 Log.d("UserSessionManager", "Init complete: ${_sessionState.value}")
             }
             .onFailure {
