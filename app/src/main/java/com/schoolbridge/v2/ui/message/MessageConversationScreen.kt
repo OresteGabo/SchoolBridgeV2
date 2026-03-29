@@ -37,8 +37,12 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -98,11 +102,24 @@ private enum class MessageConnectionState {
     RECOVERED
 }
 
+enum class MessageInboxFilter(val label: String) {
+    ALL("All conversations"),
+    PINNED("Pinned"),
+    UNREAD("Unread"),
+    ACTION_NEEDED("Action needed"),
+    ANNOUNCEMENTS("Announcements"),
+    DIRECT("Direct contact"),
+    MUTED("Muted"),
+    ARCHIVED("Archived")
+}
+
 @Composable
 fun MessageConversationScreen(
     userSessionManager: UserSessionManager,
     initialConversationId: String? = null,
     initialCallMessageId: String? = null,
+    searchQuery: String = "",
+    inboxFilter: MessageInboxFilter = MessageInboxFilter.ALL,
     onConversationSelected: ((String) -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ) {
@@ -118,8 +135,40 @@ fun MessageConversationScreen(
         factory = MessageConversationViewModelFactory(messagingRepository, messageRealtimeService)
     )
     val uiState by viewModel.uiState.collectAsState()
-    val messageConversations = uiState.conversations
     val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
+    var pinnedConversationIds by remember(currentUser?.userId) { mutableStateOf(emptySet<String>()) }
+    var mutedConversationIds by remember(currentUser?.userId) { mutableStateOf(emptySet<String>()) }
+    var archivedConversationIds by remember(currentUser?.userId) { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(currentUser?.userId) {
+        pinnedConversationIds = MessageInboxPreferences.getPinnedConversationIds(
+            context = context,
+            userId = currentUser?.userId
+        )
+        mutedConversationIds = MessageInboxPreferences.getMutedConversationIds(
+            context = context,
+            userId = currentUser?.userId
+        )
+        archivedConversationIds = MessageInboxPreferences.getArchivedConversationIds(
+            context = context,
+            userId = currentUser?.userId
+        )
+    }
+    val messageConversations = remember(
+        uiState.conversations,
+        searchQuery,
+        inboxFilter,
+        pinnedConversationIds,
+        mutedConversationIds,
+        archivedConversationIds
+    ) {
+        uiState.conversations.filteredForInbox(
+            searchQuery = searchQuery,
+            filter = inboxFilter,
+            pinnedConversationIds = pinnedConversationIds,
+            mutedConversationIds = mutedConversationIds,
+            archivedConversationIds = archivedConversationIds
+        )
+    }
     val latestUiState by rememberUpdatedState(uiState)
     var showRecoveryTile by remember { mutableStateOf(false) }
     var hadConnectionIssue by remember { mutableStateOf(false) }
@@ -135,6 +184,14 @@ fun MessageConversationScreen(
         }
     }
 
+    LaunchedEffect(currentUser?.userId) {
+        val userId = currentUser?.userId ?: return@LaunchedEffect
+        while (isActive) {
+            delay(4_000L)
+            viewModel.refreshInBackground(userId)
+        }
+    }
+
     LaunchedEffect(currentUser?.userId, uiState.errorMessage) {
         val userId = currentUser?.userId ?: return@LaunchedEffect
         if (uiState.errorMessage.isNullOrBlank()) return@LaunchedEffect
@@ -147,14 +204,14 @@ fun MessageConversationScreen(
         }
     }
 
-    LaunchedEffect(uiState.errorMessage) {
+    LaunchedEffect(uiState.errorMessage, uiState.isLoading, uiState.conversations) {
         if (!uiState.errorMessage.isNullOrBlank()) {
             hadConnectionIssue = true
             showRecoveryTile = false
             return@LaunchedEffect
         }
 
-        if (hadConnectionIssue) {
+        if (hadConnectionIssue && !uiState.isLoading && uiState.conversations.isNotEmpty()) {
             showRecoveryTile = true
             hadConnectionIssue = false
             delay(MESSAGE_RECOVERY_TILE_DURATION_MILLIS)
@@ -273,77 +330,132 @@ fun MessageConversationScreen(
                     }
                 )
             } else {
-                AnimatedContent(targetState = selectedConversation, label = "ConversationTransition") { conversation ->
-                    if (isExpanded && initialConversationId == null) {
-                        TabletConversationLayout(
-                            conversations = messageConversations,
-                            selectedConversation = conversation,
-                            currentUser = currentUser,
-                            onConversationClick = {
-                                internalSelectedConversationId = it.id
-                                viewModel.markAsRead(it.id)
-                            },
-                            onMessageClick = { viewingMessage = it },
-                            onActionClick = { msgId, actionId ->
-                                val actualConversation = conversation ?: return@TabletConversationLayout
-                                val originalMsg = actualConversation.messages.find { it.id == msgId }
-                                if (originalMsg != null) {
-                                    handleMessageAction(actualConversation, originalMsg, actionId)
-                                }
-                            },
-                            onSendMessage = { content ->
-                                conversation?.let { selected ->
-                                    viewModel.addUserMessage(conversationId = selected.id, content = content)
-                                }
-                            },
-                            onLaunchConversationAction = { action ->
-                                conversation?.let { selected ->
-                                    handleConversationComposerAction(
-                                        action = action,
-                                        conversation = selected,
-                                        currentUser = currentUser,
-                                        onSendMessage = { content ->
-                                            viewModel.addUserMessage(conversationId = selected.id, content = content)
-                                        },
-                                        onOpenCallPreview = { message -> activeCallMessage = message }
-                                    )
-                                }
-                            },
-                            pendingMessageActions = pendingMessageActions
-                        )
-                    } else if (conversation == null) {
-                        ConversationListScreen(messageConversations) {
+                if (isExpanded && initialConversationId == null) {
+                    TabletConversationLayout(
+                        conversations = messageConversations,
+                        selectedConversationId = selectedConversation?.id,
+                        selectedConversation = selectedConversation,
+                        currentUser = currentUser,
+                        pinnedConversationIds = pinnedConversationIds,
+                        mutedConversationIds = mutedConversationIds,
+                        archivedConversationIds = archivedConversationIds,
+                        onConversationClick = {
                             internalSelectedConversationId = it.id
                             viewModel.markAsRead(it.id)
-                        }
-                    } else {
-                        ConversationDetailScreen(
-                            conversation = conversation,
-                            currentUser = currentUser,
-                            onBack = leaveConversation,
-                            onMessageClick = { viewingMessage = it },
-                            onActionClick = { msgId, actionId ->
-                                val originalMsg = conversation.messages.find { it.id == msgId }
-                                if (originalMsg != null) {
-                                    handleMessageAction(conversation, originalMsg, actionId)
-                                }
-                            },
-                            onSendMessage = { content ->
-                                viewModel.addUserMessage(conversationId = conversation.id, content = content)
-                            },
-                            onLaunchConversationAction = { action ->
+                        },
+                        onTogglePinned = { conversationId ->
+                            pinnedConversationIds = MessageInboxPreferences.togglePinnedConversation(
+                                context = context,
+                                userId = currentUser?.userId,
+                                conversationId = conversationId
+                            )
+                        },
+                        onToggleMuted = { conversationId ->
+                            mutedConversationIds = MessageInboxPreferences.toggleMutedConversation(
+                                context = context,
+                                userId = currentUser?.userId,
+                                conversationId = conversationId
+                            )
+                        },
+                        onToggleArchived = { conversationId ->
+                            archivedConversationIds = MessageInboxPreferences.toggleArchivedConversation(
+                                context = context,
+                                userId = currentUser?.userId,
+                                conversationId = conversationId
+                            )
+                        },
+                        onMessageClick = { viewingMessage = it },
+                        onActionClick = { msgId, actionId ->
+                            val actualConversation = selectedConversation ?: return@TabletConversationLayout
+                            val originalMsg = actualConversation.messages.find { it.id == msgId }
+                            if (originalMsg != null) {
+                                handleMessageAction(actualConversation, originalMsg, actionId)
+                            }
+                        },
+                        onSendMessage = { content ->
+                            selectedConversation?.let { selected ->
+                                viewModel.addUserMessage(conversationId = selected.id, content = content)
+                            }
+                        },
+                        onLaunchConversationAction = { action ->
+                            selectedConversation?.let { selected ->
                                 handleConversationComposerAction(
                                     action = action,
-                                    conversation = conversation,
+                                    conversation = selected,
                                     currentUser = currentUser,
                                     onSendMessage = { content ->
-                                        viewModel.addUserMessage(conversationId = conversation.id, content = content)
+                                        viewModel.addUserMessage(conversationId = selected.id, content = content)
                                     },
                                     onOpenCallPreview = { message -> activeCallMessage = message }
                                 )
-                            },
-                            pendingMessageActions = pendingMessageActions
-                        )
+                            }
+                        },
+                        pendingMessageActions = pendingMessageActions
+                    )
+                } else {
+                    AnimatedContent(targetState = selectedConversation, label = "ConversationTransition") { conversation ->
+                        if (conversation == null) {
+                            ConversationListScreen(
+                                conversations = messageConversations,
+                                pinnedConversationIds = pinnedConversationIds,
+                                onConversationClick = {
+                                    internalSelectedConversationId = it.id
+                                    viewModel.markAsRead(it.id)
+                                },
+                                onTogglePinned = { conversationId ->
+                                    pinnedConversationIds = MessageInboxPreferences.togglePinnedConversation(
+                                        context = context,
+                                        userId = currentUser?.userId,
+                                        conversationId = conversationId
+                                    )
+                                }
+                            )
+                        } else {
+                            ConversationDetailScreen(
+                                conversation = conversation,
+                                currentUser = currentUser,
+                                isConversationMuted = conversation.id in mutedConversationIds,
+                                isConversationArchived = conversation.id in archivedConversationIds,
+                                onBack = leaveConversation,
+                                onToggleMuted = {
+                                    mutedConversationIds = MessageInboxPreferences.toggleMutedConversation(
+                                        context = context,
+                                        userId = currentUser?.userId,
+                                        conversationId = conversation.id
+                                    )
+                                },
+                                onToggleArchived = {
+                                    archivedConversationIds = MessageInboxPreferences.toggleArchivedConversation(
+                                        context = context,
+                                        userId = currentUser?.userId,
+                                        conversationId = conversation.id
+                                    )
+                                    leaveConversation()
+                                },
+                                onMessageClick = { viewingMessage = it },
+                                onActionClick = { msgId, actionId ->
+                                    val originalMsg = conversation.messages.find { it.id == msgId }
+                                    if (originalMsg != null) {
+                                        handleMessageAction(conversation, originalMsg, actionId)
+                                    }
+                                },
+                                onSendMessage = { content ->
+                                    viewModel.addUserMessage(conversationId = conversation.id, content = content)
+                                },
+                                onLaunchConversationAction = { action ->
+                                    handleConversationComposerAction(
+                                        action = action,
+                                        conversation = conversation,
+                                        currentUser = currentUser,
+                                        onSendMessage = { content ->
+                                            viewModel.addUserMessage(conversationId = conversation.id, content = content)
+                                        },
+                                        onOpenCallPreview = { message -> activeCallMessage = message }
+                                    )
+                                },
+                                pendingMessageActions = pendingMessageActions
+                            )
+                        }
                     }
                 }
             }
@@ -596,9 +708,16 @@ private fun DrawScope.drawExpressiveRetryIndicator(
 @Composable
 private fun TabletConversationLayout(
     conversations: List<MessageConversation>,
+    selectedConversationId: String?,
     selectedConversation: MessageConversation?,
     currentUser: CurrentUser?,
+    pinnedConversationIds: Set<String>,
+    mutedConversationIds: Set<String>,
+    archivedConversationIds: Set<String>,
     onConversationClick: (MessageConversation) -> Unit,
+    onTogglePinned: (String) -> Unit,
+    onToggleMuted: (String) -> Unit,
+    onToggleArchived: (String) -> Unit,
     onMessageClick: (Message) -> Unit,
     onActionClick: (String, String) -> Unit,
     onSendMessage: (String) -> Unit,
@@ -621,7 +740,12 @@ private fun TabletConversationLayout(
         ) {
             ConversationListScreen(
                 conversations = conversations,
-                onConversationClick = onConversationClick
+                selectedConversationId = selectedConversationId,
+                pinnedConversationIds = pinnedConversationIds,
+                mutedConversationIds = mutedConversationIds,
+                onConversationClick = onConversationClick,
+                onTogglePinned = onTogglePinned,
+                onToggleMuted = onToggleMuted
             )
         }
 
@@ -658,7 +782,11 @@ private fun TabletConversationLayout(
                 ConversationDetailScreen(
                     conversation = selectedConversation,
                     currentUser = currentUser,
+                    isConversationMuted = selectedConversation.id in mutedConversationIds,
+                    isConversationArchived = selectedConversation.id in archivedConversationIds,
                     onBack = {},
+                    onToggleMuted = { onToggleMuted(selectedConversation.id) },
+                    onToggleArchived = { onToggleArchived(selectedConversation.id) },
                     onMessageClick = onMessageClick,
                     onActionClick = onActionClick,
                     onSendMessage = onSendMessage,
@@ -678,16 +806,32 @@ private fun TabletConversationLayout(
 @Composable
 fun ConversationListScreen(
     conversations: List<MessageConversation>,
-    onConversationClick: (MessageConversation) -> Unit
+    onConversationClick: (MessageConversation) -> Unit,
+    selectedConversationId: String? = null,
+    pinnedConversationIds: Set<String> = emptySet(),
+    mutedConversationIds: Set<String> = emptySet(),
+    onTogglePinned: (String) -> Unit = {},
+    onToggleMuted: (String) -> Unit = {},
+    emptyStateTitle: String = "No messages yet",
+    emptyStateBody: String = "New school conversations will appear here when they arrive."
 ) {
     if (conversations.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("📭", fontSize = 48.sp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) {
+                Text("📭", fontSize = 44.sp)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "No messages yet",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = emptyStateTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = emptyStateBody,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -700,9 +844,59 @@ fun ConversationListScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(conversations, key = { it.id }) { conversation ->
-            ConversationCard(conversation = conversation, onClick = { onConversationClick(conversation) })
+            ConversationCard(
+                conversation = conversation,
+                isSelected = conversation.id == selectedConversationId,
+                isPinned = conversation.id in pinnedConversationIds,
+                isMuted = conversation.id in mutedConversationIds,
+                onClick = { onConversationClick(conversation) },
+                onTogglePinned = { onTogglePinned(conversation.id) },
+                onToggleMuted = { onToggleMuted(conversation.id) }
+            )
         }
     }
+}
+
+private fun List<MessageConversation>.filteredForInbox(
+    searchQuery: String,
+    filter: MessageInboxFilter,
+    pinnedConversationIds: Set<String>,
+    mutedConversationIds: Set<String>,
+    archivedConversationIds: Set<String>
+): List<MessageConversation> {
+    val normalizedQuery = searchQuery.trim().lowercase()
+    return filter { conversation ->
+        val matchesFilter = when (filter) {
+            MessageInboxFilter.ALL -> conversation.id !in archivedConversationIds
+            MessageInboxFilter.PINNED -> conversation.id in pinnedConversationIds
+            MessageInboxFilter.UNREAD -> conversation.getUnreadCount() > 0
+            MessageInboxFilter.ACTION_NEEDED -> conversation.findPendingIncomingAction() != null
+            MessageInboxFilter.ANNOUNCEMENTS -> conversation.mode == ConversationMode.ANNOUNCEMENT
+            MessageInboxFilter.DIRECT -> conversation.mode == ConversationMode.DIRECT_CONTACT
+            MessageInboxFilter.MUTED -> conversation.id in mutedConversationIds && conversation.id !in archivedConversationIds
+            MessageInboxFilter.ARCHIVED -> conversation.id in archivedConversationIds
+        }
+        if (!matchesFilter) return@filter false
+        if (normalizedQuery.isBlank()) return@filter true
+
+        buildList {
+            add(conversation.topic)
+            add(conversation.participantsLabel)
+            conversation.getLatestMessage()?.content?.let(::add)
+            conversation.getLatestMessage()?.sender?.let(::add)
+            conversation.messages.takeLast(4).forEach { message ->
+                add(message.content)
+                add(message.sender)
+                message.title?.let(::add)
+            }
+        }.any { candidate ->
+            candidate.lowercase().contains(normalizedQuery)
+        }
+    }.sortedWith(
+        compareByDescending<MessageConversation> { it.id in pinnedConversationIds }
+            .thenBy { it.id in mutedConversationIds }
+            .thenByDescending { it.getLatestMessage()?.timestamp.orEmpty() }
+    )
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -710,7 +904,15 @@ fun ConversationListScreen(
 // ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun ConversationCard(conversation: MessageConversation, onClick: () -> Unit) {
+private fun ConversationCard(
+    conversation: MessageConversation,
+    isSelected: Boolean,
+    isPinned: Boolean,
+    isMuted: Boolean,
+    onClick: () -> Unit,
+    onTogglePinned: () -> Unit,
+    onToggleMuted: () -> Unit
+) {
     val isUnread    = conversation.getUnreadCount() > 0
     val latestMsg   = conversation.getLatestMessage()
     val badgeStyle  = rememberConversationBadgeStyle(conversation)
@@ -720,8 +922,17 @@ private fun ConversationCard(conversation: MessageConversation, onClick: () -> U
     Surface(
         onClick         = onClick,
         shape           = RoundedCornerShape(16.dp),
-        color           = MaterialTheme.colorScheme.surface,
-        tonalElevation  = if (isUnread) 2.dp else 0.dp,
+        color           = if (isSelected) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        tonalElevation  = if (isSelected || isUnread) 2.dp else 0.dp,
+        border          = if (isSelected) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
+        } else {
+            null
+        },
         modifier        = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -756,12 +967,33 @@ private fun ConversationCard(conversation: MessageConversation, onClick: () -> U
                         modifier = Modifier.weight(1f)
                     )
                     latestMsg?.timestamp?.let { ts ->
-                        Text(
-                            text  = ts,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isPinned) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (isMuted) {
+                                Icon(
+                                    imageVector = Icons.Default.VolumeOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text  = ts,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
-                        )
+                        }
                     }
                 }
 
@@ -822,6 +1054,28 @@ private fun ConversationCard(conversation: MessageConversation, onClick: () -> U
                                 )
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        onClick = onTogglePinned,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isPinned) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = if (isPinned) "Unpin conversation" else "Pin conversation",
+                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = onToggleMuted,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VolumeOff,
+                            contentDescription = if (isMuted) "Unmute conversation" else "Mute conversation",
+                            tint = if (isMuted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -925,7 +1179,11 @@ enum class ConversationComposerAction(
 fun ConversationDetailScreen(
     conversation: MessageConversation,
     currentUser: CurrentUser?,
+    isConversationMuted: Boolean,
+    isConversationArchived: Boolean,
     onBack: () -> Unit,
+    onToggleMuted: () -> Unit,
+    onToggleArchived: () -> Unit,
     onMessageClick: (Message) -> Unit,
     onActionClick: (String, String) -> Unit,
     onSendMessage: (String) -> Unit,
@@ -937,6 +1195,23 @@ fun ConversationDetailScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val tutorialRegistry = rememberCoachMarkTargetRegistry()
+    var starredMessageIds by remember(conversation.id, currentUser?.userId) {
+        mutableStateOf(
+            MessageInboxPreferences.getStarredMessageIds(
+                context = context,
+                userId = currentUser?.userId,
+                conversationId = conversation.id
+            )
+        )
+    }
+    var showStarredOnly by rememberSaveable(conversation.id) { mutableStateOf(false) }
+    val visibleMessages = remember(conversation.messages, starredMessageIds, showStarredOnly) {
+        if (showStarredOnly) {
+            conversation.messages.filter { it.id in starredMessageIds }
+        } else {
+            conversation.messages
+        }
+    }
     val pendingActionMessageId = remember(conversation.id, conversation.messages) {
         conversation.findPendingIncomingAction()?.id
     }
@@ -1045,6 +1320,36 @@ fun ConversationDetailScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    if (starredMessageIds.isNotEmpty()) {
+                        FilterChip(
+                            selected = showStarredOnly,
+                            onClick = { showStarredOnly = !showStarredOnly },
+                            label = {
+                                Text(if (showStarredOnly) "Starred only" else "${starredMessageIds.size} starred")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (showStarredOnly) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+                    IconButton(onClick = onToggleMuted) {
+                        Icon(
+                            imageVector = Icons.Default.VolumeOff,
+                            contentDescription = if (isConversationMuted) "Unmute conversation" else "Mute conversation",
+                            tint = if (isConversationMuted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onToggleArchived) {
+                        Icon(
+                            imageVector = Icons.Default.Archive,
+                            contentDescription = if (isConversationArchived) "Unarchive conversation" else "Archive conversation",
+                            tint = if (isConversationArchived) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -1056,10 +1361,19 @@ fun ConversationDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(conversation.messages, key = { it.id }) { message ->
+                items(visibleMessages, key = { it.id }) { message ->
                     MessageCard(
                         message = message,
+                        isStarred = message.id in starredMessageIds,
                         onClick = { onMessageClick(message) },
+                        onToggleStarred = {
+                            starredMessageIds = MessageInboxPreferences.toggleStarredMessage(
+                                context = context,
+                                userId = currentUser?.userId,
+                                conversationId = conversation.id,
+                                messageId = message.id
+                            )
+                        },
                         onActionClick = { onActionClick(message.id, it) },
                         onReplyClick = { replyId ->
                             val index = conversation.messages.indexOfFirst { it.id == replyId }
@@ -1135,7 +1449,9 @@ fun ConversationDetailScreen(
 @Composable
 fun MessageCard(
     message: Message,
+    isStarred: Boolean,
     onClick: () -> Unit,
+    onToggleStarred: () -> Unit,
     onActionClick: (String) -> Unit,
     onReplyClick: (String) -> Unit,
     tutorialRegistry: CoachMarkTargetRegistry? = null,
@@ -1187,6 +1503,26 @@ fun MessageCard(
                 )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(
+                        onClick = onToggleStarred,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = if (isStarred) "Unstar message" else "Star message",
+                            tint = if (isStarred) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
 
                 // --- REPLY PREVIEW (The WhatsApp Scroll Trigger) ---
                 if (message.replyToId != null) {
@@ -1336,6 +1672,7 @@ fun MessageCard(
                 Text(
                     text = buildString {
                         append(message.timestamp.split(", ").lastOrNull() ?: "")
+                        if (isStarred) append(" • Starred")
                         if (message.isEdited) append(" • Edited")
                     },
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
