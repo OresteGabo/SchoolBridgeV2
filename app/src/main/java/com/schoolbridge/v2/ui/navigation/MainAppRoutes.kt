@@ -99,9 +99,10 @@ sealed class MainAppScreen(
         fun createRoute(eventId: String) = "event_details_screen/$eventId"
     }
 
-    data object MessageThreadDetails : MainAppScreen("message_thread_screen/{messageThreadId}") {
-        const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}"
+    data object MessageThreadDetails : MainAppScreen("message_thread_screen/{messageThreadId}?callMessageId={callMessageId}") {
+        const val ROUTE_PATTERN = "message_thread_screen/{messageThreadId}?callMessageId={callMessageId}"
         const val MESSAGE_THREAD_ID_ARG = "messageThreadId"
+        const val CALL_MESSAGE_ID_ARG = "callMessageId"
 
         fun createRoute(messageThreadId: String, callMessageId: String? = null): String {
             val encodedThreadId = Uri.encode(messageThreadId)
