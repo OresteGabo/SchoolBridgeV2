@@ -45,15 +45,25 @@ class MessageConversationViewModel(
     private var realtimeJob: Job? = null
 
     fun loadConversations(currentUserId: String) {
+        refreshConversations(currentUserId, showLoading = true)
+    }
+
+    fun refreshInBackground(currentUserId: String) {
+        refreshConversations(currentUserId, showLoading = false)
+    }
+
+    private fun refreshConversations(currentUserId: String, showLoading: Boolean) {
         activeUserId = currentUserId
-        if (_uiState.value.isLoading && _uiState.value.conversations.isNotEmpty()) return
+        if (showLoading && _uiState.value.isLoading && _uiState.value.conversations.isNotEmpty()) return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            if (showLoading) {
+                _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            }
             runCatching {
                 messagingRepository.getMessageConversations()
             }.onSuccess { response ->
-                _uiState.value = MessageConversationsUiState(
+                _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     conversations = response.toDomainConversations(currentUserId),
                     errorMessage = null
@@ -74,8 +84,7 @@ class MessageConversationViewModel(
         realtimeJob = viewModelScope.launch {
             runCatching {
                 messageRealtimeService.observeEvents().collectLatest {
-                    _uiState.value = _uiState.value.copy(errorMessage = null)
-                    loadConversations(currentUserId)
+                    refreshConversations(currentUserId, showLoading = false)
                 }
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(
@@ -118,7 +127,7 @@ class MessageConversationViewModel(
                     content = formatUserReply(content)
                 )
             }.onSuccess {
-                loadConversations(activeUserId ?: return@onSuccess)
+                refreshConversations(activeUserId ?: return@onSuccess, showLoading = false)
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(errorMessage = throwable.message ?: "Could not send response")
             }
