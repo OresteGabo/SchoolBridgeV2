@@ -38,7 +38,9 @@ import com.schoolbridge.v2.data.remote.RoleRequestApiServiceImpl
 import com.schoolbridge.v2.ui.event.EventDetailsRoute
 import com.schoolbridge.v2.ui.event.EventRepository
 import com.schoolbridge.v2.ui.onboarding.auth.CredentialsSetupScreen
+import com.schoolbridge.v2.ui.onboarding.auth.ForgotPasswordScreen
 import com.schoolbridge.v2.ui.onboarding.auth.SignUpScreen
+import com.schoolbridge.v2.ui.onboarding.OnboardingScreen
 import com.schoolbridge.v2.ui.onboarding.legal.TermsOfServiceScreen
 import com.schoolbridge.v2.ui.settings.about.AboutScreen
 import com.schoolbridge.v2.ui.settings.dataprivacy.DataPrivacySettingsScreen
@@ -118,7 +120,13 @@ fun AppNavHost(
     ) {
         // --- Authentication/Onboarding Flow ---
         composable(AuthScreen.Onboarding.route) {
-            // TODO: Implement the onboarding destination UI.
+            OnboardingScreen(
+                onFinished = {
+                    navController.navigate(AuthScreen.Login.route) {
+                        popUpTo(AuthScreen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(AuthScreen.Login.route) {
@@ -182,7 +190,15 @@ fun AppNavHost(
         }
 
         composable(AuthScreen.ForgotPassword.route) {
-            // TODO: Implement the forgot-password destination UI.
+            ForgotPasswordScreen(
+                onBack = { navController.navigateUp() },
+                onBackToLogin = {
+                    navController.navigate(AuthScreen.Login.route) {
+                        popUpTo(AuthScreen.ForgotPassword.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
         }
 
 
