@@ -23,12 +23,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 data class MessageConversationsUiState(
     val isLoading: Boolean = false,
     val conversations: List<MessageConversation> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val pendingMessageActions: Map<String, String> = emptyMap()
 )
 
 class MessageConversationViewModel(
@@ -122,6 +125,76 @@ class MessageConversationViewModel(
         }
     }
 
+    fun submitMessageAction(
+        conversationId: String,
+        message: Message,
+        actionId: String
+    ) {
+        val pendingKey = pendingActionKey(conversationId = conversationId, messageId = message.id)
+        val previousConversation = _uiState.value.conversations.find { it.id == conversationId }
+        val previousMessages = previousConversation?.messages?.toList().orEmpty()
+        val actionLabel = message.actions.find { it.actionId == actionId }?.label ?: "Responded"
+        val replyContent = formatUserReply(actionLabel)
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                pendingMessageActions = _uiState.value.pendingMessageActions + (pendingKey to actionId),
+                conversations = _uiState.value.conversations.map { conversation ->
+                    if (conversation.id == conversationId) {
+                        conversation.copy(
+                            messages = upsertActionReplyMessage(
+                                messages = conversation.messages,
+                                requestMessage = message,
+                                updatedStatus = actionStatusFor(actionId, message.status),
+                                replyContent = replyContent
+                            ).toMutableList()
+                        )
+                    } else {
+                        conversation
+                    }
+                }
+            )
+
+            val currentUserId = activeUserId?.toLongOrNull()
+            val conversation = _uiState.value.conversations.find { it.id == conversationId }
+            val backendConversationId =
+                conversation?.backendConversationId ?: conversationId.toLongOrNull()
+
+            if (currentUserId == null || backendConversationId == null) {
+                _uiState.value = _uiState.value.copy(
+                    pendingMessageActions = _uiState.value.pendingMessageActions - pendingKey,
+                    errorMessage = "Could not send response"
+                )
+                return@launch
+            }
+
+            runCatching {
+                messagingRepository.sendMessage(
+                    conversationId = backendConversationId,
+                    senderId = currentUserId,
+                    content = replyContent
+                )
+            }.onSuccess {
+                Unit
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(
+                    conversations = _uiState.value.conversations.map { existingConversation ->
+                        if (existingConversation.id == conversationId) {
+                            existingConversation.copy(messages = previousMessages.toMutableList())
+                        } else {
+                            existingConversation
+                        }
+                    },
+                    errorMessage = throwable.message ?: "Could not send response"
+                )
+            }
+
+            _uiState.value = _uiState.value.copy(
+                pendingMessageActions = _uiState.value.pendingMessageActions - pendingKey
+            )
+        }
+    }
+
     fun performAction(conversationId: String, messageId: String, actionId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -129,15 +202,7 @@ class MessageConversationViewModel(
                     if (conversation.id == conversationId) {
                         val updatedMessages = conversation.messages.map { msg ->
                             if (msg.id == messageId) {
-                                val newStatus = when (actionId) {
-                                    "mark_paid" -> "Marked as Paid"
-                                    "acknowledge" -> "Acknowledged"
-                                    "yes" -> "Confirmed"
-                                    "no" -> "Declined"
-                                    "not_sure" -> "Pending"
-                                    "pay_bill" -> msg.status
-                                    else -> "Updated"
-                                }
+                                val newStatus = actionStatusFor(actionId, msg.status)
                                 msg.copy(status = newStatus)
                             } else {
                                 msg
@@ -218,6 +283,63 @@ class MessageConversationViewModel(
         "acknowledge" -> "I have seen this notice"
         else -> actionLabel
     }
+
+    private fun pendingActionKey(conversationId: String, messageId: String): String =
+        "$conversationId:$messageId"
+
+    private fun actionStatusFor(actionId: String, currentStatus: String?): String? = when (actionId) {
+        "mark_paid" -> "Marked as Paid"
+        "acknowledge" -> "Acknowledged"
+        "yes" -> "Confirmed"
+        "no" -> "Declined"
+        "not_sure" -> "Pending"
+        "pay_bill" -> currentStatus
+        else -> "Updated"
+    }
+
+    private fun upsertActionReplyMessage(
+        messages: List<Message>,
+        requestMessage: Message,
+        updatedStatus: String?,
+        replyContent: String
+    ): List<Message> {
+        val updatedMessages = messages.map { existing ->
+            if (existing.id == requestMessage.id) {
+                existing.copy(status = updatedStatus)
+            } else {
+                existing
+            }
+        }.toMutableList()
+
+        val existingReplyIndex = updatedMessages.indexOfLast { candidate ->
+            candidate.isFromCurrentUser && candidate.replyToId == requestMessage.id
+        }
+        val updatedTimestamp = currentReplyTimestamp()
+
+        if (existingReplyIndex >= 0) {
+            val existingReply = updatedMessages[existingReplyIndex]
+            updatedMessages[existingReplyIndex] = existingReply.copy(
+                content = replyContent,
+                timestamp = updatedTimestamp,
+                isEdited = true
+            )
+        } else {
+            updatedMessages += Message(
+                sender = "You",
+                content = replyContent,
+                timestamp = updatedTimestamp,
+                isFromCurrentUser = true,
+                replyToId = requestMessage.id,
+                replyToContent = requestMessage.content,
+                replyToSender = requestMessage.sender
+            )
+        }
+
+        return updatedMessages
+    }
+
+    private fun currentReplyTimestamp(): String =
+        "Today, ${LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))}"
 }
 
 class MessageConversationViewModelFactory(
@@ -282,6 +404,7 @@ private fun MobileMessageDto.toDomainMessage(currentUserId: String): Message = M
     isFromCurrentUser = senderUserId != null && senderUserId == currentUserId,
     actions = actions.map { it.toDomainAction() },
     status = status,
+    isEdited = false,
     replyToId = replyToId,
     replyToContent = replyToContent,
     replyToSender = replyToSender
