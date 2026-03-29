@@ -44,14 +44,17 @@ class TimetableUiStateTest {
 
         val agenda = uiState.dailyAgenda(monday)
 
-        assertEquals(listOf("meeting", "class_${"math".hashCode()}"), agenda.map { it.id })
+        assertEquals(
+            listOf("meeting", "class_${"math".hashCode()}_student_shared"),
+            agenda.map { it.id }
+        )
     }
 
     @Test
     fun `dailyAgenda filters by selected student while keeping shared entries`() {
         val monday = LocalDate.of(2026, 3, 30)
         val uiState = TimetableUiState(
-            selectedStudentId = "student_1",
+            selectedStudentIds = setOf("student_1"),
             templates = listOf(
                 TimetableTemplateEntry(
                     id = "shared",
