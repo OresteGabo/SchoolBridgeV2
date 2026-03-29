@@ -12,5 +12,6 @@ data class CreatePersonalTimetablePlanRequestDto(
     val type: String,
     val visibility: String = "PRIVATE",
     val participantUserIds: List<Long> = emptyList(),
+    val reminderMinutesBefore: Int? = null,
     val note: String? = null
 )
