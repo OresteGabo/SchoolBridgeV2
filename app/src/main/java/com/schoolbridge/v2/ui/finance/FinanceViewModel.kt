@@ -124,6 +124,7 @@ private fun MobileFinanceDashboardDto.toFinanceDashboard(): FinanceDashboard {
                 description = transaction.description,
                 amount = transaction.amount,
                 amountLabel = transaction.amountLabel,
+                date = runCatching { LocalDate.parse(transaction.date) }.getOrNull(),
                 dateLabel = transaction.dateLabel,
                 paymentMethod = transaction.paymentMethod,
                 reference = transaction.reference,
