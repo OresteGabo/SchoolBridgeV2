@@ -6,7 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,6 +66,7 @@ fun AgendaCard(
     val compact = density == AgendaDensity.COMPACT
     val hasExpandableContent = item.subtitle.length > 88 || !item.note.isNullOrBlank()
     val isPersonalPlan = item.origin == AgendaItemOrigin.PERSONAL_PLAN
+    val isEditablePersonalPlan = isPersonalPlan && item.personalPlanId != null
     val cardShape = RoundedCornerShape(if (compact) 22.dp else 26.dp)
     var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
 
@@ -79,10 +82,20 @@ fun AgendaCard(
             )
             .animateContentSize()
             .then(
-                if (hasExpandableContent) {
-                    Modifier.clickable {
-                        onCardClick()
-                        expanded = !expanded
+                if (hasExpandableContent || isEditablePersonalPlan) {
+                    Modifier.pointerInput(item.id, hasExpandableContent, isEditablePersonalPlan) {
+                        detectTapGestures(
+                            onTap = {
+                                if (hasExpandableContent) {
+                                    expanded = !expanded
+                                }
+                            },
+                            onLongPress = {
+                                if (isEditablePersonalPlan) {
+                                    onCardClick()
+                                }
+                            }
+                        )
                     }
                 } else {
                     Modifier
@@ -137,7 +150,25 @@ fun AgendaCard(
                 verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp)
             ) {
                 if (isPersonalPlan) {
-                    PersonalPlanHeader(accent = accent)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PersonalPlanHeader(accent = accent)
+                        if (isEditablePersonalPlan) {
+                            TextButton(onClick = onCardClick) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = accent
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Edit", color = accent)
+                            }
+                        }
+                    }
                 }
 
                 Row(
@@ -173,6 +204,11 @@ fun AgendaCard(
                             }
                             item.statusLabel?.let { label ->
                                 AgendaStatus(label = label, accent = accent, important = item.isImportant)
+                            }
+                            if (isPersonalPlan) {
+                                item.reminderMinutesBefore?.toReminderChipLabel()?.let { label ->
+                                    AgendaSource(label = label)
+                                }
                             }
                         }
 
@@ -476,6 +512,14 @@ private fun agendaIcon(kind: AgendaItemKind): ImageVector = when (kind) {
     AgendaItemKind.CALL -> Icons.Default.VideoCall
     AgendaItemKind.ANNOUNCEMENT -> Icons.Default.Campaign
     AgendaItemKind.PERSONAL -> Icons.Default.AutoStories
+}
+
+private fun Int.toReminderChipLabel(): String = when (this) {
+    5 -> "Reminder 5 min before"
+    15 -> "Reminder 15 min before"
+    30 -> "Reminder 30 min before"
+    60 -> "Reminder 1 hour before"
+    else -> "Reminder $this min before"
 }
 
 private fun String.initials(): String =
