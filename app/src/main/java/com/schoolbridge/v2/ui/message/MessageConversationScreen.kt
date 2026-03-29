@@ -166,6 +166,27 @@ fun MessageConversationScreen(
     var viewingMessage by remember { mutableStateOf<Message?>(null) }
     var activePaymentMessage by remember { mutableStateOf<Message?>(null) }
     var activeCallMessage by remember { mutableStateOf<Message?>(null) }
+    val pendingMessageActions = uiState.pendingMessageActions
+
+    fun handleMessageAction(conversation: MessageConversation, originalMessage: Message, actionId: String) {
+        if (actionId == "pay_bill") {
+            activePaymentMessage = originalMessage
+            return
+        }
+        if (actionId in callActionIds) {
+            activeCallMessage = originalMessage
+            return
+        }
+
+        actionId.toMeetingDecisionOrNull()?.let { decision ->
+            NotificationInteractionStore.saveMeetingDecision(context, conversation.id, decision)
+        }
+        viewModel.submitMessageAction(
+            conversationId = conversation.id,
+            message = originalMessage,
+            actionId = actionId
+        )
+    }
 
     LaunchedEffect(isExpanded, messageConversations, initialConversationId) {
         if (isExpanded && initialConversationId == null && internalSelectedConversationId == null && messageConversations.isNotEmpty()) {
@@ -244,27 +265,11 @@ fun MessageConversationScreen(
                     onDelete = { viewingMessage = null },
                     onActionClick = { actionId ->
                         selectedConversation?.let { conversation ->
-                            val originalMsg = viewingMessage!!
-                            if (actionId == "pay_bill") {
-                                activePaymentMessage = originalMsg
-                            } else if (actionId in callActionIds) {
-                                activeCallMessage = originalMsg
-                            } else {
-                                actionId.toMeetingDecisionOrNull()?.let { decision ->
-                                    NotificationInteractionStore.saveMeetingDecision(context, conversation.id, decision)
-                                }
-                                viewModel.performAction(conversation.id, originalMsg.id, actionId)
-                                val actionLabel = originalMsg.actions.find { it.actionId == actionId }?.label ?: "Confirmed"
-                                viewModel.addUserMessage(
-                                    conversationId = conversation.id,
-                                    content = actionLabel,
-                                    replyToId = originalMsg.id,
-                                    replyToContent = originalMsg.content,
-                                    replyToSender = originalMsg.sender
-                                )
-                                viewingMessage = viewingMessage!!.copy(status = "Confirmed")
-                            }
+                            handleMessageAction(conversation, viewingMessage!!, actionId)
                         }
+                    },
+                    pendingActionId = selectedConversation?.let { conversation ->
+                        pendingMessageActions["${conversation.id}:${viewingMessage!!.id}"]
                     }
                 )
             } else {
@@ -282,23 +287,8 @@ fun MessageConversationScreen(
                             onActionClick = { msgId, actionId ->
                                 val actualConversation = conversation ?: return@TabletConversationLayout
                                 val originalMsg = actualConversation.messages.find { it.id == msgId }
-                                if (actionId == "pay_bill") {
-                                    activePaymentMessage = originalMsg
-                                } else if (actionId in callActionIds) {
-                                    activeCallMessage = originalMsg
-                                } else {
-                                    actionId.toMeetingDecisionOrNull()?.let { decision ->
-                                        NotificationInteractionStore.saveMeetingDecision(context, actualConversation.id, decision)
-                                    }
-                                    viewModel.performAction(actualConversation.id, msgId, actionId)
-                                    val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
-                                    viewModel.addUserMessage(
-                                        conversationId = actualConversation.id,
-                                        content = actionLabel,
-                                        replyToId = msgId,
-                                        replyToContent = originalMsg?.content,
-                                        replyToSender = originalMsg?.sender
-                                    )
+                                if (originalMsg != null) {
+                                    handleMessageAction(actualConversation, originalMsg, actionId)
                                 }
                             },
                             onSendMessage = { content ->
@@ -318,7 +308,8 @@ fun MessageConversationScreen(
                                         onOpenCallPreview = { message -> activeCallMessage = message }
                                     )
                                 }
-                            }
+                            },
+                            pendingMessageActions = pendingMessageActions
                         )
                     } else if (conversation == null) {
                         ConversationListScreen(messageConversations) {
@@ -333,23 +324,8 @@ fun MessageConversationScreen(
                             onMessageClick = { viewingMessage = it },
                             onActionClick = { msgId, actionId ->
                                 val originalMsg = conversation.messages.find { it.id == msgId }
-                                if (actionId == "pay_bill") {
-                                    activePaymentMessage = originalMsg
-                                } else if (actionId in callActionIds) {
-                                    activeCallMessage = originalMsg
-                                } else {
-                                    actionId.toMeetingDecisionOrNull()?.let { decision ->
-                                        NotificationInteractionStore.saveMeetingDecision(context, conversation.id, decision)
-                                    }
-                                    viewModel.performAction(conversation.id, msgId, actionId)
-                                    val actionLabel = originalMsg?.actions?.find { it.actionId == actionId }?.label ?: "Responded"
-                                    viewModel.addUserMessage(
-                                        conversationId = conversation.id,
-                                        content = actionLabel,
-                                        replyToId = msgId,
-                                        replyToContent = originalMsg?.content,
-                                        replyToSender = originalMsg?.sender
-                                    )
+                                if (originalMsg != null) {
+                                    handleMessageAction(conversation, originalMsg, actionId)
                                 }
                             },
                             onSendMessage = { content ->
@@ -365,7 +341,8 @@ fun MessageConversationScreen(
                                     },
                                     onOpenCallPreview = { message -> activeCallMessage = message }
                                 )
-                            }
+                            },
+                            pendingMessageActions = pendingMessageActions
                         )
                     }
                 }
@@ -625,7 +602,8 @@ private fun TabletConversationLayout(
     onMessageClick: (Message) -> Unit,
     onActionClick: (String, String) -> Unit,
     onSendMessage: (String) -> Unit,
-    onLaunchConversationAction: (ConversationComposerAction) -> Unit
+    onLaunchConversationAction: (ConversationComposerAction) -> Unit,
+    pendingMessageActions: Map<String, String>
 ) {
     Row(
         modifier = Modifier
@@ -685,7 +663,8 @@ private fun TabletConversationLayout(
                     onActionClick = onActionClick,
                     onSendMessage = onSendMessage,
                     onLaunchConversationAction = onLaunchConversationAction,
-                    showBackButton = false
+                    showBackButton = false,
+                    pendingMessageActions = pendingMessageActions
                 )
             }
         }
@@ -951,7 +930,8 @@ fun ConversationDetailScreen(
     onActionClick: (String, String) -> Unit,
     onSendMessage: (String) -> Unit,
     onLaunchConversationAction: (ConversationComposerAction) -> Unit,
-    showBackButton: Boolean = true
+    showBackButton: Boolean = true,
+    pendingMessageActions: Map<String, String> = emptyMap()
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -1099,7 +1079,8 @@ fun ConversationDetailScreen(
                             "conversation_scheduled_call"
                         } else {
                             null
-                        }
+                        },
+                        pendingActionId = pendingMessageActions["${conversation.id}:${message.id}"]
                     )
                 }
             }
@@ -1159,7 +1140,8 @@ fun MessageCard(
     onReplyClick: (String) -> Unit,
     tutorialRegistry: CoachMarkTargetRegistry? = null,
     actionTargetId: String? = null,
-    callTargetId: String? = null
+    callTargetId: String? = null,
+    pendingActionId: String? = null
 ) {
     val haptic = LocalHapticFeedback.current
     val isSystem = !message.isFromCurrentUser
@@ -1316,9 +1298,12 @@ fun MessageCard(
                     ) {
                         message.actions.forEach { action ->
                             val isPaymentAction = action.actionId == "pay_bill"
+                            val isPending = pendingActionId == action.actionId
+                            val actionsLocked = pendingActionId != null
 
                             Button(
                                 onClick = { onActionClick(action.actionId) },
+                                enabled = !actionsLocked,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = if (isPaymentAction) {
@@ -1328,11 +1313,17 @@ fun MessageCard(
                                 },
                                 contentPadding = PaddingValues(vertical = 8.dp)
                             ) {
-                                if (isPaymentAction) {
+                                if (isPending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                } else if (isPaymentAction) {
                                     Text("💳 ", fontSize = 16.sp)
                                 }
                                 Text(
-                                    text = action.label,
+                                    text = if (isPending) "Sending..." else action.label,
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }
@@ -1343,7 +1334,10 @@ fun MessageCard(
 
                 // --- TIMESTAMP ---
                 Text(
-                    text = message.timestamp.split(", ").lastOrNull() ?: "",
+                    text = buildString {
+                        append(message.timestamp.split(", ").lastOrNull() ?: "")
+                        if (message.isEdited) append(" • Edited")
+                    },
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                     modifier = Modifier
                         .align(Alignment.End)
