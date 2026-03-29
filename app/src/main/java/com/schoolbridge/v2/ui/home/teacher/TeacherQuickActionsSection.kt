@@ -58,7 +58,7 @@ import kotlin.collections.filter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TeacherQuickActionsSection() {
+fun TeacherQuickActionsSection(modifier: Modifier = Modifier) {
 
     val qaViewModel: QuickActionViewModel = viewModel()
     val chosenIds by qaViewModel.selected.collectAsState()
@@ -68,7 +68,7 @@ fun TeacherQuickActionsSection() {
 
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
