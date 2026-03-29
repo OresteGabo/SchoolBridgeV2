@@ -41,6 +41,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -81,6 +82,11 @@ import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkOverlay
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkStep
+import com.schoolbridge.v2.ui.common.tutorial.HomeFeatureTourStore
+import com.schoolbridge.v2.ui.common.tutorial.coachMarkTarget
+import com.schoolbridge.v2.ui.common.tutorial.rememberCoachMarkTargetRegistry
 import com.schoolbridge.v2.ui.home.course.CourseListSection
 import com.schoolbridge.v2.ui.home.grade.GradesSummarySection
 import com.schoolbridge.v2.ui.home.role.RoleSelectorBottomSheet
@@ -94,7 +100,10 @@ import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
 
 
 @Composable
-fun AltHero(currentUser: CurrentUser?) {
+fun AltHero(
+    currentUser: CurrentUser?,
+    modifier: Modifier = Modifier
+) {
     val name = buildString {
         append(currentUser?.lastName?.takeIf { it.isNotBlank() } ?: "there")
     }
@@ -103,6 +112,7 @@ fun AltHero(currentUser: CurrentUser?) {
 
     Card(
         modifier = Modifier
+            .then(modifier)
             .fillMaxWidth()
             .height(210.dp),
         shape = RoundedCornerShape(30.dp),
@@ -277,6 +287,7 @@ fun HomeTopBar(
     onRoleSelected: (UserRole) -> Unit,
     onSettingsClick: () -> Unit,
     onRequestNewRole: () -> Unit,
+    roleSwitcherModifier: Modifier = Modifier,
     modifier: Modifier = Modifier
 ) {
     val showRoleSheet = remember { mutableStateOf(false) }
@@ -308,7 +319,10 @@ fun HomeTopBar(
                     AnimatedVisibility(
                         visible = currentRole != null || availableRoles.isNotEmpty()
                     ) {
-                        TextButton(onClick = { showRoleSheet.value = true }) {
+                        TextButton(
+                            onClick = { showRoleSheet.value = true },
+                            modifier = roleSwitcherModifier
+                        ) {
                             Text(currentRole?.humanLabel ?: "Role & Requests")
                             Icon(
                                 Icons.Default.ArrowDropDown,
@@ -358,10 +372,42 @@ fun HomeRoute(
     modifier: Modifier = Modifier
 ) {
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
+    val context = LocalContext.current
     val isExpanded = isExpandedLayout()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val tutorialRegistry = rememberCoachMarkTargetRegistry()
     var selectedAlert by remember { mutableStateOf<Alert?>(null) }
+    var activeTourStep by rememberSaveable {
+        mutableStateOf(
+            if (HomeFeatureTourStore.shouldShow(context)) 0 else -1
+        )
+    }
+    val homeTourSteps = remember {
+        listOf(
+            CoachMarkStep(
+                targetId = "home_role_switcher",
+                title = "Switch roles here",
+                body = "If you are both a parent and a teacher, or you manage more than one school role, use this button to change the home context."
+            ),
+            CoachMarkStep(
+                targetId = "bottom_nav_message_screen",
+                title = "Messages stay contextual",
+                body = "Use Messages for school conversations, approvals, notices, and invited calls so updates stay attached to the right school context."
+            ),
+            CoachMarkStep(
+                targetId = "bottom_nav_weekly_schedule_screen",
+                title = "Your timetable is here",
+                body = "Open Schedule to see classes, school moments, meetings, and your own plans in one place."
+            )
+        )
+    }
+
+    LaunchedEffect(activeTourStep) {
+        if (activeTourStep >= 0 && !HomeFeatureTourStore.hasStarted(context)) {
+            HomeFeatureTourStore.markStarted(context)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // ✨ Place the glow gradient behind everything
@@ -378,6 +424,7 @@ fun HomeRoute(
                     },
                     onSettingsClick = onSettingsClick,
                     onRequestNewRole = onRequestNewRole,
+                    roleSwitcherModifier = Modifier.coachMarkTarget("home_role_switcher", tutorialRegistry),
                     modifier = modifier
                 )
             },
@@ -385,7 +432,8 @@ fun HomeRoute(
                 CustomBottomNavBar(
                     currentScreen = currentScreen,
                     onTabSelected = onTabSelected,
-                    currentUser = currentUser
+                    currentUser = currentUser,
+                    tutorialRegistry = tutorialRegistry
                 )
             },
             modifier = modifier
@@ -406,7 +454,8 @@ fun HomeRoute(
                     },
                     onWeeklyViewClick = onWeeklyViewClick,
                     modifier = Modifier.fillMaxSize(),
-                    userSessionManager = userSessionManager
+                    userSessionManager = userSessionManager,
+                    tutorialRegistry = tutorialRegistry
                 )
             }
         }
@@ -429,6 +478,38 @@ fun HomeRoute(
                 }
             }
         }
+
+        if (activeTourStep >= 0) {
+            CoachMarkOverlay(
+                registry = tutorialRegistry,
+                steps = homeTourSteps,
+                currentIndex = activeTourStep,
+                onSkip = {
+                    HomeFeatureTourStore.markSeen(context)
+                    activeTourStep = -1
+                },
+                onNext = {
+                    if (activeTourStep >= homeTourSteps.lastIndex) {
+                        HomeFeatureTourStore.markSeen(context)
+                        activeTourStep = -1
+                    } else {
+                        activeTourStep += 1
+                    }
+                },
+                onDone = {
+                    HomeFeatureTourStore.markSeen(context)
+                    activeTourStep = -1
+                },
+                onTargetUnavailable = {
+                    if (activeTourStep >= homeTourSteps.lastIndex) {
+                        HomeFeatureTourStore.markSeen(context)
+                        activeTourStep = -1
+                    } else {
+                        activeTourStep += 1
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -447,6 +528,7 @@ private fun HomeUI(
     onEventClick: (String) -> Unit,
     onAlertClick: (Alert) -> Unit,
     userSessionManager: UserSessionManager,
+    tutorialRegistry: com.schoolbridge.v2.ui.common.tutorial.CoachMarkTargetRegistry? = null,
     modifier: Modifier = Modifier
 ) {
     var activeRole = currentUser?.currentRole
