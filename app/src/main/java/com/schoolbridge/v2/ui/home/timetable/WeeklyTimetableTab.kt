@@ -49,7 +49,8 @@ fun WeeklyTimetableTab(
     emptyDayMessage: String,
     onSelectedDateChange: (LocalDate) -> Unit,
     onStartOfWeekChange: (LocalDate) -> Unit,
-    onAgendaItemActionClick: (AgendaItemUi) -> Unit = {}
+    onAgendaItemActionClick: (AgendaItemUi) -> Unit = {},
+    onAgendaItemClick: (AgendaItemUi) -> Unit = {}
 ) {
     val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
     val listState = rememberLazyListState()
@@ -109,7 +110,8 @@ fun WeeklyTimetableTab(
                     agendaItems = dayAgenda,
                     density = density,
                     emptyDayMessage = emptyDayMessage,
-                    onAgendaItemActionClick = onAgendaItemActionClick
+                    onAgendaItemActionClick = onAgendaItemActionClick,
+                    onAgendaItemClick = onAgendaItemClick
                 )
             }
 
@@ -193,7 +195,8 @@ private fun WeeklyDayCard(
     agendaItems: List<AgendaItemUi>,
     density: AgendaDensity,
     emptyDayMessage: String,
-    onAgendaItemActionClick: (AgendaItemUi) -> Unit
+    onAgendaItemActionClick: (AgendaItemUi) -> Unit,
+    onAgendaItemClick: (AgendaItemUi) -> Unit
 ) {
     var expanded by rememberSaveable(date.toString()) { mutableStateOf(false) }
     val visibleItems = if (expanded) agendaItems else agendaItems.take(3)
@@ -226,7 +229,8 @@ private fun WeeklyDayCard(
                     AgendaCard(
                         item = item,
                         density = density,
-                        onCTAClick = { onAgendaItemActionClick(item) }
+                        onCTAClick = { onAgendaItemActionClick(item) },
+                        onCardClick = { onAgendaItemClick(item) }
                     )
                 }
                 if (agendaItems.size > 3) {
