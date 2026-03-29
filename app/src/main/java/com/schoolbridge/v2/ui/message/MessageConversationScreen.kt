@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -70,6 +71,11 @@ import com.schoolbridge.v2.ui.home.timetable.MeetingDecision
 import com.schoolbridge.v2.ui.home.timetable.NotificationInteractionStore
 import com.schoolbridge.v2.ui.common.isExpandedLayout
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkOverlay
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkStep
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkTargetRegistry
+import com.schoolbridge.v2.ui.common.tutorial.coachMarkTarget
+import com.schoolbridge.v2.ui.common.tutorial.rememberCoachMarkTargetRegistry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -77,6 +83,7 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import java.util.UUID
+import android.content.Context
 
 // ─────────────────────────────────────────────────────────────
 // Root navigation shell
@@ -946,87 +953,196 @@ fun ConversationDetailScreen(
     onLaunchConversationAction: (ConversationComposerAction) -> Unit,
     showBackButton: Boolean = true
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-
-    // ADDED COLUMN: This ensures the Top Bar stays at the top and the list below it
-    Column(modifier = Modifier.fillMaxSize()) {
-        Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (showBackButton) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(conversationModeContainerColor(conversation.mode))
-                ) {
-                    Text(conversationModeEmoji(conversation.mode), fontSize = 18.sp)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = conversation.participantsLabel,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+    val tutorialRegistry = rememberCoachMarkTargetRegistry()
+    val pendingActionMessageId = remember(conversation.id, conversation.messages) {
+        conversation.findPendingIncomingAction()?.id
+    }
+    val pendingActionIndex = remember(conversation.id, conversation.messages) {
+        conversation.messages.indexOfFirst { it.id == pendingActionMessageId }
+    }
+    val scheduledCallMessageId = remember(conversation.id, conversation.messages) {
+        conversation.messages.firstOrNull { message ->
+            !message.isFromCurrentUser && message.callInfo?.status == ConversationCallStatus.SCHEDULED
+        }?.id
+    }
+    val scheduledCallIndex = remember(conversation.id, conversation.messages) {
+        conversation.messages.indexOfFirst { it.id == scheduledCallMessageId }
+    }
+    val conversationTourSteps = remember(
+        conversation.id,
+        pendingActionMessageId,
+        scheduledCallMessageId
+    ) {
+        buildList {
+            if (pendingActionMessageId != null) {
+                add(
+                    CoachMarkStep(
+                        targetId = "conversation_pending_action",
+                        title = "Respond from here",
+                        body = "When the school needs a decision, use these action buttons instead of typing. Your answer stays in this conversation and updates the workflow."
                     )
-                    Text(
-                        text = conversation.topic,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                )
             }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f) // Takes up remaining space
-        ) {
-            items(conversation.messages, key = { it.id }) { message ->
-                MessageCard(
-                    message = message,
-                    onClick = { onMessageClick(message) },
-                    onActionClick = { onActionClick(message.id, it) },
-                    onReplyClick = { replyId ->
-                        val index = conversation.messages.indexOfFirst { it.id == replyId }
-                        if (index != -1) {
-                            scope.launch {
-                                listState.animateScrollToItem(index)
-                            }
-                        }
-                    }
+            if (scheduledCallMessageId != null) {
+                add(
+                    CoachMarkStep(
+                        targetId = "conversation_scheduled_call",
+                        title = "Scheduled moments also appear in Schedule",
+                        body = "Calls and planned school moments stay linked to this conversation, and they also show up in Schedule so you can find them later."
+                    )
                 )
             }
         }
-
-        ConversationActionDock(
-            conversation = conversation,
-            currentUser = currentUser,
-            onSendMessage = onSendMessage,
-            onLaunchConversationAction = onLaunchConversationAction
+    }
+    var activeTourStep by rememberSaveable(conversation.id) {
+        mutableStateOf(
+            if (MessageConversationTourStore.shouldShow(context) && conversationTourSteps.isNotEmpty()) 0 else -1
         )
+    }
+
+    LaunchedEffect(activeTourStep) {
+        if (activeTourStep >= 0 && !MessageConversationTourStore.hasStarted(context)) {
+            MessageConversationTourStore.markStarted(context)
+        }
+    }
+
+    LaunchedEffect(activeTourStep, conversationTourSteps) {
+        val step = conversationTourSteps.getOrNull(activeTourStep) ?: return@LaunchedEffect
+        val targetIndex = when (step.targetId) {
+            "conversation_pending_action" -> pendingActionIndex
+            "conversation_scheduled_call" -> scheduledCallIndex
+            else -> -1
+        }
+        if (targetIndex >= 0) {
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(conversationModeContainerColor(conversation.mode))
+                    ) {
+                        Text(conversationModeEmoji(conversation.mode), fontSize = 18.sp)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = conversation.participantsLabel,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = conversation.topic,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(conversation.messages, key = { it.id }) { message ->
+                    MessageCard(
+                        message = message,
+                        onClick = { onMessageClick(message) },
+                        onActionClick = { onActionClick(message.id, it) },
+                        onReplyClick = { replyId ->
+                            val index = conversation.messages.indexOfFirst { it.id == replyId }
+                            if (index != -1) {
+                                scope.launch {
+                                    listState.animateScrollToItem(index)
+                                }
+                            }
+                        },
+                        tutorialRegistry = tutorialRegistry,
+                        actionTargetId = if (message.id == pendingActionMessageId) {
+                            "conversation_pending_action"
+                        } else {
+                            null
+                        },
+                        callTargetId = if (message.id == scheduledCallMessageId) {
+                            "conversation_scheduled_call"
+                        } else {
+                            null
+                        }
+                    )
+                }
+            }
+
+            ConversationActionDock(
+                conversation = conversation,
+                currentUser = currentUser,
+                onSendMessage = onSendMessage,
+                onLaunchConversationAction = onLaunchConversationAction
+            )
+        }
+
+        if (activeTourStep >= 0 && conversationTourSteps.isNotEmpty()) {
+            CoachMarkOverlay(
+                registry = tutorialRegistry,
+                steps = conversationTourSteps,
+                currentIndex = activeTourStep,
+                onSkip = {
+                    MessageConversationTourStore.markSeen(context)
+                    activeTourStep = -1
+                },
+                onNext = {
+                    if (activeTourStep >= conversationTourSteps.lastIndex) {
+                        MessageConversationTourStore.markSeen(context)
+                        activeTourStep = -1
+                    } else {
+                        activeTourStep += 1
+                    }
+                },
+                onDone = {
+                    MessageConversationTourStore.markSeen(context)
+                    activeTourStep = -1
+                },
+                onTargetUnavailable = {
+                    if (activeTourStep >= conversationTourSteps.lastIndex) {
+                        MessageConversationTourStore.markSeen(context)
+                        activeTourStep = -1
+                    } else {
+                        activeTourStep += 1
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -1040,7 +1156,10 @@ fun MessageCard(
     message: Message,
     onClick: () -> Unit,
     onActionClick: (String) -> Unit,
-    onReplyClick: (String) -> Unit
+    onReplyClick: (String) -> Unit,
+    tutorialRegistry: CoachMarkTargetRegistry? = null,
+    actionTargetId: String? = null,
+    callTargetId: String? = null
 ) {
     val haptic = LocalHapticFeedback.current
     val isSystem = !message.isFromCurrentUser
@@ -1126,7 +1245,14 @@ fun MessageCard(
 
                 message.callInfo?.let { callInfo ->
                     Spacer(Modifier.height(10.dp))
-                    ConversationCallCard(callInfo = callInfo)
+                    ConversationCallCard(
+                        callInfo = callInfo,
+                        modifier = if (callTargetId != null) {
+                            Modifier.coachMarkTarget(callTargetId, tutorialRegistry)
+                        } else {
+                            Modifier
+                        }
+                    )
                 }
 
                 // --- MESSAGE TITLE (Optional) ---
@@ -1179,30 +1305,39 @@ fun MessageCard(
 
                 // --- ACTION BUTTONS (Hidden if status exists) ---
                 if (message.actions.isNotEmpty() && message.status == null && !message.isFromCurrentUser) {
-                    Spacer(Modifier.height(12.dp))
-                    message.actions.forEach { action ->
-                        val isPaymentAction = action.actionId == "pay_bill"
-
-                        Button(
-                            onClick = { onActionClick(action.actionId) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = if (isPaymentAction) {
-                                ButtonDefaults.buttonColors(containerColor = primary)
-                            } else {
-                                ButtonDefaults.filledTonalButtonColors()
-                            },
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            if (isPaymentAction) {
-                                Text("💳 ", fontSize = 16.sp)
-                            }
-                            Text(
-                                text = action.label,
-                                style = MaterialTheme.typography.labelLarge
-                            )
+                    Column(
+                        modifier = if (actionTargetId != null) {
+                            Modifier
+                                .padding(top = 12.dp)
+                                .coachMarkTarget(actionTargetId, tutorialRegistry)
+                        } else {
+                            Modifier.padding(top = 12.dp)
                         }
-                        Spacer(Modifier.height(6.dp))
+                    ) {
+                        message.actions.forEach { action ->
+                            val isPaymentAction = action.actionId == "pay_bill"
+
+                            Button(
+                                onClick = { onActionClick(action.actionId) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = if (isPaymentAction) {
+                                    ButtonDefaults.buttonColors(containerColor = primary)
+                                } else {
+                                    ButtonDefaults.filledTonalButtonColors()
+                                },
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                if (isPaymentAction) {
+                                    Text("💳 ", fontSize = 16.sp)
+                                }
+                                Text(
+                                    text = action.label,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
                     }
                 }
 
@@ -1499,7 +1634,10 @@ private fun MessageConversation.findPendingIncomingAction(): Message? {
 }
 
 @Composable
-private fun ConversationCallCard(callInfo: ConversationCallInfo) {
+private fun ConversationCallCard(
+    callInfo: ConversationCallInfo,
+    modifier: Modifier = Modifier
+) {
     val scheme = MaterialTheme.colorScheme
     val (container, content) = when (callInfo.status) {
         ConversationCallStatus.ACTIVE -> scheme.primaryContainer to scheme.onPrimaryContainer
@@ -1511,6 +1649,7 @@ private fun ConversationCallCard(callInfo: ConversationCallInfo) {
     }
 
     Surface(
+        modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = container,
         border = BorderStroke(1.dp, scheme.outlineVariant)
@@ -1583,6 +1722,36 @@ private fun ConversationCallCard(callInfo: ConversationCallInfo) {
                 )
             }
         }
+    }
+}
+
+private object MessageConversationTourStore {
+    private const val PREFS_NAME = "feature_tour_prefs"
+    private const val KEY_CONVERSATION_TOUR_SEEN = "conversation_tour_seen"
+    private const val KEY_CONVERSATION_TOUR_STARTED = "conversation_tour_started"
+
+    fun shouldShow(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).let { prefs ->
+            !prefs.getBoolean(KEY_CONVERSATION_TOUR_SEEN, false) &&
+                !prefs.getBoolean(KEY_CONVERSATION_TOUR_STARTED, false)
+        }
+
+    fun hasStarted(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_CONVERSATION_TOUR_STARTED, false)
+
+    fun markStarted(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CONVERSATION_TOUR_STARTED, true)
+            .apply()
+    }
+
+    fun markSeen(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CONVERSATION_TOUR_SEEN, true)
+            .apply()
     }
 }
 
