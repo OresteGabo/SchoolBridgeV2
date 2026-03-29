@@ -25,7 +25,8 @@ fun MessageDetailsScreen(
     message: Message,
     onBack: () -> Unit,
     onDelete: () -> Unit,
-    onActionClick: (String) -> Unit
+    onActionClick: (String) -> Unit,
+    pendingActionId: String? = null
 ) {
     val scrollState = rememberScrollState()
     var isEditing by remember(message.id) { mutableStateOf(false) }
@@ -94,7 +95,10 @@ fun MessageDetailsScreen(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text  = message.timestamp,
+                        text  = buildString {
+                            append(message.timestamp)
+                            if (message.isEdited) append(" • Edited")
+                        },
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -197,23 +201,47 @@ fun MessageDetailsScreen(
                     )
 
                     message.actions.forEachIndexed { index, action ->
+                        val isPending = pendingActionId == action.actionId
+                        val actionsLocked = pendingActionId != null
                         if (index == 0) {
                             Button(
                                 onClick   = { isEditing = false; onActionClick(action.actionId) },
+                                enabled   = !actionsLocked,
                                 modifier  = Modifier.fillMaxWidth().height(52.dp),
                                 shape     = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                if (isPending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
                                 Spacer(Modifier.width(8.dp))
-                                Text(action.label, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    if (isPending) "Sending..." else action.label,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         } else {
                             OutlinedButton(
                                 onClick  = { isEditing = false; onActionClick(action.actionId) },
+                                enabled = !actionsLocked,
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                                 shape    = RoundedCornerShape(12.dp)
                             ) {
-                                Text(action.label, fontWeight = FontWeight.Medium)
+                                if (isPending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text(
+                                    if (isPending) "Sending..." else action.label,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
