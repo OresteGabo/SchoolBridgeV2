@@ -77,16 +77,6 @@ fun ActionCard(
                     .align(Alignment.TopStart)
             )
 
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary,   // high-contrast tint
-                modifier = Modifier
-                    .size(iconSize)
-                    .align(Alignment.TopStart)
-                    .padding(12.dp)
-            )
-
             /* ——— BOTTOM-CENTER title ——— */
             Text(
                 text = title,
@@ -99,6 +89,5 @@ fun ActionCard(
         }
     }
 }
-
 
 
