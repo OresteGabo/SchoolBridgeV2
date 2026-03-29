@@ -3,6 +3,7 @@ import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -64,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
+import com.schoolbridge.v2.components.CustomSideNavBar
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.domain.academic.TodayCourse
 import com.schoolbridge.v2.domain.academic.teacher.QuickActionViewModel
@@ -82,6 +84,7 @@ import com.schoolbridge.v2.ui.home.common.LinkedStudentRow
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
+import com.schoolbridge.v2.ui.common.isWideLandscapeLayout
 import com.schoolbridge.v2.ui.common.tutorial.CoachMarkOverlay
 import com.schoolbridge.v2.ui.common.tutorial.CoachMarkStep
 import com.schoolbridge.v2.ui.common.tutorial.HomeFeatureTourStore
@@ -102,6 +105,7 @@ import com.schoolbridge.v2.ui.home.decoration.GlowingGradientBackground
 @Composable
 fun AltHero(
     currentUser: CurrentUser?,
+    cardHeight: androidx.compose.ui.unit.Dp = 210.dp,
     modifier: Modifier = Modifier
 ) {
     val name = buildString {
@@ -114,7 +118,7 @@ fun AltHero(
         modifier = Modifier
             .then(modifier)
             .fillMaxWidth()
-            .height(210.dp),
+            .height(cardHeight),
         shape = RoundedCornerShape(30.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -374,6 +378,7 @@ fun HomeRoute(
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
     val context = LocalContext.current
     val isExpanded = isExpandedLayout()
+    val isWideLandscapeHome = isWideLandscapeLayout()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val tutorialRegistry = rememberCoachMarkTargetRegistry()
@@ -429,34 +434,75 @@ fun HomeRoute(
                 )
             },
             bottomBar = {
-                CustomBottomNavBar(
-                    currentScreen = currentScreen,
-                    onTabSelected = onTabSelected,
-                    currentUser = currentUser,
-                    tutorialRegistry = tutorialRegistry
-                )
+                if (!isWideLandscapeHome) {
+                    CustomBottomNavBar(
+                        currentScreen = currentScreen,
+                        onTabSelected = onTabSelected,
+                        currentUser = currentUser,
+                        tutorialRegistry = tutorialRegistry
+                    )
+                }
             },
             modifier = modifier
         ) { paddingValues ->
-            AdaptivePageFrame(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = paddingValues,
-                maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
-            ) {
-                HomeUI(
-                    currentUser = currentUser,
-                    onViewAllAlertsClick = onViewAllAlertsClick,
-                    onViewAllEventsClick = onViewAllEventsClick,
-                    onEventClick = onEventClick,
-                    onAlertClick = { alert ->
-                        selectedAlert = alert
-                        scope.launch { sheetState.show() }
-                    },
-                    onWeeklyViewClick = onWeeklyViewClick,
+            if (isWideLandscapeHome) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    CustomSideNavBar(
+                        currentScreen = currentScreen,
+                        currentUser = currentUser,
+                        onTabSelected = onTabSelected,
+                        tutorialRegistry = tutorialRegistry
+                    )
+                    AdaptivePageFrame(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
+                        maxContentWidth = 1680.dp
+                    ) {
+                        HomeUI(
+                            currentUser = currentUser,
+                            onViewAllAlertsClick = onViewAllAlertsClick,
+                            onViewAllEventsClick = onViewAllEventsClick,
+                            onEventClick = onEventClick,
+                            onAlertClick = { alert ->
+                                selectedAlert = alert
+                                scope.launch { sheetState.show() }
+                            },
+                            onWeeklyViewClick = onWeeklyViewClick,
+                            modifier = Modifier.fillMaxSize(),
+                            userSessionManager = userSessionManager,
+                            tutorialRegistry = tutorialRegistry,
+                            useWideLandscape = true
+                        )
+                    }
+                }
+            } else {
+                AdaptivePageFrame(
                     modifier = Modifier.fillMaxSize(),
-                    userSessionManager = userSessionManager,
-                    tutorialRegistry = tutorialRegistry
-                )
+                    contentPadding = paddingValues,
+                    maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
+                ) {
+                    HomeUI(
+                        currentUser = currentUser,
+                        onViewAllAlertsClick = onViewAllAlertsClick,
+                        onViewAllEventsClick = onViewAllEventsClick,
+                        onEventClick = onEventClick,
+                        onAlertClick = { alert ->
+                            selectedAlert = alert
+                            scope.launch { sheetState.show() }
+                        },
+                        onWeeklyViewClick = onWeeklyViewClick,
+                        modifier = Modifier.fillMaxSize(),
+                        userSessionManager = userSessionManager,
+                        tutorialRegistry = tutorialRegistry,
+                        useWideLandscape = false
+                    )
+                }
             }
         }
 
@@ -529,6 +575,7 @@ private fun HomeUI(
     onAlertClick: (Alert) -> Unit,
     userSessionManager: UserSessionManager,
     tutorialRegistry: com.schoolbridge.v2.ui.common.tutorial.CoachMarkTargetRegistry? = null,
+    useWideLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var activeRole = currentUser?.currentRole
@@ -542,6 +589,17 @@ private fun HomeUI(
             }
         }
     }
+    if (useWideLandscape) {
+        WideHomeUI(
+            currentUser = currentUser,
+            activeRole = activeRole,
+            onWeeklyViewClick = onWeeklyViewClick,
+            userSessionManager = userSessionManager,
+            modifier = modifier
+        )
+        return
+    }
+
     Column(
         modifier = modifier
             .background(Color.Transparent)
@@ -640,10 +698,622 @@ private fun HomeUI(
     }
 }
 
+@Composable
+private fun WideHomeUI(
+    currentUser: CurrentUser?,
+    activeRole: UserRole?,
+    onWeeklyViewClick: () -> Unit,
+    userSessionManager: UserSessionManager,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = modifier
+            .background(Color.Transparent)
+            .verticalScroll(scrollState)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp)
+    ) {
+        WideHomeShowcaseHero(
+            currentUser = currentUser,
+            activeRole = activeRole,
+            scrollOffset = scrollState.value.toFloat()
+        )
 
+        when (activeRole) {
+            UserRole.STUDENT -> {
+                DashboardBand(
+                    title = "Today at school",
+                    subtitle = "What deserves your attention before the day moves on."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 0
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        TodayScheduleSection(
+                            userSessionManager = userSessionManager,
+                            onWeeklyViewClick = onWeeklyViewClick,
+                            modifier = Modifier.weight(1.2f)
+                        )
+                        GradesSummarySection(modifier = Modifier.weight(0.8f))
+                    }
+                }
+                DashboardBand(
+                    title = "Progress and learning",
+                    subtitle = "A wider look at performance and the subjects shaping this term."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 1
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        StudentOverviewSection(
+                            currentUser = currentUser,
+                            modifier = Modifier.weight(1f)
+                        )
+                        CourseListSection(
+                            userSessionManager = userSessionManager,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            UserRole.PARENT -> {
+                DashboardBand(
+                    title = "Family watch",
+                    subtitle = "Schedule, school communication, and the overview a parent needs first."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 0
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        TodayScheduleSection(
+                            userSessionManager = userSessionManager,
+                            onWeeklyViewClick = onWeeklyViewClick,
+                            modifier = Modifier.weight(1.18f)
+                        )
+                        ParentOverviewSection(
+                            currentUser = currentUser,
+                            modifier = Modifier.weight(0.82f)
+                        )
+                    }
+                }
+                DashboardBand(
+                    title = "People and context",
+                    subtitle = "Keep your children and household school context in one calm place."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 1
+                ) {
+                    ParentContextPanel(
+                        currentUser = currentUser,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            UserRole.TEACHER -> {
+                DashboardBand(
+                    title = "Teaching now",
+                    subtitle = "See the day, respond quickly, and keep classroom work moving."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 0
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        TodayScheduleSection(
+                            userSessionManager = userSessionManager,
+                            onWeeklyViewClick = onWeeklyViewClick,
+                            modifier = Modifier.weight(1.15f)
+                        )
+                        TeacherQuickActionsSection(modifier = Modifier.weight(0.85f))
+                    }
+                }
+                DashboardBand(
+                    title = "Workload and courses",
+                    subtitle = "A fuller read on grading pressure and the courses under your care."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 1
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        TeacherOverviewSection(modifier = Modifier.weight(0.9f))
+                        CourseListSection(
+                            userSessionManager = userSessionManager,
+                            modifier = Modifier.weight(1.1f)
+                        )
+                    }
+                }
+            }
+
+            UserRole.SCHOOL_ADMIN -> {
+                DashboardBand(
+                    title = "Operations now",
+                    subtitle = "The first row is about decisions and bottlenecks that need immediate attention."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 0
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        AdminOverviewSection(modifier = Modifier.weight(1f))
+                        AdminPendingRequestsSection(modifier = Modifier.weight(1f))
+                    }
+                }
+                DashboardBand(
+                    title = "Action desk",
+                    subtitle = "Quick tools on the left, live school rhythm on the right."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 1
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        AdminQuickActionsSection(modifier = Modifier.weight(0.95f))
+                        AdminTodayScheduleSection(
+                            userSessionManager = userSessionManager,
+                            onWeeklyViewClick = onWeeklyViewClick,
+                            modifier = Modifier.weight(1.05f)
+                        )
+                    }
+                }
+                DashboardBand(
+                    title = "School pulse",
+                    subtitle = "Look beyond urgent tasks into academics, operations, and discovery."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 2
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        AdminOperationsBoard(modifier = Modifier.weight(1f))
+                        AcademicOverviewSection(modifier = Modifier.weight(1f))
+                    }
+                }
+                DashboardBand(
+                    title = "Explore and plan ahead",
+                    subtitle = "Student discovery and calendar context belong together at the bottom of the page."
+                    ,
+                    scrollOffset = scrollState.value.toFloat(),
+                    bandIndex = 3
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        StudentExplorerSection(modifier = Modifier.weight(1f))
+                        AcademicCalendarSection(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            else -> {
+                WideHomeShowcaseHero(
+                    currentUser = currentUser,
+                    activeRole = activeRole,
+                    scrollOffset = scrollState.value.toFloat()
+                )
+            }
+        }
+    }
+}
 
 @Composable
-fun AdminQuickActionsSection() {
+private fun WideHomeShowcaseHero(
+    currentUser: CurrentUser?,
+    activeRole: UserRole?,
+    scrollOffset: Float,
+    modifier: Modifier = Modifier
+) {
+    val scheme = MaterialTheme.colorScheme
+    val lastName = currentUser?.lastName?.takeIf { it.isNotBlank() } ?: "Uwimana"
+    val roleLabel = activeRole?.humanLabel ?: "SchoolBridge"
+    val heroLift = (scrollOffset * 0.16f).coerceAtMost(42f)
+    val orbDrift = (scrollOffset * 0.22f).coerceAtMost(54f)
+    val pillDrift = (scrollOffset * 0.12f).coerceAtMost(28f)
+    val statusLabel = if (currentUser?.isVerified == true) "Verified account" else "Profile in progress"
+    val focusTitle = when (activeRole) {
+        UserRole.STUDENT -> "Learning field"
+        UserRole.PARENT -> "Family field"
+        UserRole.TEACHER -> "Classroom field"
+        UserRole.SCHOOL_ADMIN -> "Operations field"
+        else -> "School field"
+    }
+    val focusBody = when (activeRole) {
+        UserRole.STUDENT -> "Classes, marks, and the next academic moves are staged here."
+        UserRole.PARENT -> "Schedules, school messages, and household context stay in one calm surface."
+        UserRole.TEACHER -> "Teaching load, quick actions, and course flow stay close without noise."
+        UserRole.SCHOOL_ADMIN -> "Approvals, rhythm, and academics sit together in one command view."
+        else -> "SchoolBridge keeps the right moments and decisions within reach."
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(320.dp)
+            .graphicsLayer {
+                translationY = -heroLift
+            },
+        shape = RoundedCornerShape(38.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            scheme.surfaceBright,
+                            scheme.surface,
+                            scheme.surfaceContainerHigh,
+                            scheme.primaryContainer.copy(alpha = 0.92f)
+                        ),
+                        start = Offset.Zero,
+                        end = Offset(1400f, 900f)
+                    )
+                )
+                .padding(horizontal = 32.dp, vertical = 30.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(180.dp)
+                    .graphicsLayer {
+                        translationX = orbDrift * 0.28f
+                        translationY = -orbDrift
+                    }
+                    .blur(34.dp)
+                    .background(
+                        scheme.primary.copy(alpha = 0.18f),
+                        CircleShape
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = 10.dp, y = (-8).dp)
+                    .size(148.dp)
+                    .graphicsLayer {
+                        translationY = orbDrift * 0.55f
+                        translationX = -orbDrift * 0.12f
+                    }
+                    .background(
+                        scheme.tertiary.copy(alpha = 0.12f),
+                        RoundedCornerShape(topStart = 52.dp, topEnd = 20.dp, bottomEnd = 52.dp, bottomStart = 22.dp)
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(width = 220.dp, height = 132.dp)
+                    .graphicsLayer {
+                        translationX = orbDrift * 0.62f
+                    }
+                    .background(
+                        scheme.secondaryContainer.copy(alpha = 0.94f),
+                        RoundedCornerShape(999.dp)
+                    )
+            )
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = scheme.primary.copy(alpha = 0.10f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = scheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = roleLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = scheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    HeroStatusPill(
+                        label = statusLabel,
+                        tint = if (currentUser?.isVerified == true) Color(0xFF1E8E5A) else scheme.tertiary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .graphicsLayer {
+                                translationY = pillDrift * 0.45f
+                            }
+                    ) {
+                        Text(
+                            text = "Welcome back, $lastName",
+                            style = MaterialTheme.typography.displaySmall,
+                            color = scheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = wideRoleNarrative(activeRole),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = scheme.onSurfaceVariant,
+                            lineHeight = 24.sp
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .weight(0.78f)
+                            .graphicsLayer {
+                                translationY = -pillDrift * 0.28f
+                            },
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        HeroSignalPanel(
+                            title = focusTitle,
+                            body = focusBody,
+                            accent = scheme.primary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            HeroMetricTile(
+                                title = "Roles",
+                                value = "${currentUser?.activeRoles?.size ?: 0}",
+                                accent = scheme.secondary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            HeroMetricTile(
+                                title = "Focus",
+                                value = wideFocusLabel(activeRole),
+                                accent = scheme.tertiary,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardBand(
+    title: String,
+    subtitle: String,
+    scrollOffset: Float,
+    bandIndex: Int,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val revealRaw = ((scrollOffset - bandIndex * 130f) / 180f).coerceIn(0f, 1f)
+    val revealProgress by animateFloatAsState(
+        targetValue = revealRaw,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "dashboardBandReveal"
+    )
+    val translation = 56f * (1f - revealProgress)
+    val alpha = 0.28f + (0.72f * revealProgress)
+    val scale = 0.965f + (0.035f * revealProgress)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        content = {
+            Column(
+                modifier = Modifier.graphicsLayer {
+                    translationY = translation
+                    this.alpha = alpha
+                    scaleX = scale
+                    scaleY = scale
+                },
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Column(
+                modifier = Modifier.graphicsLayer {
+                    translationY = translation * 0.8f
+                    this.alpha = alpha
+                    scaleX = scale
+                    scaleY = scale
+                },
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                content = content
+            )
+        }
+    )
+}
+
+@Composable
+private fun HeroStatusPill(
+    label: String,
+    tint: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = tint.copy(alpha = 0.12f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Verified,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = tint,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroSignalPanel(
+    title: String,
+    body: String,
+    accent: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = accent,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 21.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroMetricTile(
+    title: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = accent,
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+private fun wideRoleNarrative(role: UserRole?): String = when (role) {
+    UserRole.STUDENT -> "Everything important for today lives here: classes, marks, and the work that is quietly shaping your term."
+    UserRole.PARENT -> "This is your family command view for schedules, school communication, and the moments that need attention before they pile up."
+    UserRole.TEACHER -> "Your teaching day, quick classroom actions, and workload signals are arranged here so the next decision is always close."
+    UserRole.SCHOOL_ADMIN -> "A school-wide command surface for approvals, rhythm, operations, and the academic signals that deserve the next move."
+    else -> "SchoolBridge brings the right school moments, communication, and priorities together in one clear dashboard."
+}
+
+private fun wideFocusLabel(role: UserRole?): String = when (role) {
+    UserRole.STUDENT -> "Learning"
+    UserRole.PARENT -> "Family"
+    UserRole.TEACHER -> "Classroom"
+    UserRole.SCHOOL_ADMIN -> "Operations"
+    else -> "Overview"
+}
+
+@Composable
+private fun ParentContextPanel(
+    currentUser: CurrentUser?,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        currentUser?.address?.let {
+            Text(
+                text = "Your Address",
+                style = MaterialTheme.typography.titleMedium
+            )
+            AddressCard(address = it)
+        }
+        currentUser?.gender?.let {
+            GenderTag(gender = it)
+        }
+        if (!currentUser?.linkedStudents.isNullOrEmpty()) {
+            Text(
+                text = "Linked Students",
+                style = MaterialTheme.typography.titleMedium
+            )
+            LinkedStudentRow(list = currentUser!!.linkedStudents)
+        }
+    }
+}
+
+@Composable
+fun AdminQuickActionsSection(modifier: Modifier = Modifier) {
     val viewModel: QuickActionViewModel = viewModel()
     val chosenIds by viewModel.selected.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
@@ -651,7 +1321,7 @@ fun AdminQuickActionsSection() {
     val chosenActions = adminQuickActions.filter { it.id in chosenIds }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
