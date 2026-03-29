@@ -70,6 +70,7 @@ import com.schoolbridge.v2.data.remote.TimetableApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryImpl
 import com.schoolbridge.v2.data.repository.implementations.TimetableRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
+import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.ui.common.AdaptivePageFrame
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
@@ -111,6 +112,7 @@ fun TimetableTabsScreen(
         )
     )
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
     val isExpanded = isExpandedLayout()
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
@@ -444,6 +446,8 @@ fun TimetableTabsScreen(
             AddEventBottomSheet(
                 selectedDate = selectedDate,
                 audienceSummary = learnerSelectionSummary(uiState.students, uiState.selectedStudentIds),
+                participantOptions = rememberParticipantOptions(uiState, currentUser),
+                defaultParticipantIds = rememberDefaultParticipantIds(uiState),
                 existingAgenda = uiState.dailyAgenda(
                     date = selectedDate,
                     includedKinds = includedKinds,
@@ -451,7 +455,7 @@ fun TimetableTabsScreen(
                 ),
                 isSaving = uiState.isSavingPersonalPlan,
                 onDismiss = { showAddSheet = false },
-                onAddEvent = { startTime, endTime, title, description, planType, visibility ->
+                onAddEvent = { startTime, endTime, title, description, planType, visibility, participantUserIds ->
                     pendingAddSheetDismiss = true
                     viewModel.createPersonalPlan(
                         date = selectedDate,
@@ -460,7 +464,8 @@ fun TimetableTabsScreen(
                         title = title,
                         description = description,
                         planType = planType,
-                        visibility = visibility
+                        visibility = visibility,
+                        participantUserIds = participantUserIds
                     )
                 }
             )
@@ -468,6 +473,46 @@ fun TimetableTabsScreen(
     }
 
 }
+
+@Composable
+private fun rememberParticipantOptions(
+    uiState: TimetableUiState,
+    currentUser: CurrentUser?
+): List<TimetableParticipantOption> = remember(uiState.students, currentUser?.userId, uiState.audience) {
+    buildList {
+        uiState.students.forEach { student ->
+            student.id.toLongOrNull()?.let { studentId ->
+                add(
+                    TimetableParticipantOption(
+                        userId = studentId,
+                        name = student.name,
+                        schoolName = student.schoolName
+                    )
+                )
+            }
+        }
+        currentUser
+            ?.takeIf { uiState.hasTeachingSchedule() || uiState.audience.contains("TEACHER", ignoreCase = true) }
+            ?.userId
+            ?.toLongOrNull()
+            ?.takeIf { selfId -> none { it.userId == selfId } }
+            ?.let { selfId ->
+                add(
+                    TimetableParticipantOption(
+                        userId = selfId,
+                        name = "${currentUser.firstName} ${currentUser.lastName}".trim(),
+                        schoolName = uiState.selectedSchoolLabels(showOnlyMine = true).firstOrNull()
+                    )
+                )
+            }
+    }.sortedBy { it.name }
+}
+
+@Composable
+private fun rememberDefaultParticipantIds(uiState: TimetableUiState): Set<Long> =
+    remember(uiState.selectedStudentIds) {
+        uiState.selectedStudentIds.mapNotNull { it.toLongOrNull() }.toSet()
+    }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
