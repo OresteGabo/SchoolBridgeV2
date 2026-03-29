@@ -10,7 +10,9 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -21,6 +23,8 @@ import kotlinx.serialization.json.Json
 interface TimetableApiService {
     suspend fun getTimetable(): MobileTimetableResponseDto
     suspend fun createPersonalPlan(request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto
+    suspend fun updatePersonalPlan(planId: Long, request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto
+    suspend fun deletePersonalPlan(planId: Long)
 }
 
 class TimetableApiServiceImpl(
@@ -71,6 +75,40 @@ class TimetableApiServiceImpl(
                 header(HttpHeaders.Authorization, "Bearer $token")
                 setBody(request)
             }.body()
+        }
+    }
+
+    override suspend fun updatePersonalPlan(planId: Long, request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto {
+        val token = userSessionManager.getAuthToken()
+            ?: throw IllegalStateException("Missing auth token for timetable request")
+
+        return runApiCall(
+            defaultMessage = "Could not update your personal plan.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
+            client.put("$BASE_URL/mobile/timetable/personal-plans/$planId") {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(request)
+            }.body()
+        }
+    }
+
+    override suspend fun deletePersonalPlan(planId: Long) {
+        val token = userSessionManager.getAuthToken()
+            ?: throw IllegalStateException("Missing auth token for timetable request")
+
+        runApiCall(
+            defaultMessage = "Could not delete your personal plan.",
+            authFailureStatusCodes = authFailureStatusCodes,
+            onAuthFailure = { userSessionManager.clearSession() }
+        ) {
+            client.delete("$BASE_URL/mobile/timetable/personal-plans/$planId") {
+                accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }
         }
     }
 }
