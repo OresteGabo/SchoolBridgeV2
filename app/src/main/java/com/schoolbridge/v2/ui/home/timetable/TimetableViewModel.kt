@@ -101,6 +101,12 @@ data class TimetableStudent(
     val schoolName: String? = null
 )
 
+data class TimetableParticipantOption(
+    val userId: Long,
+    val name: String,
+    val schoolName: String? = null
+)
+
 data class TimetableUiState(
     val isLoading: Boolean = false,
     val isSavingPersonalPlan: Boolean = false,
@@ -295,9 +301,10 @@ class TimetableViewModel(
         title: String,
         description: String,
         planType: PersonalPlanType,
-        visibility: PlanVisibility
+        visibility: PlanVisibility,
+        participantUserIds: List<Long> = emptyList()
     ) {
-        val selectedAudience = _uiState.value.selectedAudienceNames()
+        val selectedAudience = _uiState.value.selectedAudienceNames(participantUserIds)
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSavingPersonalPlan = true, errorMessage = null)
             runCatching {
@@ -310,6 +317,7 @@ class TimetableViewModel(
                         endTime = endTime.toString(),
                         type = planType.name,
                         visibility = visibility.name,
+                        participantUserIds = participantUserIds,
                         note = buildPlanNote(
                             planType = planType,
                             visibility = visibility,
@@ -341,23 +349,19 @@ private fun buildPlanNote(
     val noteParts = mutableListOf("Created from mobile personal planner.")
     if (visibility == PlanVisibility.SHARED) {
         if (selectedAudience.isNotEmpty()) {
-            noteParts += "Shared context: ${selectedAudience.joinToString(", ")}."
+            noteParts += "Shared with: ${selectedAudience.joinToString(", ")}."
         } else {
-            noteParts += "Shared context: broader school workflow."
+            noteParts += "Shared with school collaborators."
         }
-    }
-    if (planType == PersonalPlanType.GROUP_WORK) {
-        noteParts += "TODO: Replace shared-context notes with real participant invitations when directory lookup is available."
     }
     return noteParts.joinToString("\n")
 }
 
-private fun TimetableUiState.selectedAudienceNames(): List<String> =
-    if (selectedStudentIds.isEmpty()) {
-        emptyList()
-    } else {
-        students.filter { it.id in selectedStudentIds }.map { it.name }
-    }
+private fun TimetableUiState.selectedAudienceNames(participantUserIds: List<Long>): List<String> {
+    if (participantUserIds.isEmpty()) return emptyList()
+    val ids = participantUserIds.map(Long::toString).toSet()
+    return students.filter { it.id in ids }.map { it.name }
+}
 
 class TimetableViewModelFactory(
     private val timetableRepository: TimetableRepository,
