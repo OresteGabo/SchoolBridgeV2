@@ -48,7 +48,6 @@ import java.util.concurrent.TimeUnit
 
 private const val REMINDER_CHANNEL_ID = "schoolbridge_schedule_reminders"
 private const val REFRESH_WORK_NAME = "schoolbridge_schedule_reminder_refresh"
-private const val REMINDER_LEAD_MINUTES = 5L
 private const val REMINDER_LOOKAHEAD_DAYS = 7L
 private const val REFRESH_INTERVAL_HOURS = 6L
 
@@ -77,6 +76,7 @@ internal data class ReminderPayload(
     val title: String,
     val body: String,
     val startAt: LocalDateTime,
+    val leadMinutesBefore: Long = 5L,
     val conversationId: String? = null,
     val callMessageId: String? = null,
     val messageId: String? = null,
@@ -95,6 +95,7 @@ internal data class ReminderPayload(
         .putStringArray(KEY_ACTION_LABELS, actionLabels.toTypedArray())
         .putString(KEY_TARGET_SCREEN, targetScreen.name)
         .putLong(KEY_START_MILLIS, startAt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli())
+        .putLong("lead_minutes_before", leadMinutesBefore)
         .build()
 }
 
@@ -130,7 +131,7 @@ object ScheduleReminderScheduler {
 
     internal fun enqueueReminder(context: Context, payload: ReminderPayload) {
         val now = LocalDateTime.now()
-        val remindAt = payload.startAt.minusMinutes(REMINDER_LEAD_MINUTES)
+        val remindAt = payload.startAt.minusMinutes(payload.leadMinutesBefore)
         val delay = when {
             remindAt.isAfter(now) -> Duration.between(now, remindAt).toMillis()
             payload.startAt.isAfter(now) -> 0L
@@ -453,6 +454,7 @@ private fun MobilePersonalTimetablePlanDto.toReminderPayload(
 ): ReminderPayload? {
     val startAt = LocalDate.parse(date).atTime(LocalTime.parse(startTime))
     if (!startAt.isAfter(now) || !startAt.isBefore(endWindow)) return null
+    val leadMinutes = reminderMinutesBefore?.toLong() ?: return null
     val body = buildString {
         append("$title starts at ${startAt.toLocalTime().toString().take(5)}.")
         description?.takeIf { it.isNotBlank() }?.let { append(" $it") }
@@ -465,6 +467,8 @@ private fun MobilePersonalTimetablePlanDto.toReminderPayload(
         title = "Your plan starts soon",
         body = body,
         startAt = startAt
+        ,
+        leadMinutesBefore = leadMinutes
     )
 }
 
