@@ -1,6 +1,6 @@
 package com.schoolbridge.v2.mapper.messaging
 
-import com.schoolbridge.v2.data.dto.messaging.MessageInThreadDto
+import com.schoolbridge.v2.data.dto.messaging.MessageInConversationDto
 import com.schoolbridge.v2.domain.messaging.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,7 +11,7 @@ class MessageMapperTest {
 
     @Test
     fun `message dto toDomain keeps essential message fields`() {
-        val dto = MessageInThreadDto(
+        val dto = MessageInConversationDto(
             id = "msg-1",
             senderId = "teacher-9",
             content = "Please come with the signed form tomorrow.",
