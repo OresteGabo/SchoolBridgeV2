@@ -72,6 +72,7 @@ enum class PlanVisibility {
 
 data class AgendaItemUi(
     val id: String,
+    val personalPlanId: Long? = null,
     val start: LocalDateTime,
     val end: LocalDateTime,
     val title: String,
@@ -83,6 +84,8 @@ data class AgendaItemUi(
     val room: String? = null,
     val studentName: String? = null,
     val linkedStudentNames: List<String> = emptyList(),
+    val participantUserIds: List<Long> = emptyList(),
+    val reminderMinutesBefore: Int? = null,
     val note: String? = null,
     val statusLabel: String? = null,
     val ctaLabel: String? = null,
@@ -267,7 +270,10 @@ class TimetableViewModel(
                         }
                         .orEmpty()
                     val decisionAwareItems = plannedItems.applyMeetingDecisions(userSessionManager)
-                    _uiState.value = response.toUiState(decisionAwareItems)
+                    _uiState.value = response.toUiState(
+                        plannedItems = decisionAwareItems,
+                        currentUserId = userSessionManager?.currentUser?.value?.userId
+                    )
                 }
                 .onFailure { throwable ->
                     _uiState.value = _uiState.value.copy(
@@ -302,7 +308,8 @@ class TimetableViewModel(
         description: String,
         planType: PersonalPlanType,
         visibility: PlanVisibility,
-        participantUserIds: List<Long> = emptyList()
+        participantUserIds: List<Long> = emptyList(),
+        reminderMinutesBefore: Int? = null
     ) {
         val selectedAudience = _uiState.value.selectedAudienceNames(participantUserIds)
         viewModelScope.launch {
@@ -318,6 +325,7 @@ class TimetableViewModel(
                         type = planType.name,
                         visibility = visibility.name,
                         participantUserIds = participantUserIds,
+                        reminderMinutesBefore = reminderMinutesBefore,
                         note = buildPlanNote(
                             planType = planType,
                             visibility = visibility,
@@ -327,13 +335,86 @@ class TimetableViewModel(
                 )
             }.onSuccess { createdPlan ->
                 _uiState.value = _uiState.value.copy(
-                    personalPlans = (_uiState.value.personalPlans + createdPlan.toAgendaItem()).sortedBy { it.start },
+                    personalPlans = (_uiState.value.personalPlans + createdPlan.toAgendaItem(userSessionManager?.currentUser?.value?.userId)).sortedBy { it.start },
                     errorMessage = null,
                     isSavingPersonalPlan = false
                 )
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(
                     errorMessage = throwable.message ?: "Could not create your personal plan",
+                    isSavingPersonalPlan = false
+                )
+            }
+        }
+    }
+
+    fun updatePersonalPlan(
+        planId: Long,
+        date: LocalDate,
+        startTime: LocalTime,
+        endTime: LocalTime,
+        title: String,
+        description: String,
+        planType: PersonalPlanType,
+        visibility: PlanVisibility,
+        participantUserIds: List<Long> = emptyList(),
+        reminderMinutesBefore: Int? = null
+    ) {
+        val selectedAudience = _uiState.value.selectedAudienceNames(participantUserIds)
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSavingPersonalPlan = true, errorMessage = null)
+            runCatching {
+                timetableRepository.updatePersonalPlan(
+                    planId = planId,
+                    request = CreatePersonalTimetablePlanRequestDto(
+                        title = title.trim(),
+                        description = description.trim().ifBlank { null },
+                        date = date.toString(),
+                        startTime = startTime.toString(),
+                        endTime = endTime.toString(),
+                        type = planType.name,
+                        visibility = visibility.name,
+                        participantUserIds = participantUserIds,
+                        reminderMinutesBefore = reminderMinutesBefore,
+                        note = buildPlanNote(
+                            planType = planType,
+                            visibility = visibility,
+                            selectedAudience = selectedAudience
+                        )
+                    )
+                )
+            }.onSuccess { updatedPlan ->
+                val updatedAgenda = updatedPlan.toAgendaItem(userSessionManager?.currentUser?.value?.userId)
+                _uiState.value = _uiState.value.copy(
+                    personalPlans = _uiState.value.personalPlans
+                        .map { existing -> if (existing.personalPlanId == planId) updatedAgenda else existing }
+                        .sortedBy { it.start },
+                    errorMessage = null,
+                    isSavingPersonalPlan = false
+                )
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = throwable.message ?: "Could not update your personal plan",
+                    isSavingPersonalPlan = false
+                )
+            }
+        }
+    }
+
+    fun deletePersonalPlan(planId: Long) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSavingPersonalPlan = true, errorMessage = null)
+            runCatching {
+                timetableRepository.deletePersonalPlan(planId)
+            }.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    personalPlans = _uiState.value.personalPlans.filterNot { it.personalPlanId == planId },
+                    errorMessage = null,
+                    isSavingPersonalPlan = false
+                )
+            }.onFailure { throwable ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = throwable.message ?: "Could not delete your personal plan",
                     isSavingPersonalPlan = false
                 )
             }
@@ -377,7 +458,10 @@ class TimetableViewModelFactory(
     }
 }
 
-private fun MobileTimetableResponseDto.toUiState(plannedItems: List<AgendaItemUi>): TimetableUiState = TimetableUiState(
+private fun MobileTimetableResponseDto.toUiState(
+    plannedItems: List<AgendaItemUi>,
+    currentUserId: String?
+): TimetableUiState = TimetableUiState(
     isLoading = false,
     audience = audience,
     scopeLabel = scopeLabel,
@@ -392,7 +476,7 @@ private fun MobileTimetableResponseDto.toUiState(plannedItems: List<AgendaItemUi
     selectedStudentIds = emptySet(),
     templates = entries.map { it.toTemplateEntry() },
     plannedItems = plannedItems,
-    personalPlans = personalPlans.map { it.toAgendaItem() },
+    personalPlans = personalPlans.map { it.toAgendaItem(currentUserId) },
     errorMessage = null
 )
 
@@ -554,7 +638,7 @@ private fun List<AgendaItemUi>.applyMeetingDecisions(
     }
 }
 
-private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
+private fun MobilePersonalTimetablePlanDto.toAgendaItem(currentUserId: String? = null): AgendaItemUi {
     val startDate = LocalDate.parse(date)
     val start = startDate.atTime(LocalTime.parse(startTime))
     val end = startDate.atTime(LocalTime.parse(endTime))
@@ -568,6 +652,7 @@ private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
     }.ifBlank { null }
     return AgendaItemUi(
         id = "personal_plan_$id",
+        personalPlanId = id.toLongOrNull(),
         start = start,
         end = end,
         title = title,
@@ -584,6 +669,8 @@ private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
             "SHARED" -> "Shared plan"
             else -> "Your plan"
         },
+        participantUserIds = participantUserIds,
+        reminderMinutesBefore = reminderMinutesBefore,
         note = detailNote,
         statusLabel = when (visibility.uppercase(Locale.getDefault())) {
             "SHARED" -> "Shared"
@@ -594,7 +681,7 @@ private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
             type.equals("GROUP_WORK", ignoreCase = true) ||
             type.equals("EXAM_PREP", ignoreCase = true) ||
             type.equals("VERIFICATION_APPOINTMENT", ignoreCase = true),
-        isOwnedByCurrentUser = true,
+        isOwnedByCurrentUser = creatorUserId?.toString() == currentUserId,
         origin = AgendaItemOrigin.PERSONAL_PLAN
     )
 }
