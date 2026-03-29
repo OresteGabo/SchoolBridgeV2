@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -76,6 +77,10 @@ fun AppNavHost(
     authApiService: AuthApiService,
     userSessionManager: UserSessionManager,
     themeViewModel: ThemeViewModel,
+    pendingMessageThreadId: String? = null,
+    pendingCallMessageId: String? = null,
+    openScheduleRequested: Boolean = false,
+    onPendingNotificationConsumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme by themeViewModel.isDark.collectAsState()
@@ -84,6 +89,24 @@ fun AppNavHost(
     val currentUser = userSessionManager.currentUser
     val roleRequestApiService = remember(userSessionManager) { RoleRequestApiServiceImpl(userSessionManager) }
     val roleLookupApiService = remember(userSessionManager) { RoleLookupApiServiceImpl(userSessionManager) }
+
+    LaunchedEffect(pendingMessageThreadId, pendingCallMessageId, openScheduleRequested) {
+        when {
+            pendingMessageThreadId != null -> {
+                navController.navigate(
+                    MainAppScreen.MessageThreadDetails.createRoute(
+                        messageThreadId = pendingMessageThreadId,
+                        callMessageId = pendingCallMessageId
+                    )
+                )
+                onPendingNotificationConsumed()
+            }
+            openScheduleRequested -> {
+                navController.navigate(MainAppScreen.WeeklySchedule.route)
+                onPendingNotificationConsumed()
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -326,6 +349,14 @@ fun AppNavHost(
             TimetableTabsScreen(
                 userSessionManager = userSessionManager,
                 onBack = null,
+                onOpenMessageThread = { messageThreadId, callMessageId ->
+                    navController.navigate(
+                        MainAppScreen.MessageThreadDetails.createRoute(
+                            messageThreadId = messageThreadId,
+                            callMessageId = callMessageId
+                        )
+                    )
+                },
                 bottomBar = {
                     CustomBottomNavBar(
                         currentScreen = MainAppScreen.WeeklySchedule,
@@ -400,6 +431,10 @@ fun AppNavHost(
             route = MainAppScreen.MessageThreadDetails.ROUTE_PATTERN,
             arguments = listOf(navArgument(MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG) {
                 type = NavType.StringType
+            }, navArgument(MainAppScreen.MessageThreadDetails.CALL_MESSAGE_ID_ARG) {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
             })
         ) { backStackEntry ->
             val messageThreadId = backStackEntry.requiredStringArg(
@@ -407,11 +442,15 @@ fun AppNavHost(
                 argName = MainAppScreen.MessageThreadDetails.MESSAGE_THREAD_ID_ARG,
                 screenName = "MessageThreadDetails"
             )
+            val callMessageId = backStackEntry.arguments?.getString(
+                MainAppScreen.MessageThreadDetails.CALL_MESSAGE_ID_ARG
+            )
             if (messageThreadId != null) {
                 Log.d("MessageThreadID", messageThreadId)
                 MessageThreadScreen(
                     userSessionManager = userSessionManager,
                     initialThreadId = messageThreadId,
+                    initialCallMessageId = callMessageId,
                     onBack = { navController.popBackStack() }
                 )
             }
