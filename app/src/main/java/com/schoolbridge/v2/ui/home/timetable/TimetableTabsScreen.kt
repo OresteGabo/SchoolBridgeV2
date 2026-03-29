@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideoCall
@@ -101,12 +100,14 @@ private val AgendaKindSetSaver = Saver<Set<AgendaItemKind>, List<String>>(
 fun TimetableTabsScreen(
     userSessionManager: UserSessionManager,
     onBack: (() -> Unit)? = null,
+    onOpenMessageThread: ((String, String?) -> Unit)? = null,
     bottomBar: @Composable (() -> Unit)? = null
 ) {
     val viewModel: TimetableViewModel = viewModel(
         factory = TimetableViewModelFactory(
             timetableRepository = TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager)),
-            messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager))
+            messagingRepository = MessagingRepositoryImpl(MessageApiServiceImpl(userSessionManager)),
+            userSessionManager = userSessionManager
         )
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -115,7 +116,7 @@ fun TimetableTabsScreen(
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val useCompactHeader = !isExpanded || isLandscape || configuration.screenHeightDp < 760
     val usePhoneSummaryTab = !isExpanded && !isLandscape
-    val useWideLandscapeLayout = isExpanded && isLandscape
+    val useWideLandscapeLayout = false
     var selectedPage by rememberSaveable { mutableIntStateOf(TimetablePage.Flow.ordinal) }
     val pages = remember(usePhoneSummaryTab) {
         if (usePhoneSummaryTab) {
@@ -126,7 +127,6 @@ fun TimetableTabsScreen(
     }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSheet by remember { mutableStateOf(false) }
-    var showInfoSheet by remember { mutableStateOf(false) }
 
     val today = LocalDate.now()
     var selectedDate by rememberSaveable(stateSaver = LocalDateSaver) {
@@ -264,9 +264,6 @@ fun TimetableTabsScreen(
                             }
                         }
                     }
-                    IconButton(onClick = { showInfoSheet = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "About timetable")
-                    }
                     if (pages[selectedPage] == TimetablePage.Week && selectedWeekDate != today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) {
                         OutlinedButton(
                             onClick = {
@@ -356,7 +353,12 @@ fun TimetableTabsScreen(
                                 includedKinds = includedKinds,
                                 onIncludedKindsChange = { includedKinds = it },
                                 emptyTitle = emptyTitle,
-                                emptyMessage = emptyMessage
+                                emptyMessage = emptyMessage,
+                                onAgendaItemActionClick = { item ->
+                                    item.threadId?.let { threadId ->
+                                        onOpenMessageThread?.invoke(threadId, item.threadCallMessageId)
+                                    }
+                                }
                             )
                         }
                     }
@@ -409,7 +411,12 @@ fun TimetableTabsScreen(
                                 includedKinds = includedKinds,
                                 onIncludedKindsChange = { includedKinds = it },
                                 emptyTitle = emptyTitle,
-                                emptyMessage = emptyMessage
+                                emptyMessage = emptyMessage,
+                                onAgendaItemActionClick = { item ->
+                                    item.threadId?.let { threadId ->
+                                        onOpenMessageThread?.invoke(threadId, item.threadCallMessageId)
+                                    }
+                                }
                             )
                         }
                     }
@@ -441,16 +448,6 @@ fun TimetableTabsScreen(
         }
     }
 
-    if (showInfoSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showInfoSheet = false }
-        ) {
-            TimetableInfoSheet(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                onDismiss = { showInfoSheet = false }
-            )
-        }
-    }
 }
 
 @Composable
@@ -469,113 +466,60 @@ private fun TimetableSidebar(
     pages: List<TimetablePage>,
     onPageSelected: (Int) -> Unit
 ) {
-    TimetableHero(
-        highlights = highlights,
-        audience = audience,
-        scopeLabel = scopeLabel,
-        compact = compact
-    )
-
-    if (selectedSchoolLabels.isNotEmpty()) {
-        SelectedSchoolStrip(
-            schoolLabels = selectedSchoolLabels,
-            modifier = Modifier.padding(bottom = if (compact) 6.dp else 10.dp)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 10.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f)
         )
-    }
-
-    if (uiState.hasTeachingSchedule()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.Start
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            FilterChip(
-                selected = showOnlyMine,
-                onClick = onToggleShowOnlyMine,
-                label = { Text("Only my schedule") }
-            )
-        }
-        Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
-    }
-
-    if (wideLayout) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "View mode",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                pages.forEachIndexed { index, page ->
-                    val selected = selectedPage == index
-                    Card(
-                        onClick = { onPageSelected(index) },
-                        shape = MaterialTheme.shapes.large,
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (selected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surface
+            if (uiState.hasTeachingSchedule()) {
+                val nextHighlight = highlights.firstOrNull()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = showOnlyMine,
+                        onClick = onToggleShowOnlyMine,
+                        label = { Text("Only my schedule") },
+                        leadingIcon = {
+                            if (showOnlyMine) {
+                                Icon(Icons.Default.Check, contentDescription = null)
                             }
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = page.label,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                            Text(
-                                text = if (page == TimetablePage.Flow) {
-                                    "Follow one day at a time with classes, calls, and meetings together."
-                                } else {
-                                    "Scan the whole week and jump between planned school moments faster."
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.84f)
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
                         }
+                    )
+
+                    nextHighlight?.let { item ->
+                        Text(
+                            text = "Next up ${item.start.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
-        }
-    } else {
-        TabRow(
-            selectedTabIndex = selectedPage,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            pages.forEachIndexed { index, page ->
-                Tab(
-                    selected = selectedPage == index,
-                    onClick = { onPageSelected(index) },
-                    text = { Text(page.label) }
-                )
+
+            TabRow(
+                selectedTabIndex = selectedPage,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)
+            ) {
+                pages.forEachIndexed { index, page ->
+                    Tab(
+                        selected = selectedPage == index,
+                        onClick = { onPageSelected(index) },
+                        text = { Text(page.label) }
+                    )
+                }
             }
         }
     }
@@ -603,7 +547,8 @@ private fun PlannerPageContent(
     includedKinds: Set<AgendaItemKind>,
     onIncludedKindsChange: (Set<AgendaItemKind>) -> Unit,
     emptyTitle: String,
-    emptyMessage: String
+    emptyMessage: String,
+    onAgendaItemActionClick: (AgendaItemUi) -> Unit
 ) {
     val jumpToDate: (LocalDate) -> Unit = { date ->
         onSelectedDateChange(date)
@@ -653,7 +598,8 @@ private fun PlannerPageContent(
                         onDateChange = onSelectedDateChange,
                         density = density,
                         emptyTitle = emptyTitle,
-                        emptyMessage = emptyMessage
+                        emptyMessage = emptyMessage,
+                        onAgendaItemActionClick = onAgendaItemActionClick
                     )
 
                     TimetablePage.Week -> WeeklyTimetableTab(
@@ -664,7 +610,8 @@ private fun PlannerPageContent(
                         density = density,
                         emptyDayMessage = emptyMessage,
                         onSelectedDateChange = onSelectedWeekFocusDateChange,
-                        onStartOfWeekChange = onSelectedWeekDateChange
+                        onStartOfWeekChange = onSelectedWeekDateChange,
+                        onAgendaItemActionClick = onAgendaItemActionClick
                     )
 
                     TimetablePage.Snapshot -> Unit
@@ -680,7 +627,8 @@ private fun PlannerPageContent(
                 onDateChange = onSelectedDateChange,
                 density = density,
                 emptyTitle = emptyTitle,
-                emptyMessage = emptyMessage
+                emptyMessage = emptyMessage,
+                onAgendaItemActionClick = onAgendaItemActionClick
             )
 
             TimetablePage.Snapshot -> PlannerSnapshotTab(
@@ -705,7 +653,8 @@ private fun PlannerPageContent(
                 density = density,
                 emptyDayMessage = emptyMessage,
                 onSelectedDateChange = onSelectedWeekFocusDateChange,
-                onStartOfWeekChange = onSelectedWeekDateChange
+                onStartOfWeekChange = onSelectedWeekDateChange,
+                onAgendaItemActionClick = onAgendaItemActionClick
             )
         }
     }
