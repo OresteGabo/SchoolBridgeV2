@@ -103,6 +103,7 @@ data class TimetableStudent(
 
 data class TimetableUiState(
     val isLoading: Boolean = false,
+    val isSavingPersonalPlan: Boolean = false,
     val audience: String = "GENERAL",
     val scopeLabel: String? = null,
     val students: List<TimetableStudent> = emptyList(),
@@ -298,6 +299,7 @@ class TimetableViewModel(
     ) {
         val selectedAudience = _uiState.value.selectedAudienceNames()
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSavingPersonalPlan = true, errorMessage = null)
             runCatching {
                 timetableRepository.createPersonalPlan(
                     CreatePersonalTimetablePlanRequestDto(
@@ -318,11 +320,13 @@ class TimetableViewModel(
             }.onSuccess { createdPlan ->
                 _uiState.value = _uiState.value.copy(
                     personalPlans = (_uiState.value.personalPlans + createdPlan.toAgendaItem()).sortedBy { it.start },
-                    errorMessage = null
+                    errorMessage = null,
+                    isSavingPersonalPlan = false
                 )
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = throwable.message ?: "Could not create your personal plan"
+                    errorMessage = throwable.message ?: "Could not create your personal plan",
+                    isSavingPersonalPlan = false
                 )
             }
         }
