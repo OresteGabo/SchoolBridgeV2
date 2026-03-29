@@ -1,7 +1,9 @@
 package com.schoolbridge.v2.ui.finance
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AssistChip
@@ -40,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -57,6 +61,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -69,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schoolbridge.v2.R
 import com.schoolbridge.v2.components.CustomBottomNavBar
+import com.schoolbridge.v2.components.CustomSideNavBar
 import com.schoolbridge.v2.data.remote.FinanceApiServiceImpl
 import com.schoolbridge.v2.data.repository.implementations.FinanceRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
@@ -80,6 +88,7 @@ import com.schoolbridge.v2.ui.common.BackendStatusTile
 import com.schoolbridge.v2.ui.common.FriendlyNetworkErrorCard
 import com.schoolbridge.v2.ui.common.SchoolBridgePatternBackground
 import com.schoolbridge.v2.ui.common.isExpandedLayout
+import com.schoolbridge.v2.ui.common.isWideLandscapeLayout
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -96,6 +105,7 @@ fun FinanceScreen(
     modifier: Modifier = Modifier
 ) {
     val isExpanded = isExpandedLayout()
+    val useWideLandscapeNav = isWideLandscapeLayout()
     val currentUser by userSessionManager.currentUser.collectAsStateWithLifecycle(initialValue = null)
     val financeViewModel: FinanceViewModel = viewModel(
         factory = remember(userSessionManager) {
@@ -156,8 +166,10 @@ fun FinanceScreen(
     var selectedStudentId by remember(dashboard) { mutableStateOf(dashboard.selectedStudentId) }
     var selectedFilter by remember { mutableStateOf(FinanceFilter.All) }
     var selectedSection by remember { mutableStateOf(FinanceSection.Overview) }
+    var selectedCategory by remember { mutableStateOf<FinanceCategory?>(null) }
+    var financeSearchQuery by remember { mutableStateOf("") }
 
-    val visibleTransactions = remember(dashboard, selectedStudentId, selectedFilter) {
+    val visibleTransactions = remember(dashboard, selectedStudentId, selectedFilter, selectedCategory) {
         dashboard.transactions.filter { transaction ->
             val studentMatches = selectedStudentId == ALL_STUDENTS_ID || transaction.studentId == selectedStudentId
             val filterMatches = when (selectedFilter) {
@@ -166,7 +178,42 @@ fun FinanceScreen(
                 FinanceFilter.Chat -> transaction.source == FinanceSource.Chat
                 FinanceFilter.Completed -> transaction.status == FinanceStatus.Completed
             }
-            studentMatches && filterMatches
+            val categoryMatches = selectedCategory == null || transaction.category == selectedCategory
+            studentMatches && filterMatches && categoryMatches
+        }
+    }
+    val visibleOutstandingItems = remember(dashboard, selectedStudentId, financeSearchQuery) {
+        val normalizedQuery = financeSearchQuery.trim().lowercase()
+        dashboard.outstandingItemsFor(selectedStudentId).filter { item ->
+            if (normalizedQuery.isBlank()) return@filter true
+            listOf(
+                item.title,
+                item.description,
+                item.studentName,
+                item.category.label,
+                item.amountLabel,
+                item.dueDateLabel
+            ).any { candidate ->
+                candidate.lowercase().contains(normalizedQuery)
+            }
+        }
+    }
+    val searchedTransactions = remember(visibleTransactions, financeSearchQuery) {
+        val normalizedQuery = financeSearchQuery.trim().lowercase()
+        visibleTransactions.filter { transaction ->
+            if (normalizedQuery.isBlank()) return@filter true
+            listOf(
+                transaction.title,
+                transaction.description,
+                transaction.studentName,
+                transaction.category.label,
+                transaction.reference,
+                transaction.paymentMethod,
+                transaction.amountLabel,
+                transaction.dateLabel
+            ).any { candidate ->
+                candidate.lowercase().contains(normalizedQuery)
+            }
         }
     }
 
@@ -202,47 +249,50 @@ fun FinanceScreen(
             )
         },
         bottomBar = {
-            CustomBottomNavBar(
-                currentScreen = currentScreen,
-                onTabSelected = onTabSelected,
-                currentUser = currentUser
-            )
+            if (!useWideLandscapeNav) {
+                CustomBottomNavBar(
+                    currentScreen = currentScreen,
+                    onTabSelected = onTabSelected,
+                    currentUser = currentUser
+                )
+            }
         },
         modifier = modifier
     ) { paddingValues ->
-        AdaptivePageFrame(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = paddingValues,
-            maxContentWidth = if (isExpanded) 1320.dp else 1240.dp
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                SchoolBridgePatternBackground(dotAlpha = 0.02f, gradientAlpha = 0.05f)
-                if (showBlockingOutage) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        BackendStatusTile(
-                            title = if (isReconnectAttemptInFlight) "Reconnecting to SchoolBridge" else "SchoolBridge is temporarily down",
-                            message = uiState.errorMessage ?: "Finance is temporarily unavailable while we check the connection again.",
-                            helperText = if (isReconnectAttemptInFlight) {
-                                "Trying again automatically every few seconds."
-                            } else {
-                                "We will keep checking the server so finance data returns as soon as it is available."
-                            },
-                            state = if (isReconnectAttemptInFlight) BackendConnectionState.RECONNECTING else BackendConnectionState.DISCONNECTED,
-                            onRetry = currentUserId?.let { userId -> { financeViewModel.retry(userId) } },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+        val financeContent: @Composable () -> Unit = {
+            AdaptivePageFrame(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = if (useWideLandscapeNav) PaddingValues(horizontal = 20.dp, vertical = 0.dp) else paddingValues,
+                maxContentWidth = if (useWideLandscapeNav) 1680.dp else if (isExpanded) 1320.dp else 1240.dp
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    SchoolBridgePatternBackground(dotAlpha = 0.02f, gradientAlpha = 0.05f)
+                    if (showBlockingOutage) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BackendStatusTile(
+                                title = if (isReconnectAttemptInFlight) "Reconnecting to SchoolBridge" else "SchoolBridge is temporarily down",
+                                message = uiState.errorMessage ?: "Finance is temporarily unavailable while we check the connection again.",
+                                helperText = if (isReconnectAttemptInFlight) {
+                                    "Trying again automatically every few seconds."
+                                } else {
+                                    "We will keep checking the server so finance data returns as soon as it is available."
+                                },
+                                state = if (isReconnectAttemptInFlight) BackendConnectionState.RECONNECTING else BackendConnectionState.DISCONNECTED,
+                                onRetry = currentUserId?.let { userId -> { financeViewModel.retry(userId) } },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
                         if (showTeacherDesk) {
                             item {
                                 TeacherDeskPlaceholder()
@@ -255,7 +305,23 @@ fun FinanceScreen(
                                         selectedStudent = selectedStudent,
                                         currentUserId = currentUserId,
                                         selectedFilter = selectedFilter,
-                                        selectedStudentId = selectedStudentId
+                                        selectedStudentId = selectedStudentId,
+                                        selectedCategory = selectedCategory,
+                                        onPaySchoolFees = {
+                                            selectedSection = FinanceSection.Due
+                                            selectedFilter = FinanceFilter.Outstanding
+                                        },
+                                        onShareReceipt = {
+                                            selectedSection = FinanceSection.Activity
+                                            selectedFilter = FinanceFilter.Completed
+                                            financeSearchQuery = ""
+                                        },
+                                        onRemindMe = {
+                                            selectedSection = FinanceSection.Due
+                                        },
+                                        onFilterLedger = {
+                                            selectedSection = FinanceSection.Activity
+                                        }
                                     )
                                 }
                             } else {
@@ -276,7 +342,42 @@ fun FinanceScreen(
                                     }
 
                                     item {
-                                        QuickActionsRow()
+                                        FinanceCategoryBreakdownCard(
+                                            dashboard = dashboard,
+                                            selectedStudentId = selectedStudentId,
+                                            selectedCategory = selectedCategory,
+                                            onCategorySelected = { category ->
+                                                selectedCategory = category
+                                                selectedSection = FinanceSection.Activity
+                                            }
+                                        )
+                                    }
+
+                                    item {
+                                        FinanceMonthlyTrendCard(
+                                            dashboard = dashboard,
+                                            selectedStudentId = selectedStudentId
+                                        )
+                                    }
+
+                                    item {
+                                        QuickActionsRow(
+                                            onPaySchoolFees = {
+                                                selectedSection = FinanceSection.Due
+                                                selectedFilter = FinanceFilter.Outstanding
+                                            },
+                                            onShareReceipt = {
+                                                selectedSection = FinanceSection.Activity
+                                                selectedFilter = FinanceFilter.Completed
+                                                financeSearchQuery = ""
+                                            },
+                                            onRemindMe = {
+                                                selectedSection = FinanceSection.Due
+                                            },
+                                            onFilterLedger = {
+                                                selectedSection = FinanceSection.Activity
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -334,6 +435,14 @@ fun FinanceScreen(
 
                                 FinanceSection.Due -> {
                                     item {
+                                        FinanceSearchField(
+                                            query = financeSearchQuery,
+                                            onQueryChange = { financeSearchQuery = it },
+                                            placeholder = "Search charges, students, categories..."
+                                        )
+                                    }
+
+                                    item {
                                         SectionTitle(
                                             title = "Outstanding items",
                                             subtitle = "Parents should be able to settle fees, fines, and uniforms without digging through conversations."
@@ -341,24 +450,34 @@ fun FinanceScreen(
                                     }
 
                                     items(
-                                        items = dashboard.outstandingItemsFor(selectedStudentId),
+                                        items = visibleOutstandingItems,
                                         key = { it.id }
                                     ) { item ->
                                         OutstandingChargeCard(item = item)
                                     }
 
-                                    if (dashboard.outstandingItemsFor(selectedStudentId).isEmpty()) {
+                                    if (visibleOutstandingItems.isEmpty()) {
                                         item {
-                                            FinanceEmptyState("No outstanding charges are currently linked to this student selection.")
+                                            FinanceEmptyState("No outstanding charges match the current student and search.")
                                         }
                                     }
                                 }
 
                                 FinanceSection.Activity -> {
                                     item {
+                                        FinanceSearchField(
+                                            query = financeSearchQuery,
+                                            onQueryChange = { financeSearchQuery = it },
+                                            placeholder = "Search transactions, references, payment methods..."
+                                        )
+                                    }
+
+                                    item {
                                         FinanceFilterRow(
                                             selectedFilter = selectedFilter,
-                                            onFilterSelected = { selectedFilter = it }
+                                            selectedCategory = selectedCategory,
+                                            onFilterSelected = { selectedFilter = it },
+                                            onCategorySelected = { selectedCategory = it }
                                         )
                                     }
 
@@ -370,13 +489,13 @@ fun FinanceScreen(
                                     }
 
                                     items(
-                                        items = visibleTransactions,
+                                        items = searchedTransactions,
                                         key = { it.id }
                                     ) { transaction ->
                                         TransactionCard(transaction = transaction)
                                     }
 
-                                    if (visibleTransactions.isEmpty()) {
+                                    if (searchedTransactions.isEmpty()) {
                                         item {
                                             FinanceEmptyState("No transactions match the current student and filter yet.")
                                         }
@@ -418,9 +537,33 @@ fun FinanceScreen(
                             onRetry = currentUserId?.let { userId -> { financeViewModel.retry(userId) } },
                             modifier = Modifier.alpha(0.98f)
                         )
+                        }
                     }
                 }
             }
+        }
+
+        if (useWideLandscapeNav) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                CustomSideNavBar(
+                    currentScreen = currentScreen,
+                    onTabSelected = onTabSelected,
+                    currentUser = currentUser
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                ) {
+                    financeContent()
+                }
+            }
+        } else {
+            financeContent()
         }
     }
 }
@@ -431,7 +574,12 @@ private fun ExpandedOverviewSection(
     selectedStudent: FinanceStudent?,
     currentUserId: String?,
     selectedFilter: FinanceFilter,
-    selectedStudentId: String
+    selectedStudentId: String,
+    selectedCategory: FinanceCategory?,
+    onPaySchoolFees: () -> Unit,
+    onShareReceipt: () -> Unit,
+    onRemindMe: () -> Unit,
+    onFilterLedger: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -451,13 +599,28 @@ private fun ExpandedOverviewSection(
             OverviewStatsGrid(
                 stats = dashboard.statsFor(selectedStudentId)
             )
+            FinanceCategoryBreakdownCard(
+                dashboard = dashboard,
+                selectedStudentId = selectedStudentId,
+                selectedCategory = selectedCategory,
+                onCategorySelected = {}
+            )
+            FinanceMonthlyTrendCard(
+                dashboard = dashboard,
+                selectedStudentId = selectedStudentId
+            )
         }
 
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            QuickActionsRow()
+            QuickActionsRow(
+                onPaySchoolFees = onPaySchoolFees,
+                onShareReceipt = onShareReceipt,
+                onRemindMe = onRemindMe,
+                onFilterLedger = onFilterLedger
+            )
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -604,6 +767,334 @@ private fun FinanceEmptyState(message: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun FinanceCategoryBreakdownCard(
+    dashboard: FinanceDashboard,
+    selectedStudentId: String,
+    selectedCategory: FinanceCategory?,
+    onCategorySelected: (FinanceCategory) -> Unit
+) {
+    val breakdown = remember(dashboard, selectedStudentId) {
+        dashboard.categoryBreakdown(selectedStudentId).take(4)
+    }
+    if (breakdown.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Money flow by category",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "This graph compares what is already paid with what is still waiting, so the balance pressure is visible before you open every finance row.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                val maxTotal = breakdown.maxOfOrNull { it.totalAmount }?.takeIf { it > 0.0 } ?: 1.0
+                breakdown.forEach { item ->
+                    FinanceCategoryGraphRow(
+                        item = item,
+                        maxTotal = maxTotal,
+                        isSelected = selectedCategory == item.category,
+                        onClick = { onCategorySelected(item.category) }
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FinanceGraphLegendChip(
+                    label = "Paid",
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                FinanceGraphLegendChip(
+                    label = "Outstanding",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceCategoryGraphRow(
+    item: FinanceCategoryBreakdown,
+    maxTotal: Double,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val paidColor = MaterialTheme.colorScheme.tertiary
+    val outstandingColor = MaterialTheme.colorScheme.primary
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.32f)
+                else Color.Transparent
+            )
+            .padding(horizontal = 10.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(
+                        imageVector = item.category.icon,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = item.category.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${item.paidAmount.asMoney()} paid • ${item.outstandingAmount.asMoney()} waiting",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                text = item.totalAmount.asMoney(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .size(height = 14.dp, width = 0.dp)
+        ) {
+            val radius = CornerRadius(size.height / 2f, size.height / 2f)
+            drawRoundRect(
+                color = trackColor,
+                cornerRadius = radius
+            )
+
+            val totalWidth = ((item.totalAmount / maxTotal).toFloat() * size.width).coerceAtLeast(0f)
+            if (totalWidth <= 0f) return@Canvas
+
+            val paidWidth = ((item.paidAmount / maxTotal).toFloat() * size.width)
+                .coerceIn(0f, totalWidth)
+            val outstandingWidth = (totalWidth - paidWidth).coerceAtLeast(0f)
+
+            if (paidWidth > 0f) {
+                drawRoundRect(
+                    color = paidColor,
+                    size = Size(width = paidWidth, height = size.height),
+                    cornerRadius = radius
+                )
+            }
+            if (outstandingWidth > 0f) {
+                drawRoundRect(
+                    color = outstandingColor,
+                    topLeft = Offset(x = paidWidth, y = 0f),
+                    size = Size(width = outstandingWidth, height = size.height),
+                    cornerRadius = radius
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceGraphLegendChip(
+    label: String,
+    color: Color
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun FinanceMonthlyTrendCard(
+    dashboard: FinanceDashboard,
+    selectedStudentId: String
+) {
+    val trend = remember(dashboard, selectedStudentId) {
+        dashboard.monthlyTrend(selectedStudentId)
+    }
+    if (trend.size < 2) return
+
+    val maxAmount = trend.maxOfOrNull { maxOf(it.paidAmount, it.outstandingAmount) }
+        ?.takeIf { it > 0.0 } ?: 1.0
+    val axisColor = MaterialTheme.colorScheme.outlineVariant
+    val guideColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+    val paidColor = MaterialTheme.colorScheme.tertiary
+    val outstandingColor = MaterialTheme.colorScheme.primary
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Monthly balance rhythm",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "This timeline shows how payments and upcoming pressure are moving across recent months.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .size(height = 180.dp, width = 0.dp)
+            ) {
+                val leftPadding = 20.dp.toPx()
+                val rightPadding = 8.dp.toPx()
+                val topPadding = 12.dp.toPx()
+                val bottomPadding = 28.dp.toPx()
+                val graphWidth = size.width - leftPadding - rightPadding
+                val graphHeight = size.height - topPadding - bottomPadding
+                val stepX = if (trend.size > 1) graphWidth / (trend.size - 1) else 0f
+
+                drawLine(
+                    color = axisColor,
+                    start = Offset(leftPadding, topPadding + graphHeight),
+                    end = Offset(leftPadding + graphWidth, topPadding + graphHeight),
+                    strokeWidth = 1.dp.toPx()
+                )
+
+                fun pointY(amount: Double): Float {
+                    val normalized = (amount / maxAmount).toFloat().coerceIn(0f, 1f)
+                    return topPadding + graphHeight - (graphHeight * normalized)
+                }
+
+                for (index in trend.indices) {
+                    val x = leftPadding + (stepX * index)
+                    drawLine(
+                        color = guideColor,
+                        start = Offset(x, topPadding),
+                        end = Offset(x, topPadding + graphHeight),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                for (index in 0 until trend.lastIndex) {
+                    val start = trend[index]
+                    val end = trend[index + 1]
+                    val startX = leftPadding + (stepX * index)
+                    val endX = leftPadding + (stepX * (index + 1))
+                    drawLine(
+                        color = paidColor,
+                        start = Offset(startX, pointY(start.paidAmount)),
+                        end = Offset(endX, pointY(end.paidAmount)),
+                        strokeWidth = 3.dp.toPx()
+                    )
+                    drawLine(
+                        color = outstandingColor,
+                        start = Offset(startX, pointY(start.outstandingAmount)),
+                        end = Offset(endX, pointY(end.outstandingAmount)),
+                        strokeWidth = 3.dp.toPx()
+                    )
+                }
+
+                trend.forEachIndexed { index, point ->
+                    val x = leftPadding + (stepX * index)
+                    drawCircle(
+                        color = paidColor,
+                        radius = 4.dp.toPx(),
+                        center = Offset(x, pointY(point.paidAmount))
+                    )
+                    drawCircle(
+                        color = outstandingColor,
+                        radius = 4.dp.toPx(),
+                        center = Offset(x, pointY(point.outstandingAmount))
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                trend.forEach { point ->
+                    Text(
+                        text = point.month.month.name.take(3),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FinanceGraphLegendChip(
+                    label = "Paid trend",
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                FinanceGraphLegendChip(
+                    label = "Outstanding trend",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 
@@ -890,12 +1381,17 @@ private fun StatCard(
 }
 
 @Composable
-private fun QuickActionsRow() {
+private fun QuickActionsRow(
+    onPaySchoolFees: () -> Unit,
+    onShareReceipt: () -> Unit,
+    onRemindMe: () -> Unit,
+    onFilterLedger: () -> Unit
+) {
     val actions = listOf(
-        QuickActionUi("Pay school fees", Icons.Default.Payments, FinanceTone.Positive),
-        QuickActionUi("Share receipt", Icons.AutoMirrored.Filled.ReceiptLong, FinanceTone.Info),
-        QuickActionUi("Remind me", Icons.Default.NotificationsActive, FinanceTone.Warning),
-        QuickActionUi("Filter ledger", Icons.Default.FilterList, FinanceTone.Accent)
+        QuickActionUi("Pay school fees", Icons.Default.Payments, FinanceTone.Positive) to onPaySchoolFees,
+        QuickActionUi("Share receipt", Icons.AutoMirrored.Filled.ReceiptLong, FinanceTone.Info) to onShareReceipt,
+        QuickActionUi("Remind me", Icons.Default.NotificationsActive, FinanceTone.Warning) to onRemindMe,
+        QuickActionUi("Filter ledger", Icons.Default.FilterList, FinanceTone.Accent) to onFilterLedger
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -909,9 +1405,10 @@ private fun QuickActionsRow() {
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            actions.forEach { action ->
+            actions.forEach { (action, onClick) ->
                 val actionTint = financeToneColor(action.tone)
                 Card(
+                    onClick = onClick,
                     modifier = Modifier.size(width = 156.dp, height = 122.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
@@ -950,9 +1447,33 @@ private fun QuickActionsRow() {
 }
 
 @Composable
+private fun FinanceSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null
+            )
+        },
+        placeholder = { Text(placeholder) },
+        shape = RoundedCornerShape(22.dp)
+    )
+}
+
+@Composable
 private fun FinanceFilterRow(
     selectedFilter: FinanceFilter,
-    onFilterSelected: (FinanceFilter) -> Unit
+    selectedCategory: FinanceCategory?,
+    onFilterSelected: (FinanceFilter) -> Unit,
+    onCategorySelected: (FinanceCategory?) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionTitle(
@@ -970,6 +1491,25 @@ private fun FinanceFilterRow(
                     selected = selectedFilter == filter,
                     onClick = { onFilterSelected(filter) },
                     label = { Text(filter.label) }
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FilterChip(
+                selected = selectedCategory == null,
+                onClick = { onCategorySelected(null) },
+                label = { Text("All categories") }
+            )
+            FinanceCategory.entries.forEach { category ->
+                FilterChip(
+                    selected = selectedCategory == category,
+                    onClick = { onCategorySelected(category) },
+                    label = { Text(category.label) }
                 )
             }
         }
