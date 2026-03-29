@@ -3,6 +3,7 @@ package com.schoolbridge.v2.ui.home.timetable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.data.dto.academic.CreatePersonalTimetablePlanRequestDto
 import com.schoolbridge.v2.data.dto.academic.MobilePersonalTimetablePlanDto
 import com.schoolbridge.v2.data.dto.academic.MobileTimetableEntryDto
@@ -26,6 +27,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -71,9 +73,13 @@ data class AgendaItemUi(
     val schoolName: String? = null,
     val room: String? = null,
     val studentName: String? = null,
+    val linkedStudentNames: List<String> = emptyList(),
     val note: String? = null,
     val statusLabel: String? = null,
     val ctaLabel: String? = null,
+    val threadId: String? = null,
+    val threadCallMessageId: String? = null,
+    val meetingDecision: MeetingDecision? = null,
     val isImportant: Boolean = false,
     val isOwnedByCurrentUser: Boolean = false,
     val origin: AgendaItemOrigin = AgendaItemOrigin.OFFICIAL
@@ -128,6 +134,7 @@ data class TimetableUiState(
         showOnlyMine: Boolean = false
     ): List<AgendaItemUi> =
         (dailyEntries(date).map { it.toAgendaItem() } + filteredPlannedItems(date, showOnlyMine) + filteredPersonalPlans(date))
+            .mergeLinkedStudentSchedules()
             .filter { !showOnlyMine || it.isOwnedByCurrentUser }
             .filter { it.kind in includedKinds }
             .sortedBy { it.start }
@@ -222,7 +229,8 @@ data class TimetableUiState(
 
 class TimetableViewModel(
     private val timetableRepository: TimetableRepository,
-    private val messagingRepository: MessagingRepository? = null
+    private val messagingRepository: MessagingRepository? = null,
+    private val userSessionManager: UserSessionManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TimetableUiState(isLoading = true))
@@ -242,7 +250,8 @@ class TimetableViewModel(
                             runCatching { repo.getMessageThreads().toPlannedAgendaItems() }.getOrDefault(emptyList())
                         }
                         .orEmpty()
-                    _uiState.value = response.toUiState(plannedItems)
+                    val decisionAwareItems = plannedItems.applyMeetingDecisions(userSessionManager)
+                    _uiState.value = response.toUiState(decisionAwareItems)
                 }
                 .onFailure { throwable ->
                     _uiState.value = _uiState.value.copy(
@@ -311,12 +320,13 @@ class TimetableViewModel(
 
 class TimetableViewModelFactory(
     private val timetableRepository: TimetableRepository,
-    private val messagingRepository: MessagingRepository? = null
+    private val messagingRepository: MessagingRepository? = null,
+    private val userSessionManager: UserSessionManager? = null
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(TimetableViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return TimetableViewModel(timetableRepository, messagingRepository) as T
+            return TimetableViewModel(timetableRepository, messagingRepository, userSessionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -400,6 +410,11 @@ private fun TimetableEntry.toAgendaItem(): AgendaItemUi = AgendaItemUi(
     schoolName = schoolName,
     room = room.takeIf { it.isNotBlank() },
     studentName = studentName,
+    linkedStudentNames = if (roleContext == "LINKED_STUDENT" && !studentName.isNullOrBlank()) {
+        listOf(studentName)
+    } else {
+        emptyList()
+    },
     note = note,
     statusLabel = when {
         type == TimetableEntryType.TEST -> "Prepare"
@@ -418,6 +433,7 @@ private fun List<MobileMessageThreadDto>.toPlannedAgendaItems(): List<AgendaItem
 private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadDto): AgendaItemUi? {
     val start = scheduledFor?.let(::parseCallDateTime) ?: return null
     val end = start.plusMinutes(estimatedDurationMinutes())
+    val now = LocalDateTime.now()
     val kind = when {
         type.equals("LIVE_ANNOUNCEMENT", ignoreCase = true) -> AgendaItemKind.ANNOUNCEMENT
         purpose.equals("ANNOUNCEMENT", ignoreCase = true) -> AgendaItemKind.ANNOUNCEMENT
@@ -443,17 +459,54 @@ private fun MobileThreadCallSummaryDto.toAgendaItem(thread: MobileMessageThreadD
             .split(' ')
             .joinToString(" ") { word ->
                 word.replaceFirstChar { char -> char.titlecase(Locale.getDefault()) }
-            },
+        },
         kind = kind,
         sourceLabel = "Thread plan",
         note = note,
         statusLabel = status.toFriendlyCallStatus(),
-        ctaLabel = status.toFriendlyCallAction(),
+        ctaLabel = resolveThreadCallActionLabel(
+            status = status,
+            start = start,
+            end = end,
+            now = now
+        ),
+        threadId = thread.id,
+        threadCallMessageId = relatedMessageId ?: "call_$id",
+        isOwnedByCurrentUser = true,
         isImportant = status.equals("SCHEDULED", ignoreCase = true) ||
             status.equals("PENDING_CONFIRMATION", ignoreCase = true) ||
             purpose.equals("ANNOUNCEMENT", ignoreCase = true),
         origin = AgendaItemOrigin.THREAD_PLAN
     )
+}
+
+private fun List<AgendaItemUi>.applyMeetingDecisions(
+    userSessionManager: UserSessionManager?
+): List<AgendaItemUi> {
+    val appContext = userSessionManager?.appContext
+    return map { item ->
+        if (item.origin != AgendaItemOrigin.THREAD_PLAN || item.threadId == null) {
+            item
+        } else {
+            val decision = appContext?.let { NotificationInteractionStore.getMeetingDecision(it, item.threadId) }
+            when (decision) {
+                MeetingDecision.DECLINED -> item.copy(
+                    meetingDecision = decision,
+                    statusLabel = "Not attending",
+                    ctaLabel = null
+                )
+                MeetingDecision.ATTENDING -> item.copy(
+                    meetingDecision = decision,
+                    statusLabel = "Attending"
+                )
+                MeetingDecision.MAYBE -> item.copy(
+                    meetingDecision = decision,
+                    statusLabel = "Maybe"
+                )
+                null -> item
+            }
+        }
+    }
 }
 
 private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
@@ -500,8 +553,73 @@ private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
 }
 
 private fun parseCallDateTime(raw: String): LocalDateTime? = runCatching {
-    OffsetDateTime.parse(raw).toLocalDateTime()
+    OffsetDateTime.parse(raw)
+        .atZoneSameInstant(ZoneId.systemDefault())
+        .toLocalDateTime()
 }.getOrNull()
+
+private fun List<AgendaItemUi>.mergeLinkedStudentSchedules(): List<AgendaItemUi> {
+    data class MergeKey(
+        val start: LocalDateTime,
+        val end: LocalDateTime,
+        val title: String,
+        val subtitle: String,
+        val badge: String,
+        val kind: AgendaItemKind,
+        val schoolName: String?,
+        val room: String?,
+        val note: String?,
+        val statusLabel: String?,
+        val ctaLabel: String?,
+        val isImportant: Boolean,
+        val isOwnedByCurrentUser: Boolean,
+        val origin: AgendaItemOrigin
+    )
+
+    val merged = mutableListOf<AgendaItemUi>()
+    val groupedLinked = this
+        .filter { it.origin == AgendaItemOrigin.OFFICIAL && !it.isOwnedByCurrentUser && it.linkedStudentNames.isNotEmpty() }
+        .groupBy {
+            MergeKey(
+                start = it.start,
+                end = it.end,
+                title = it.title,
+                subtitle = it.subtitle,
+                badge = it.badge,
+                kind = it.kind,
+                schoolName = it.schoolName,
+                room = it.room,
+                note = it.note,
+                statusLabel = it.statusLabel,
+                ctaLabel = it.ctaLabel,
+                isImportant = it.isImportant,
+                isOwnedByCurrentUser = it.isOwnedByCurrentUser,
+                origin = it.origin
+            )
+        }
+
+    val consumedIds = groupedLinked.values.flatten().map { it.id }.toSet()
+    merged += this.filterNot { it.id in consumedIds }
+    merged += groupedLinked.values.map { items ->
+        val names = items.flatMap { it.linkedStudentNames }.distinct()
+        val first = items.first()
+        first.copy(
+            id = buildString {
+                append(first.id.substringBeforeLast("_"))
+                append("_group_")
+                append(names.joinToString("|").hashCode())
+            },
+            sourceLabel = when (names.size) {
+                0 -> first.sourceLabel
+                1 -> names.first().substringBefore(" ")
+                else -> "${names.size} children"
+            },
+            linkedStudentNames = names,
+            studentName = null
+        )
+    }
+    return merged
+}
 
 private fun MobileThreadCallSummaryDto.estimatedDurationMinutes(): Long {
     durationLabel
@@ -529,6 +647,22 @@ private fun String.toFriendlyCallAction(): String? = when {
     equals("SCHEDULED", ignoreCase = true) -> "Join soon"
     equals("LIVE", ignoreCase = true) || equals("ONGOING", ignoreCase = true) -> "Join now"
     else -> null
+}
+
+private fun resolveThreadCallActionLabel(
+    status: String,
+    start: LocalDateTime,
+    end: LocalDateTime,
+    now: LocalDateTime
+): String? {
+    if (status.equals("SCHEDULED", ignoreCase = true)) {
+        // TODO: Pair this join window with a local reminder / push notification pipeline.
+        val joinWindowStart = start.minusMinutes(5)
+        if (!now.isBefore(joinWindowStart) && now.isBefore(end)) {
+            return "Join now"
+        }
+    }
+    return status.toFriendlyCallAction()
 }
 
 private fun String.toFriendlyPersonalPlanBadge(): String = when {
