@@ -47,25 +47,52 @@ fun AddEventBottomSheet(
     audienceSummary: String?,
     participantOptions: List<TimetableParticipantOption>,
     defaultParticipantIds: Set<Long>,
+    existingPlan: AgendaItemUi? = null,
     existingAgenda: List<AgendaItemUi>,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType, PlanVisibility, List<Long>) -> Unit
+    onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType, PlanVisibility, List<Long>, Int?) -> Unit,
+    onDeletePlan: (() -> Unit)? = null
 ) {
-    var startTime by remember { mutableStateOf(LocalTime.of(8, 0)) }
-    var endTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(PersonalPlanType.STUDY_BLOCK) }
-    var selectedVisibility by remember { mutableStateOf(PlanVisibility.PRIVATE) }
-    var selectedParticipantIds by remember(defaultParticipantIds) { mutableStateOf(defaultParticipantIds) }
+    val isEditing = existingPlan != null
+    val initialType = remember(existingPlan?.id) {
+        existingPlan?.badge?.toPersonalPlanTypeOrDefault() ?: PersonalPlanType.STUDY_BLOCK
+    }
+    val initialVisibility = remember(existingPlan?.id) {
+        if (existingPlan?.sourceLabel?.contains("Shared", ignoreCase = true) == true) {
+            PlanVisibility.SHARED
+        } else {
+            PlanVisibility.PRIVATE
+        }
+    }
+    var startTime by remember(existingPlan?.id) { mutableStateOf(existingPlan?.start?.toLocalTime() ?: LocalTime.of(8, 0)) }
+    var endTime by remember(existingPlan?.id) { mutableStateOf(existingPlan?.end?.toLocalTime() ?: LocalTime.of(9, 0)) }
+    var title by remember(existingPlan?.id) { mutableStateOf(existingPlan?.title.orEmpty()) }
+    var description by remember(existingPlan?.id) { mutableStateOf(existingPlan?.note?.substringBefore("\n\nCreated from mobile personal planner.").orEmpty()) }
+    var selectedType by remember(existingPlan?.id) { mutableStateOf(initialType) }
+    var selectedVisibility by remember(existingPlan?.id) { mutableStateOf(initialVisibility) }
+    var selectedParticipantIds by remember(existingPlan?.id, defaultParticipantIds) {
+        mutableStateOf(existingPlan?.participantUserIds?.toSet()?.takeIf { it.isNotEmpty() } ?: defaultParticipantIds)
+    }
+    var selectedReminderMinutes by remember(existingPlan?.id) { mutableStateOf(existingPlan?.reminderMinutesBefore) }
     var showTypeMenu by remember { mutableStateOf(false) }
+    var showReminderMenu by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val suggestedDurations = remember {
         listOf(30L to "30 min", 60L to "1 hour", 120L to "2 hours")
     }
-    val overlappingItems = remember(selectedDate, startTime, endTime, existingAgenda) {
+    val reminderOptions = remember {
+        listOf(
+            null to "No reminder",
+            5 to "5 minutes before",
+            15 to "15 minutes before",
+            30 to "30 minutes before",
+            60 to "1 hour before"
+        )
+    }
+    val overlappingItems = remember(selectedDate, startTime, endTime, existingAgenda, existingPlan?.id) {
         existingAgenda.filter { agendaItem ->
+            if (agendaItem.id == existingPlan?.id) return@filter false
             val startsInside = !agendaItem.start.toLocalTime().isBefore(startTime) && agendaItem.start.toLocalTime().isBefore(endTime)
             val endsInside = agendaItem.end.toLocalTime().isAfter(startTime) && !agendaItem.end.toLocalTime().isAfter(endTime)
             val wrapsSelection = agendaItem.start.toLocalTime().isBefore(endTime) && agendaItem.end.toLocalTime().isAfter(startTime)
@@ -93,7 +120,7 @@ fun AddEventBottomSheet(
             .padding(16.dp)
     ) {
         Text(
-            text = "Plan something on $formattedDate",
+            text = if (isEditing) "Update plan on $formattedDate" else "Plan something on $formattedDate",
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -252,6 +279,58 @@ fun AddEventBottomSheet(
         Spacer(Modifier.height(12.dp))
 
         Text(
+            text = "Reminder",
+            style = MaterialTheme.typography.labelLarge
+        )
+        Spacer(Modifier.height(8.dp))
+        Box {
+            OutlinedButton(
+                onClick = { showReminderMenu = true },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(selectedReminderMinutes.toReminderLabel())
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Open reminder list"
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = showReminderMenu,
+                onDismissRequest = { showReminderMenu = false }
+            ) {
+                reminderOptions.forEach { (minutes, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            selectedReminderMinutes = minutes
+                            showReminderMenu = false
+                        },
+                        trailingIcon = if (minutes == selectedReminderMinutes) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null
+                                )
+                            }
+                        } else {
+                            null
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
             text = "Time",
             style = MaterialTheme.typography.labelLarge
         )
@@ -312,7 +391,8 @@ fun AddEventBottomSheet(
                             selectedParticipantIds.toList()
                         } else {
                             emptyList()
-                        }
+                        },
+                        selectedReminderMinutes
                     )
                 },
                 enabled = startTime < endTime && !isSaving
@@ -324,10 +404,25 @@ fun AddEventBottomSheet(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Saving...")
+                    Text(if (isEditing) "Updating..." else "Saving...")
                 } else {
-                    Text("Save plan")
+                    Text(if (isEditing) "Update plan" else "Save plan")
                 }
+            }
+        }
+
+        if (isEditing && onDeletePlan != null) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onDeletePlan,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.48f))
+            ) {
+                Text("Delete this plan")
             }
         }
     }
@@ -723,4 +818,27 @@ private fun PersonalPlanType.defaultTitle(): String = when (this) {
     PersonalPlanType.PARENT_FOLLOW_UP -> "Parent follow-up"
     PersonalPlanType.VERIFICATION_APPOINTMENT -> "Verification appointment"
     PersonalPlanType.REMINDER -> "School reminder"
+}
+
+private fun String.toPersonalPlanTypeOrDefault(): PersonalPlanType = when {
+    equals("Study block", ignoreCase = true) -> PersonalPlanType.STUDY_BLOCK
+    equals("Homework", ignoreCase = true) -> PersonalPlanType.HOMEWORK
+    equals("Revision", ignoreCase = true) -> PersonalPlanType.REVISION
+    equals("Exam prep", ignoreCase = true) -> PersonalPlanType.EXAM_PREP
+    equals("Group work", ignoreCase = true) -> PersonalPlanType.GROUP_WORK
+    equals("Project", ignoreCase = true) -> PersonalPlanType.PROJECT_MILESTONE
+    equals("Club", ignoreCase = true) -> PersonalPlanType.CLUB_ACTIVITY
+    equals("Personal meeting", ignoreCase = true) -> PersonalPlanType.MEETING
+    equals("Follow-up", ignoreCase = true) -> PersonalPlanType.PARENT_FOLLOW_UP
+    equals("Verification", ignoreCase = true) -> PersonalPlanType.VERIFICATION_APPOINTMENT
+    else -> PersonalPlanType.REMINDER
+}
+
+private fun Int?.toReminderLabel(): String = when (this) {
+    null -> "No reminder"
+    5 -> "5 minutes before"
+    15 -> "15 minutes before"
+    30 -> "30 minutes before"
+    60 -> "1 hour before"
+    else -> "$this minutes before"
 }
