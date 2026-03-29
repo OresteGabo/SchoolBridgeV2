@@ -45,6 +45,8 @@ import java.util.Locale
 fun AddEventBottomSheet(
     selectedDate: LocalDate,
     audienceSummary: String?,
+    existingAgenda: List<AgendaItemUi>,
+    isSaving: Boolean,
     onDismiss: () -> Unit,
     onAddEvent: (LocalTime, LocalTime, String, String, PersonalPlanType, PlanVisibility) -> Unit
 ) {
@@ -58,6 +60,14 @@ fun AddEventBottomSheet(
     val scrollState = rememberScrollState()
     val suggestedDurations = remember {
         listOf(30L to "30 min", 60L to "1 hour", 120L to "2 hours")
+    }
+    val overlappingItems = remember(selectedDate, startTime, endTime, existingAgenda) {
+        existingAgenda.filter { agendaItem ->
+            val startsInside = !agendaItem.start.toLocalTime().isBefore(startTime) && agendaItem.start.toLocalTime().isBefore(endTime)
+            val endsInside = agendaItem.end.toLocalTime().isAfter(startTime) && !agendaItem.end.toLocalTime().isAfter(endTime)
+            val wrapsSelection = agendaItem.start.toLocalTime().isBefore(endTime) && agendaItem.end.toLocalTime().isAfter(startTime)
+            startsInside || endsInside || wrapsSelection
+        }
     }
 
     val formattedDate = remember(selectedDate) {
@@ -129,6 +139,7 @@ fun AddEventBottomSheet(
         Box {
             OutlinedButton(
                 onClick = { showTypeMenu = true },
+                enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large
             ) {
@@ -186,6 +197,7 @@ fun AddEventBottomSheet(
                 description = "Only in your own planner",
                 selected = selectedVisibility == PlanVisibility.PRIVATE,
                 onClick = { selectedVisibility = PlanVisibility.PRIVATE },
+                enabled = !isSaving,
                 modifier = Modifier.weight(1f)
             )
             VisibilityChip(
@@ -193,6 +205,7 @@ fun AddEventBottomSheet(
                 description = audienceSummary ?: "Use for collaborative school planning",
                 selected = selectedVisibility == PlanVisibility.SHARED,
                 onClick = { selectedVisibility = PlanVisibility.SHARED },
+                enabled = !isSaving,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -207,6 +220,7 @@ fun AddEventBottomSheet(
         WheelTimePicker(
             startTime = startTime,
             endTime = endTime,
+            enabled = !isSaving,
             onStartTimeChange = { startTime = it },
             onEndTimeChange = { endTime = it }
         )
@@ -226,10 +240,16 @@ fun AddEventBottomSheet(
                 FilterChip(
                     selected = endTime == startTime.plusMinutes(minutes),
                     onClick = { endTime = startTime.plusMinutes(minutes) },
+                    enabled = !isSaving,
                     label = { Text(label) },
                     colors = FilterChipDefaults.filterChipColors()
                 )
             }
+        }
+
+        if (overlappingItems.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            ScheduleConflictNotice(items = overlappingItems)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -238,7 +258,7 @@ fun AddEventBottomSheet(
             horizontalArrangement = Arrangement.End,
             modifier = Modifier.fillMaxWidth()
         ) {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancel") }
             Spacer(Modifier.width(8.dp))
             Button(
                 onClick = {
@@ -251,9 +271,58 @@ fun AddEventBottomSheet(
                         selectedVisibility
                     )
                 },
-                enabled = startTime < endTime
+                enabled = startTime < endTime && !isSaving
             ) {
-                Text("Save plan")
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Saving...")
+                } else {
+                    Text("Save plan")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleConflictNotice(items: List<AgendaItemUi>) {
+    val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.28f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = if (items.size == 1) {
+                    "This overlaps another school moment"
+                } else {
+                    "This overlaps ${items.size} school moments"
+                },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            items.take(3).forEach { item ->
+                Text(
+                    text = "${item.start.format(formatter)}-${item.end.format(formatter)} • ${item.title}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.88f)
+                )
+            }
+            if (items.size > 3) {
+                Text(
+                    text = "+${items.size - 3} more",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.82f)
+                )
             }
         }
     }
@@ -265,6 +334,7 @@ private fun VisibilityChip(
     description: String,
     selected: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -283,7 +353,8 @@ private fun VisibilityChip(
             } else {
                 MaterialTheme.colorScheme.outlineVariant
             }
-        )
+        ),
+        enabled = enabled
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -334,6 +405,7 @@ private fun VisibilityChip(
 private fun WheelTimePicker(
     startTime: LocalTime,
     endTime: LocalTime,
+    enabled: Boolean,
     onStartTimeChange: (LocalTime) -> Unit,
     onEndTimeChange: (LocalTime) -> Unit
 ) {
@@ -344,12 +416,14 @@ private fun WheelTimePicker(
         WheelTimeSelector(
             label = "Start",
             time = startTime,
+            enabled = enabled,
             onTimeSelected = onStartTimeChange,
             modifier = Modifier.weight(1f)
         )
         WheelTimeSelector(
             label = "End",
             time = endTime,
+            enabled = enabled,
             onTimeSelected = onEndTimeChange,
             modifier = Modifier.weight(1f)
         )
@@ -360,6 +434,7 @@ private fun WheelTimePicker(
 private fun WheelTimeSelector(
     label: String,
     time: LocalTime,
+    enabled: Boolean,
     onTimeSelected: (LocalTime) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -388,6 +463,7 @@ private fun WheelTimeSelector(
                     selectedValue = time.hour,
                     format = { it.toString().padStart(2, '0') },
                     onSelected = { onTimeSelected(LocalTime.of(it, time.minute)) },
+                    enabled = enabled,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -401,6 +477,7 @@ private fun WheelTimeSelector(
                     selectedValue = nearestMinuteStep(time.minute),
                     format = { it.toString().padStart(2, '0') },
                     onSelected = { onTimeSelected(LocalTime.of(time.hour, it)) },
+                    enabled = enabled,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -419,6 +496,7 @@ private fun TimeWheelColumn(
     selectedValue: Int,
     format: (Int) -> String,
     onSelected: (Int) -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     val itemHeight = 44.dp
@@ -452,7 +530,9 @@ private fun TimeWheelColumn(
             .height(88.dp)
             .pointerInput(Unit) {
                 detectVerticalDragGestures { change, _ ->
-                    change.consume()
+                    if (enabled) {
+                        change.consume()
+                    }
                 }
             }
     ) {
@@ -469,6 +549,7 @@ private fun TimeWheelColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             flingBehavior = flingBehavior,
+            userScrollEnabled = enabled,
             contentPadding = PaddingValues(vertical = 22.dp)
         ) {
             itemsIndexed(values) { index, value ->
