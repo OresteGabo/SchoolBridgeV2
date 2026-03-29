@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
@@ -35,6 +36,7 @@ import com.schoolbridge.v2.ui.onboarding.OnboardingScreen
 import com.schoolbridge.v2.ui.home.timetable.ScheduleReminderScheduler
 import com.schoolbridge.v2.ui.theme.SchoolBridgeV2Theme
 import com.schoolbridge.v2.ui.theme.ThemeViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -108,12 +110,12 @@ class MainActivity : ComponentActivity() {
                         is SessionState.Loading   -> SplashScreen()
 
                         is SessionState.Onboarding -> {
+                            val onboardingScope = rememberCoroutineScope()
                             OnboardingScreen(
                                 onFinished = {
-                                    // Mark onboarding complete
-                                    LaunchedEffect(Unit) {
+                                    onboardingScope.launch {
                                         sessionMgr.markOnboardingComplete()
-                                        sessionMgr.initializeSession() // triggers recomposition to switch to Auth
+                                        sessionMgr.initializeSession()
                                     }
                                 }
                             )
