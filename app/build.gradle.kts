@@ -120,6 +120,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.geometry)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.compose.animation.core)
+    implementation(libs.androidx.compose.foundation.layout)
     //implementation(libs.androidx.compose.testing)          // e.g. 2024.06.00
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
@@ -133,6 +136,7 @@ dependencies {
     /* ---------- Material 3 (expressive) ---------- */
     // Override the BOM with the newer alpha that ships FloatingToolbar
     val m3Alpha = "1.4.0-alpha15"
+    implementation("androidx.compose.material3:material3:1.2.0")
     implementation("androidx.compose.material3:material3:$m3Alpha")
     implementation("androidx.compose.material3:material3-window-size-class:$m3Alpha")
     implementation("androidx.compose.material:material-icons-extended")   // Icons
