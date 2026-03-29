@@ -51,6 +51,9 @@ import androidx.compose.runtime.getValue
 import com.schoolbridge.v2.domain.user.UserRole
 import com.schoolbridge.v2.ui.home.ParentRoleRequestScreen
 import com.schoolbridge.v2.ui.home.RequestRoleScreen
+import com.schoolbridge.v2.ui.academic.AcademicPlaceholderDetailScreen
+import com.schoolbridge.v2.ui.academic.CoursesListScreen
+import com.schoolbridge.v2.ui.academic.GradesListScreen
 import com.schoolbridge.v2.ui.home.SchoolAdminRoleRequestScreen
 import com.schoolbridge.v2.ui.home.StudentRoleRequestScreen
 import com.schoolbridge.v2.ui.home.TeacherRoleRequestScreen
@@ -367,6 +370,9 @@ fun AppNavHost(
             val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
             TimetableTabsScreen(
                 userSessionManager = userSessionManager,
+                currentScreen = MainAppScreen.WeeklySchedule,
+                onTabSelected = navController::navigateToMainScreen,
+                currentUser = currentUser,
                 onBack = null,
                 onOpenMessageConversation = { messageConversationId, callMessageId ->
                     navController.navigate(
@@ -374,13 +380,6 @@ fun AppNavHost(
                             messageConversationId = messageConversationId,
                             callMessageId = callMessageId
                         )
-                    )
-                },
-                bottomBar = {
-                    CustomBottomNavBar(
-                        currentScreen = MainAppScreen.WeeklySchedule,
-                        onTabSelected = navController::navigateToMainScreen,
-                        currentUser = currentUser
                     )
                 }
             )
@@ -390,14 +389,10 @@ fun AppNavHost(
             val currentUser by userSessionManager.currentUser.collectAsState(initial = null)
             AlertsScreen(
                 userSessionManager = userSessionManager,
+                currentScreen = MainAppScreen.Alerts,
+                onTabSelected = navController::navigateToMainScreen,
+                currentUser = currentUser,
                 onBack = null,
-                bottomBar = {
-                    CustomBottomNavBar(
-                        currentScreen = MainAppScreen.Alerts,
-                        onTabSelected = navController::navigateToMainScreen,
-                        currentUser = currentUser
-                    )
-                }
             )
         }
         composable(MainAppScreen.Events.route){
@@ -555,7 +550,10 @@ fun AppNavHost(
         }
 
         composable(MainAppScreen.CoursesList.route) {
-            // TODO: Implement the courses list destination UI.
+            CoursesListScreen(
+                userSessionManager = userSessionManager,
+                onBack = { navController.navigateUp() }
+            )
         }
 
         composable(MainAppScreen.CourseDetail.ROUTE_PATTERN) { backStackEntry ->
@@ -565,12 +563,16 @@ fun AppNavHost(
                 screenName = "CourseDetail"
             )
             if (courseId != null) {
-                // TODO: Implement the course-detail destination UI.
+                AcademicPlaceholderDetailScreen(
+                    title = "Course details",
+                    body = "Course detail is not fully wired yet, but this route is now safe and ready for the next content pass. The selected course id is $courseId.",
+                    onBack = { navController.navigateUp() }
+                )
             }
         }
 
         composable(MainAppScreen.GradesList.route) {
-            // TODO: Implement the grades list destination UI.
+            GradesListScreen(onBack = { navController.navigateUp() })
         }
 
         composable(MainAppScreen.EvaluationDetail.ROUTE_PATTERN) { backStackEntry ->
@@ -580,20 +582,36 @@ fun AppNavHost(
                 screenName = "EvaluationDetail"
             )
             if (evaluationId != null) {
-                // TODO: Implement the evaluation-detail destination UI.
+                AcademicPlaceholderDetailScreen(
+                    title = "Evaluation details",
+                    body = "Evaluation detail is still waiting for backend-linked content, but this route now opens safely instead of landing in a TODO hole. The selected evaluation id is $evaluationId.",
+                    onBack = { navController.navigateUp() }
+                )
             }
         }
 
         composable(MainAppScreen.StudentDashboard.route) {
-            // TODO: Implement the student dashboard destination UI.
+            AcademicPlaceholderDetailScreen(
+                title = "Student dashboard",
+                body = "This dashboard route is reserved for a fuller academic overview, but it now has a real destination instead of an empty stub.",
+                onBack = { navController.navigateUp() }
+            )
         }
 
         composable(MainAppScreen.ParentChildrenList.route) {
-            // TODO: Implement the parent-children destination UI.
+            AcademicPlaceholderDetailScreen(
+                title = "Linked children",
+                body = "This route is ready for the future family management view. For now it opens safely with a real screen instead of a blank placeholder.",
+                onBack = { navController.navigateUp() }
+            )
         }
 
         composable(MainAppScreen.TeacherAssignedCourses.route) {
-            // TODO: Implement the teacher-assigned-courses destination UI.
+            AcademicPlaceholderDetailScreen(
+                title = "Assigned courses",
+                body = "This route is prepared for the teacher workload view. It no longer drops into an empty navigation placeholder.",
+                onBack = { navController.navigateUp() }
+            )
         }
     }
 }
