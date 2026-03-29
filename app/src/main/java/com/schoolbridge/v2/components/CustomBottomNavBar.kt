@@ -31,13 +31,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schoolbridge.v2.domain.user.CurrentUser
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkTargetRegistry
+import com.schoolbridge.v2.ui.common.tutorial.coachMarkTarget
 import com.schoolbridge.v2.ui.navigation.MainAppScreen
 
 @Composable
 fun CustomBottomNavBar(
     currentScreen: MainAppScreen,
     onTabSelected: (MainAppScreen) -> Unit,
-    currentUser: CurrentUser? = null
+    currentUser: CurrentUser? = null,
+    tutorialRegistry: CoachMarkTargetRegistry? = null
 ) {
     val items = rememberBottomNavItems(currentUser)
     val colors = MaterialTheme.colorScheme
@@ -75,7 +78,9 @@ fun CustomBottomNavBar(
                     screen = screen,
                     selected = selected,
                     onClick = { onTabSelected(screen) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .coachMarkTarget("bottom_nav_${screen.route}", tutorialRegistry)
                 )
             }
         }
