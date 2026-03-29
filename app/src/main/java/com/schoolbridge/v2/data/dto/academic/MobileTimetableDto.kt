@@ -50,6 +50,9 @@ data class MobilePersonalTimetablePlanDto(
     val endTime: String,
     val type: String,
     val visibility: String,
+    val creatorUserId: Long? = null,
+    val participantUserIds: List<Long> = emptyList(),
+    val reminderMinutesBefore: Int? = null,
     val participantLabels: List<String> = emptyList(),
     val createdByLabel: String? = null,
     val note: String? = null
