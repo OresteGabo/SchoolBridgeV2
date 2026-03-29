@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlin.math.abs
 
 data class FinanceDashboard(
@@ -56,6 +57,61 @@ data class FinanceDashboard(
             .filter { studentId == ALL_STUDENTS_ID || it.studentId == studentId }
             .sumOf { abs(it.amount) }
         return amount.asMoney()
+    }
+
+    fun categoryBreakdown(studentId: String): List<FinanceCategoryBreakdown> {
+        val filteredTransactions = transactions.filter { transaction ->
+            transaction.status == FinanceStatus.Completed &&
+                (studentId == ALL_STUDENTS_ID || transaction.studentId == studentId)
+        }
+        val filteredOutstanding = outstandingItems.filter { item ->
+            studentId == ALL_STUDENTS_ID || item.studentId == studentId
+        }
+
+        return FinanceCategory.entries.mapNotNull { category ->
+            val paidAmount = filteredTransactions
+                .filter { it.category == category }
+                .sumOf { abs(it.amount) }
+            val outstandingAmount = filteredOutstanding
+                .filter { it.category == category }
+                .sumOf { it.amount }
+            if (paidAmount <= 0.0 && outstandingAmount <= 0.0) {
+                null
+            } else {
+                FinanceCategoryBreakdown(
+                    category = category,
+                    paidAmount = paidAmount,
+                    outstandingAmount = outstandingAmount
+                )
+            }
+        }.sortedByDescending { it.totalAmount }
+    }
+
+    fun monthlyTrend(studentId: String): List<FinanceMonthlyTrendPoint> {
+        val filteredTransactions = transactions.filter { transaction ->
+            transaction.status == FinanceStatus.Completed &&
+                transaction.date != null &&
+                (studentId == ALL_STUDENTS_ID || transaction.studentId == studentId)
+        }
+        val filteredOutstanding = outstandingItems.filter { item ->
+            studentId == ALL_STUDENTS_ID || item.studentId == studentId
+        }
+
+        val paidByMonth = filteredTransactions.groupBy { YearMonth.from(it.date) }
+            .mapValues { (_, items) -> items.sumOf { abs(it.amount) } }
+        val outstandingByMonth = filteredOutstanding.groupBy { YearMonth.from(it.dueDate) }
+            .mapValues { (_, items) -> items.sumOf { it.amount } }
+
+        return (paidByMonth.keys + outstandingByMonth.keys)
+            .sorted()
+            .takeLast(6)
+            .map { month ->
+                FinanceMonthlyTrendPoint(
+                    month = month,
+                    paidAmount = paidByMonth[month] ?: 0.0,
+                    outstandingAmount = outstandingByMonth[month] ?: 0.0
+                )
+            }
     }
 
     companion object {
@@ -110,6 +166,7 @@ data class FinanceTransactionUi(
     val description: String,
     val amount: Double,
     val amountLabel: String,
+    val date: LocalDate?,
     val dateLabel: String,
     val paymentMethod: String,
     val reference: String,
@@ -123,6 +180,22 @@ data class QuickActionUi(
     val icon: ImageVector,
     val tone: FinanceTone
 )
+
+data class FinanceCategoryBreakdown(
+    val category: FinanceCategory,
+    val paidAmount: Double,
+    val outstandingAmount: Double
+) {
+    val totalAmount: Double = paidAmount + outstandingAmount
+}
+
+data class FinanceMonthlyTrendPoint(
+    val month: YearMonth,
+    val paidAmount: Double,
+    val outstandingAmount: Double
+) {
+    val totalAmount: Double = paidAmount + outstandingAmount
+}
 
 enum class FinanceTone {
     Positive,
