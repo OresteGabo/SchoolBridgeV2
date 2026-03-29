@@ -29,6 +29,8 @@ import com.schoolbridge.v2.data.repository.implementations.MessagingRepositoryIm
 import com.schoolbridge.v2.data.repository.implementations.TimetableRepositoryImpl
 import com.schoolbridge.v2.data.session.UserSessionManager
 import com.schoolbridge.v2.localization.t
+import com.schoolbridge.v2.ui.common.tutorial.CoachMarkTargetRegistry
+import com.schoolbridge.v2.ui.common.tutorial.coachMarkTarget
 import com.schoolbridge.v2.ui.components.AppSubHeader
 import com.schoolbridge.v2.ui.home.timetable.TimetableViewModel
 import com.schoolbridge.v2.ui.home.timetable.TimetableViewModelFactory
@@ -38,6 +40,7 @@ fun TodayScheduleSection(
     userSessionManager: UserSessionManager,
     onWeeklyViewClick: () -> Unit,
     modifier: Modifier = Modifier,
+    weeklyViewModifier: Modifier = Modifier,
     viewModel: TimetableViewModel = viewModel(
         factory = TimetableViewModelFactory(
             timetableRepository = TimetableRepositoryImpl(TimetableApiServiceImpl(userSessionManager)),
@@ -55,7 +58,10 @@ fun TodayScheduleSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppSubHeader("📅 Today’s Schedule")
-            TextButton(onClick = onWeeklyViewClick) {
+            TextButton(
+                onClick = onWeeklyViewClick,
+                modifier = weeklyViewModifier
+            ) {
                 Text(
                     text = t(R.string.weekly_view),
                     style = MaterialTheme.typography.labelLarge
