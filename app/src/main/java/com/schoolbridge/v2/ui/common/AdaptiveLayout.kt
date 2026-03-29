@@ -16,6 +16,13 @@ import androidx.compose.ui.unit.dp
 fun isExpandedLayout(): Boolean = LocalConfiguration.current.screenWidthDp >= 840
 
 @Composable
+fun isWideLandscapeLayout(): Boolean {
+    val configuration = LocalConfiguration.current
+    return configuration.screenWidthDp >= 1100 &&
+        configuration.screenWidthDp > configuration.screenHeightDp
+}
+
+@Composable
 fun AdaptivePageFrame(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
