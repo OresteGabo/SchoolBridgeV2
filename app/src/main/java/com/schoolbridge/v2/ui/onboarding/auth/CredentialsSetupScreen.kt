@@ -44,16 +44,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.remember
 import androidx.compose.ui.text.input.VisualTransformation
 
 @Preview(showBackground = true)
 @Composable
 private fun pp() {
     CredentialsSetupScreen(
-        onContinue = TODO(),
-        modifier = TODO()
-    ) 
+        onContinue = {},
+        modifier = Modifier
+    )
     //PasswordStrengthIndicator(strength = PasswordStrength.FAIR, modifier = Modifier)
 }
 
