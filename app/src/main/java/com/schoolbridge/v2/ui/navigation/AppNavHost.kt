@@ -93,6 +93,9 @@ fun AppNavHost(
     LaunchedEffect(pendingMessageThreadId, pendingCallMessageId, openScheduleRequested) {
         when {
             pendingMessageThreadId != null -> {
+                navController.navigate(MainAppScreen.Message.route) {
+                    launchSingleTop = true
+                }
                 navController.navigate(
                     MainAppScreen.MessageThreadDetails.createRoute(
                         messageThreadId = pendingMessageThreadId,
