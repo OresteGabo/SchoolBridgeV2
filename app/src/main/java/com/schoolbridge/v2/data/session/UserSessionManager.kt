@@ -23,6 +23,8 @@ class UserSessionManager @Inject constructor(
     private val context: Context,
     private val gson: Gson = Gson()
 ) {
+    val appContext: Context
+        get() = context
 
     private object Keys {
         val AUTH_TOKEN = stringPreferencesKey("authToken")
@@ -55,6 +57,10 @@ class UserSessionManager @Inject constructor(
 
     fun getAuthTokenSync(): String? = runBlocking {
         context.userDataStore.data.first()[Keys.AUTH_TOKEN]
+    }
+
+    fun getCurrentUserIdSync(): String? = runBlocking {
+        context.userDataStore.data.first()[Keys.USER_ID]
     }
     suspend fun initializeSession() {
         Log.d("UserSessionManager", "initializeSession()")
