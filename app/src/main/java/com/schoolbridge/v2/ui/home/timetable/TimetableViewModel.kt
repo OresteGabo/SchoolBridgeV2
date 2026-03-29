@@ -54,11 +54,20 @@ enum class AgendaDensity {
 enum class PersonalPlanType {
     STUDY_BLOCK,
     HOMEWORK,
+    REVISION,
+    EXAM_PREP,
     GROUP_WORK,
     PROJECT_MILESTONE,
     CLUB_ACTIVITY,
     MEETING,
+    PARENT_FOLLOW_UP,
+    VERIFICATION_APPOINTMENT,
     REMINDER
+}
+
+enum class PlanVisibility {
+    PRIVATE,
+    SHARED
 }
 
 data class AgendaItemUi(
@@ -284,8 +293,10 @@ class TimetableViewModel(
         endTime: LocalTime,
         title: String,
         description: String,
-        planType: PersonalPlanType
+        planType: PersonalPlanType,
+        visibility: PlanVisibility
     ) {
+        val selectedAudience = _uiState.value.selectedAudienceNames()
         viewModelScope.launch {
             runCatching {
                 timetableRepository.createPersonalPlan(
@@ -296,12 +307,12 @@ class TimetableViewModel(
                         startTime = startTime.toString(),
                         endTime = endTime.toString(),
                         type = planType.name,
-                        note = if (planType == PersonalPlanType.GROUP_WORK) {
-                            // TODO: Add participant picker and invitation flow for collaborative plans.
-                            "Created from mobile personal planner."
-                        } else {
-                            "Created from mobile personal planner."
-                        }
+                        visibility = visibility.name,
+                        note = buildPlanNote(
+                            planType = planType,
+                            visibility = visibility,
+                            selectedAudience = selectedAudience
+                        )
                     )
                 )
             }.onSuccess { createdPlan ->
@@ -317,6 +328,32 @@ class TimetableViewModel(
         }
     }
 }
+
+private fun buildPlanNote(
+    planType: PersonalPlanType,
+    visibility: PlanVisibility,
+    selectedAudience: List<String>
+): String {
+    val noteParts = mutableListOf("Created from mobile personal planner.")
+    if (visibility == PlanVisibility.SHARED) {
+        if (selectedAudience.isNotEmpty()) {
+            noteParts += "Shared context: ${selectedAudience.joinToString(", ")}."
+        } else {
+            noteParts += "Shared context: broader school workflow."
+        }
+    }
+    if (planType == PersonalPlanType.GROUP_WORK) {
+        noteParts += "TODO: Replace shared-context notes with real participant invitations when directory lookup is available."
+    }
+    return noteParts.joinToString("\n")
+}
+
+private fun TimetableUiState.selectedAudienceNames(): List<String> =
+    if (selectedStudentIds.isEmpty()) {
+        emptyList()
+    } else {
+        students.filter { it.id in selectedStudentIds }.map { it.name }
+    }
 
 class TimetableViewModelFactory(
     private val timetableRepository: TimetableRepository,
@@ -546,7 +583,9 @@ private fun MobilePersonalTimetablePlanDto.toAgendaItem(): AgendaItemUi {
         },
         ctaLabel = if (participantLabels.isNotEmpty()) "Group plan" else null,
         isImportant = type.equals("PROJECT_MILESTONE", ignoreCase = true) ||
-            type.equals("GROUP_WORK", ignoreCase = true),
+            type.equals("GROUP_WORK", ignoreCase = true) ||
+            type.equals("EXAM_PREP", ignoreCase = true) ||
+            type.equals("VERIFICATION_APPOINTMENT", ignoreCase = true),
         isOwnedByCurrentUser = true,
         origin = AgendaItemOrigin.PERSONAL_PLAN
     )
@@ -668,20 +707,28 @@ private fun resolveConversationCallActionLabel(
 private fun String.toFriendlyPersonalPlanBadge(): String = when {
     equals("STUDY_BLOCK", ignoreCase = true) -> "Study block"
     equals("HOMEWORK", ignoreCase = true) -> "Homework"
+    equals("REVISION", ignoreCase = true) -> "Revision"
+    equals("EXAM_PREP", ignoreCase = true) -> "Exam prep"
     equals("GROUP_WORK", ignoreCase = true) -> "Group work"
     equals("PROJECT_MILESTONE", ignoreCase = true) -> "Project"
     equals("CLUB_ACTIVITY", ignoreCase = true) -> "Club"
     equals("MEETING", ignoreCase = true) -> "Personal meeting"
+    equals("PARENT_FOLLOW_UP", ignoreCase = true) -> "Follow-up"
+    equals("VERIFICATION_APPOINTMENT", ignoreCase = true) -> "Verification"
     else -> "Reminder"
 }
 
 private fun String.toFriendlyPersonalPlanSubtitle(): String = when {
     equals("STUDY_BLOCK", ignoreCase = true) -> "Time reserved for focused study"
     equals("HOMEWORK", ignoreCase = true) -> "Personal homework session"
+    equals("REVISION", ignoreCase = true) -> "Revision and memory practice"
+    equals("EXAM_PREP", ignoreCase = true) -> "Preparation for an upcoming assessment"
     equals("GROUP_WORK", ignoreCase = true) -> "Collaborative school work"
     equals("PROJECT_MILESTONE", ignoreCase = true) -> "Project checkpoint"
     equals("CLUB_ACTIVITY", ignoreCase = true) -> "School activity or club plan"
     equals("MEETING", ignoreCase = true) -> "Personal meeting slot"
+    equals("PARENT_FOLLOW_UP", ignoreCase = true) -> "Parent-school follow-up moment"
+    equals("VERIFICATION_APPOINTMENT", ignoreCase = true) -> "School verification or identity check"
     else -> "Personal school reminder"
 }
 
