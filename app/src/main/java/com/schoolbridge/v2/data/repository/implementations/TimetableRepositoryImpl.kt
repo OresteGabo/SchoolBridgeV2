@@ -13,4 +13,11 @@ class TimetableRepositoryImpl(
 
     override suspend fun createPersonalPlan(request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto =
         timetableApiService.createPersonalPlan(request)
+
+    override suspend fun updatePersonalPlan(planId: Long, request: CreatePersonalTimetablePlanRequestDto): MobilePersonalTimetablePlanDto =
+        timetableApiService.updatePersonalPlan(planId, request)
+
+    override suspend fun deletePersonalPlan(planId: Long) {
+        timetableApiService.deletePersonalPlan(planId)
+    }
 }
